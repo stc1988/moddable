@@ -60,10 +60,12 @@ export default function (done) {
     },
   };
 
-  vibration.write(true);
-  Timer.set(() => {
-    vibration.write(false);
-  }, 600);
+  if (config.startupVibration) {
+    vibration.write(true);
+    Timer.set(() => {
+      vibration.write(false);
+    }, config.startupVibration);
+  }
 
   // accelerometer and gyrometer
   state.accelerometerGyro = new MPU6886(INTERNAL_I2C);
@@ -202,7 +204,6 @@ class Power extends AXP192 {
       this.writeByte(0x90, (this.readByte(0x90) & 0xf8) | 0x01); //set GPIO0 to float , using enternal pulldown resistor to enable supply from BUS_5VS
     }
   }
-  
   // value 0 - 100 %
   set brightness(value) {
     if (value <= 0)
