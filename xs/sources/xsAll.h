@@ -267,6 +267,8 @@ typedef union {
 	struct { txSlot* address; txIndex length; } stack;
 	struct { txSlot** address; txSize length; } table;
 	struct { txTypeDispatch* dispatch; txTypeAtomics* atomics; } typedArray;
+	struct { txSlot* check; txSlot* value; } weakEntry;
+	struct { txSlot* first; txSlot* link; } weakList;
 	struct { txSlot* target; txSlot* link; } weakRef;
 	struct { txSlot* callback; txUnsigned flags; } finalizationRegistry;
 	struct { txSlot* target; txSlot* token; } finalizationCell;
@@ -418,10 +420,8 @@ struct sxMachine {
 	
 	char* stackLimit;
 	
-	txSlot* firstWeakMapTable;
-	txSlot* firstWeakSetTable;
+	txSlot* firstWeakListLink;
 	txSlot* firstWeakRefLink;
-
 	
 	txSize currentChunksSize;
 	txSize peakChunksSize;
@@ -684,9 +684,8 @@ mxExport void fxAwaitImport(txMachine*, txBoolean defaultFlag);
 
 #ifdef mxMetering
 mxExport void fxBeginMetering(txMachine* the, txBoolean (*callback)(txMachine*, txU4), txU4 interval);
+mxExport void fxCheckMetering(txMachine* the);
 mxExport void fxEndMetering(txMachine* the);
-mxExport void fxMeterHostFunction(txMachine* the, txU4 count);
-mxExport void fxPatchHostFunction(txMachine* the, txCallback patch);
 #endif
 
 /* xsmc.c */
@@ -1491,6 +1490,9 @@ mxExport void fx_TypedArray_prototype_values(txMachine* the);
 extern void fxBuildDataView(txMachine* the);
 extern void fxConstructArrayBufferResult(txMachine* the, txSlot* constructor, txInteger length);
 
+extern txInteger fxArgToByteOffset(txMachine* the, txInteger argi, txInteger offset);
+extern txInteger fxArgToByteLength(txMachine* the, txInteger argi, txInteger length);
+
 /* xsAtomics.c */
 extern void fxInt8Add(txMachine* the, txSlot* host, txInteger offset, txSlot* slot, int endian);
 extern void fxInt16Add(txMachine* the, txSlot* host, txInteger offset, txSlot* slot, int endian);
@@ -1933,6 +1935,7 @@ enum {
 	XS_HOST_INSPECTOR_KIND,
 	XS_INSTANCE_INSPECTOR_KIND,
 	XS_EXPORT_KIND,
+	XS_WEAK_ENTRY_KIND,
 };
 enum {
 	XS_DEBUGGER_EXIT = 0,

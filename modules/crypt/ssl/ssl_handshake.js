@@ -1,23 +1,23 @@
 /*
- * Copyright (c) 2016-2017  Moddable Tech, Inc.
+ * Copyright (c) 2016-2021  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
- * 
+ *
  *   The Moddable SDK Runtime is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU Lesser General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
  *   (at your option) any later version.
- * 
+ *
  *   The Moddable SDK Runtime is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU Lesser General Public License for more details.
- * 
+ *
  *   You should have received a copy of the GNU Lesser General Public License
  *   along with the Moddable SDK Runtime.  If not, see <http://www.gnu.org/licenses/>.
  *
- * This file incorporates work covered by the following copyright and  
- * permission notice:  
+ * This file incorporates work covered by the following copyright and
+ * permission notice:
  *
  *       Copyright (C) 2010-2016 Marvell International Ltd.
  *       Copyright (C) 2002-2010 Kinoma, Inc.
@@ -90,6 +90,15 @@ const named_curves = Object.freeze({
 	x448: 30,
 });
 
+const options = Object.freeze({
+	tls_elliptic_curves: [named_curves.secp256r1],
+	tls_ec_point_formats: [0],	// uncompressed
+	tls_signature_algorithms: [
+		{hash: 4, sig: 3},		// SHA256, ECDSA
+		{hash: 4, sig: 1}		// SHA256, RSA
+	]
+}, true);
+
 function handshakeDigestUpdate(session, data)
 {
 	if (session.handshakeDigests) {
@@ -127,52 +136,53 @@ const handshakeProtocol = {
 		session.traceProtocol(this);
 		let tbuf = new Uint8Array(4);
 		tbuf[0] = s.readChar(0);		// msgType
-		let bodyLen = s.readChars(3);
-		let body = bodyLen > 0 ? s.readChunk(bodyLen, true) : undefined;
-		let protocol;
+		let body = s.readChars(3);
+		body = body > 0 ? s.readChunk(body, true) : undefined;
 		switch (tbuf[0]) {
-		case hello_request:
-			protocol = this.helloRequest;
+		case 0 /* hello_request */:
+			s = this.helloRequest;
 			break;
-		case client_hello:
-			protocol = this.clientHello;
+		case 1 /* client_hello */:
+			s = this.clientHello;
 			break;
-		case server_hello:
-			protocol = this.serverHello;
+		case 2 /* server_hello */:
+			s = this.serverHello;
 			break;
-		case certificate:
-			protocol = this.certificate;
+		case 11 /* certificate */:
+			s = this.certificate;
 			break;
-		case server_key_exchange:
-			protocol = this.serverKeyExchange;
+		case 12 /* server_key_exchange */:
+			s = this.serverKeyExchange;
 			break;
-		case certificate_request:
-			protocol = this.certificateRequest;
+		case 13 /* certificate_request */:
+			s = this.certificateRequest;
 			break;
-		case server_hello_done:
-			protocol = this.serverHelloDone;
+		case 14 /* server_hello_done */:
+			s = this.serverHelloDone;
 			break;
-		case certificate_verify:
-			protocol = this.certificateVerify;
+		case 15 /* certificate_verify */:
+			s = this.certificateVerify;
 			break;
-		case client_key_exchange:
-			protocol = this.clientKeyExchange;
+		case 16 /* client_key_exchange */:
+			s = this.clientKeyExchange;
 			break;
-		case finished:
-			protocol = this.finished;
+		case 20 /* finished */:
+			s = this.finished;
 			break;
 		default:
-			let p = tbuf[0];
-			throw new Error("SSL: handshake: unknown type: " + p);
+			throw new Error("SSL: handshake: unknown type: " + tbuf[0]);
 			break;
 		}
-		protocol.unpacketize(session, body ? new SSLStream(body) : undefined);
+		s.unpacketize(session, body ? new SSLStream(body) : undefined);
 
 		session.handshakeProcess = tbuf[0];
 
 		// update the digest of the whole handshake message
-		for (let i = 0; i < 3; i++)
-			tbuf[i + 1] = (bodyLen >>> (8 * (2 - i))) & 0xff;
+		if (body) {
+			tbuf[1] = body.byteLength >>> 16;
+			tbuf[2] = body.byteLength >>> 8;
+			tbuf[3] = body.byteLength;
+		}
 
 		handshakeDigestUpdate(session, tbuf.buffer);
 		if (body)
@@ -269,7 +279,7 @@ const handshakeProtocol = {
 			var sessionID = sessionIDLen > 0 ? s.readChunk(sessionIDLen) : undefined;
 			var suites = [];
 			var compressionMethods = [];
-			if (msgType == client_hello) {
+			if (msgType === client_hello) {
 				session.clientRandom = random;
 				session.clientSessionID = sessionID;
 				for (var nsuites = s.readChars(2) / 2; --nsuites >= 0;) {
@@ -291,7 +301,7 @@ const handshakeProtocol = {
 			}
 			session.chosenCipher = this.selectCipherSuite(suites);
 			session.compressionMethod = this.selectCompressionMethod(compressionMethods);
-			if (msgType == server_hello && s.byteAvailable) {
+			if (msgType === server_hello && s.byteAvailable) {
 				let type = s.readChars(2);
 				switch (type) {
 				case extension_type.tls_signature_algorithms:
@@ -310,12 +320,12 @@ const handshakeProtocol = {
 			}
 		},
 		packetize(session, cipherSuites, compressionMethods, msgType) {
-			let s = new SSLStream();
+			const s = new SSLStream;
 			s.writeChars(session.protocolVersion, 2);
 			let random = this.random.serialize();
 			let sessionID;
 			s.writeChunk(random);
-			if (msgType == client_hello) {
+			if (msgType === client_hello) {
 				session.clientRandom = random;
 				sessionID = session.clientSessionID;
 			}
@@ -329,7 +339,7 @@ const handshakeProtocol = {
 				s.writeChar(sessionID.byteLength);
 				s.writeChunk(sessionID);
 			}
-			if (msgType == client_hello) {
+			if (msgType === client_hello) {
 				s.writeChars(cipherSuites.length * 2, 2);
 				for (let i = 0; i < cipherSuites.length; i++) {
 					let val = cipherSuites[i].value;
@@ -342,14 +352,13 @@ const handshakeProtocol = {
 				//
 				// TLS extensions
 				//
-				let es = new SSLStream();
-				session.options.tls_elliptic_curves = [named_curves.secp256r1];
-				session.options.tls_ec_point_formats = [0];	// uncompressed
+				const es = new SSLStream;
+				session.options = {...options, ...session.options};
 				for (let i in session.options) {
 					if (!(i in extension_type))
 						continue;
-					let type = extension_type[i];
-					let ext = session.options[i];
+					const type = extension_type[i];
+					const ext = session.options[i];
 					switch (type) {
 					case extension_type.tls_server_name: {
 						es.writeChars(type, 2);
@@ -367,8 +376,7 @@ const handshakeProtocol = {
 						es.writeChars(1, 2);
 						let j;
 						for (j = 1; j <= 4; j++) {
-							let e = j + 9;	// start with 2^9
-							if ((ext >>> e) == 0)
+							if ((ext >>> (j + 9)) == 0)		// start with 2^9
 								break;
 						}
 						if (j > 4)
@@ -379,7 +387,7 @@ const handshakeProtocol = {
 					case extension_type.tls_signature_algorithms: {
 						es.writeChars(type, 2);
 						es.writeChars(2 + ext.length * 2, 2);
-						es.writeChars(ext.length, 2);
+						es.writeChars(ext.length * 2, 2);
 						for (let j = 0; j < ext.length; j++) {
 							es.writeChar(ext[j].hash);
 							es.writeChar(ext[j].sig);
@@ -426,7 +434,7 @@ const handshakeProtocol = {
 				}
 			}
 			else {
-				let val = cipherSuites[0].value;
+				const val = cipherSuites[0].value;
 				s.writeChar(val[0]);
 				s.writeChar(val[1]);
 				s.writeChar(compressionMethods[0]);
@@ -539,7 +547,7 @@ const handshakeProtocol = {
 		ecdsa: 3,
 		ed25519: 7,
 		ed448: 8,
-		
+
 		unpacketize(session, s) {
 			session.traceProtocol(this);
 			switch (session.chosenCipher.keyExchangeAlgorithm) {
@@ -604,11 +612,11 @@ const handshakeProtocol = {
 				case this.anonymous: break;
 				case this.rsa: v = new PKCS1_5(key, false, []); break;
 				case this.dsa: v = new DSA(key, false); break;
-				case this.ecdsa: v = new ECDSA(key, false); break;
+				case this.ecdsa: v = new ECDSA(key.pub, key.curve, false); break;
 				}
 				if (hash && v && sig) {
 					let H = hash.process(session.clientRandom, session.serverRandom, tbs.getChunk());
-					if (!v.verify(H, sig)) {
+					if (!v.verify(H, sig, true)) {
 						// should send an alert, probably...
 						throw new Error("SSL: serverKeyExchange: failed to verify signature");
 					}
@@ -786,9 +794,8 @@ const handshakeProtocol = {
 		name: "clientKeyExchange",
 		msgType: client_key_exchange,
 		generateMasterSecret(session, preMasterSecret) {
-			var random = session.clientRandom;
-			random = random.concat(session.serverRandom);
-			session.masterSecret = PRF(session, preMasterSecret, master_secret_label, random, 48);
+			session.masterSecret = PRF(session, preMasterSecret, master_secret_label,
+				session.clientRandom.concat(session.serverRandom), 48);
 		},
 		unpacketize(session, s) {
 			session.traceProtocol(this);
@@ -839,9 +846,7 @@ const handshakeProtocol = {
 				plain.writeChars(session.protocolVersion, 2);
 				plain.writeChunk(RNG.get(46));
 				preMasterSecret = plain.getChunk();
-				var key = session.certificateManager.getKey(session.peerCert);
-				var rsa = new PKCS1_5(key);
-				var cipher = rsa.encrypt(preMasterSecret);
+				var cipher = (new PKCS1_5(session.certificateManager.getKey(session.peerCert))).encrypt(preMasterSecret);
 				s.writeChars(cipher.byteLength, 2);
 				s.writeChunk(cipher);
 				break;

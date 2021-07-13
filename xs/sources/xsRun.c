@@ -42,9 +42,6 @@
 
 #define c_iszero(NUMBER) (FP_ZERO == c_fpclassify(NUMBER))
 
-#ifdef mxMetering
-static void fxCheckMetering(txMachine* the);
-#endif
 extern void fxRemapIDs(txMachine* the, txByte* codeBuffer, txSize codeSize, txID* theIDs);
 static void fxRunArguments(txMachine* the, txIndex offset);
 static void fxRunBase(txMachine* the);
@@ -302,6 +299,15 @@ static txBoolean fxToNumericNumberBinary(txMachine* the, txSlot* a, txSlot* b, t
 #ifdef mxTrace
 short gxDoTrace = 1;
 
+#ifdef mxMetering
+static void fxTraceCode(txMachine* the, txSlot* stack, txU1 theCode) 
+{
+	if (((XS_NO_CODE < theCode) && (theCode < XS_CODE_COUNT)))
+		fprintf(stderr, "\n%u %ld: %s", the->meterIndex, the->stackTop - stack, gxCodeNames[theCode]);
+	else
+		fprintf(stderr, "\n%u %ld: ?", the->meterIndex, the->stackTop - stack);
+}
+#else
 static void fxTraceCode(txMachine* the, txSlot* stack, txU1 theCode) 
 {
 	if (((XS_NO_CODE < theCode) && (theCode < XS_CODE_COUNT)))
@@ -309,6 +315,7 @@ static void fxTraceCode(txMachine* the, txSlot* stack, txU1 theCode)
 	else
 		fprintf(stderr, "\n%ld: ?", the->stackTop - stack);
 }
+#endif
 
 static void fxTraceID(txMachine* the, txID id, txIndex index) 
 {
@@ -384,7 +391,11 @@ void fxRunID(txMachine* the, txSlot* generator, txInteger count)
 	register txS4 offset;
 	txU1 primitive = 0;
 #if defined(__GNUC__) && defined(__OPTIMIZE__)
-	static void *const ICACHE_RAM_ATTR gxBytes[] = {
+	static void *const
+	#if !defined(__ets__) || ESP32
+		ICACHE_RAM_ATTR
+	#endif
+		gxBytes[] = {
 		&&XS_NO_CODE,
 		&&XS_CODE_ADD,
 		&&XS_CODE_ARGUMENT,
@@ -2055,6 +2066,9 @@ XS_CODE_JUMP:
 				flag = fxStringToIndex(the->dtoa, mxStack->value.string, &(scratch.value.at.index));
 				mxRestoreState;
 				if (flag) {
+#ifdef mxMetering
+					the->meterIndex += 2;
+#endif
 					mxStack->kind = XS_AT_KIND;
 					mxStack->value.at.id = XS_NO_ID;
 					mxStack->value.at.index = scratch.value.at.index;

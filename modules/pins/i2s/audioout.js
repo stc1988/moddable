@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020  Moddable Tech, Inc.
+ * Copyright (c) 2018-2021  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -23,12 +23,15 @@ export class Mixer @ "xs_audioout_destructor" {
 	close() @ "xs_audioout_close";
 	enqueue(stream, kind, buffer, repeat, offset, count) @ "xs_audioout_enqueue";
 	mix(samples) @ "xs_audioout_mix";
+	length(stream) @ "xs_audioout_length";
 }
 Mixer.Samples = 1;
 Mixer.Flush = 2;
 Mixer.Callback = 3;
 Mixer.Volume = 4;
 Mixer.RawSamples = 5;
+Mixer.Tone = 6;
+Mixer.Silence = 7;
 
 function build(dictionary) @ "xs_audioout_build";
 
