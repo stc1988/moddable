@@ -1,0 +1,8 @@
+{
+	"modules": {
+		"embedded:sensor/Ultrasonic-Distance/RCWL9620": "$(MODDABLE)/modules/drivers/sensors/rcwl9620/rcwl9620"
+	},
+	"preload": [
+		"embedded:sensor/Ultrasonic-Distance/RCWL9620"
+	]
+}
