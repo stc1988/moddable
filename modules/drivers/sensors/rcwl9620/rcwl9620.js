@@ -26,6 +26,7 @@
 import Timer from "timer";
 
 const MAX_RANGE = 4500.0;
+const MIN_RANGE = 20.0;
 
 class RCWL9620 {
   #io;
@@ -36,7 +37,7 @@ class RCWL9620 {
   constructor(options) {
     const io = (this.#io = new options.sensor.io({
       address: 0x57,
-      hz: 200_000,
+      hz: 100_000,
       ...options.sensor,
     }));
 
@@ -53,7 +54,7 @@ class RCWL9620 {
     const bBuf = this.#byteBuffer;
 
     bBuf[0] = 0x01;
-    io.write(bBuf, false);
+    io.write(bBuf);
     Timer.delay(150);
 
     io.read(vBuf);
@@ -61,6 +62,8 @@ class RCWL9620 {
 
     if (distance > MAX_RANGE) {
       return MAX_RANGE;
+    } else if(distance < MIN_RANGE) {
+      return MIN_RANGE;
     } else {
       return distance;
     }
