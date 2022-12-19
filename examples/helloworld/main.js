@@ -12,7 +12,31 @@
  *
  */
 
-debugger;
+
 
 let message = "Hello, world - sample";
 trace(message + "\n");
+
+const Host = globalThis.Host;
+
+new Host.Button.Default({
+    onPush() {
+        trace(`${this.pressed}\n`);
+    }
+});
+
+var buttonA =new Host.Button.A({
+  onPush() {
+    trace(`${this.pressed}\n`);
+  }
+});
+var buttonB =new Host.Button.B({
+  onPush() {
+    trace(`${this.pressed}\n`);
+  }
+});
+// var buttonC=new Host.Button.C({
+//   onPush() {
+//     trace(`${this.pressed}\n`);
+//   }
+// });

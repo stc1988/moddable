@@ -110,6 +110,7 @@ if (globalThis.Host) {
 	// Default button launches fireworks 
 	new Host.Button.Default({
 		onPush() {
+			trace(`${this.pressed}\n`);
 			if (this.pressed)
 				fireworks.forEach(firework => resetFirework(firework));
 			else
@@ -131,6 +132,7 @@ if (globalThis.Host) {
 		trace(`Button ${name}: color ${color}\n`);
 		new Button({
 			onPush() {
+				trace(`${name}\n`);
 				background[color] = this.pressed ? 255 : 0; 
 				led?.write(background);
 			}
