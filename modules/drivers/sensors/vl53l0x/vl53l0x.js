@@ -29,63 +29,63 @@ import Timer from "timer";
 const REGISTERS = Object.freeze(
   {
     SYSRANGE_START: 0x00,
-    //   SYSTEM_THRESH_HIGH: 0x0c,
-    //   SYSTEM_THRESH_LOW: 0x0e,
+    SYSTEM_THRESH_HIGH: 0x0c,
+    SYSTEM_THRESH_LOW: 0x0e,
     SYSTEM_SEQUENCE_CONFIG: 0x01,
-    //   SYSTEM_RANGE_CONFIG: 0x09,
-    //   SYSTEM_INTERMEASUREMENT_PERIOD: 0x04,
+    SYSTEM_RANGE_CONFIG: 0x09,
+    SYSTEM_INTERMEASUREMENT_PERIOD: 0x04,
     SYSTEM_INTERRUPT_CONFIG_GPIO: 0x0a,
     GPIO_HV_MUX_ACTIVE_HIGH: 0x84,
     SYSTEM_INTERRUPT_CLEAR: 0x0b,
-    //   RESULT_INTERRUPT_STATUS: 0x13,
+    RESULT_INTERRUPT_STATUS: 0x13,
     RESULT_RANGE_STATUS: 0x14,
-    //   RESULT_CORE_AMBIENT_WINDOW_EVENTS_RTN: 0xbc,
-    //   RESULT_CORE_RANGING_TOTAL_EVENTS_RTN: 0xc0,
-    //   RESULT_CORE_AMBIENT_WINDOW_EVENTS_REF: 0xd0,
-    //   RESULT_CORE_RANGING_TOTAL_EVENTS_REF: 0xd4,
-    //   RESULT_PEAK_SIGNAL_RATE_REF: 0xb6,
-    //   ALGO_PART_TO_PART_RANGE_OFFSET_MM: 0x28,
-    //   I2C_SLAVE_DEVICE_ADDRESS: 0x8a,
+    RESULT_CORE_AMBIENT_WINDOW_EVENTS_RTN: 0xbc,
+    RESULT_CORE_RANGING_TOTAL_EVENTS_RTN: 0xc0,
+    RESULT_CORE_AMBIENT_WINDOW_EVENTS_REF: 0xd0,
+    RESULT_CORE_RANGING_TOTAL_EVENTS_REF: 0xd4,
+    RESULT_PEAK_SIGNAL_RATE_REF: 0xb6,
+    ALGO_PART_TO_PART_RANGE_OFFSET_MM: 0x28,
+    I2C_SLAVE_DEVICE_ADDRESS: 0x8a,
     MSRC_CONFIG_CONTROL: 0x60,
-    //   PRE_RANGE_CONFIG_MIN_SNR: 0x27,
-    //   PRE_RANGE_CONFIG_VALID_PHASE_LOW: 0x56,
-    //   PRE_RANGE_CONFIG_VALID_PHASE_HIGH: 0x57,
-    //   PRE_RANGE_MIN_COUNT_RATE_RTN_LIMIT: 0x64,
-    //   FINAL_RANGE_CONFIG_MIN_SNR: 0x67,
-    //   FINAL_RANGE_CONFIG_VALID_PHASE_LOW: 0x47,
-    //   FINAL_RANGE_CONFIG_VALID_PHASE_HIGH: 0x48,
+    PRE_RANGE_CONFIG_MIN_SNR: 0x27,
+    PRE_RANGE_CONFIG_VALID_PHASE_LOW: 0x56,
+    PRE_RANGE_CONFIG_VALID_PHASE_HIGH: 0x57,
+    PRE_RANGE_MIN_COUNT_RATE_RTN_LIMIT: 0x64,
+    FINAL_RANGE_CONFIG_MIN_SNR: 0x67,
+    FINAL_RANGE_CONFIG_VALID_PHASE_LOW: 0x47,
+    FINAL_RANGE_CONFIG_VALID_PHASE_HIGH: 0x48,
     FINAL_RANGE_CONFIG_MIN_COUNT_RATE_RTN_LIMIT: 0x44,
-    //   PRE_RANGE_CONFIG_SIGMA_THRESH_HI: 0x61,
-    //   PRE_RANGE_CONFIG_SIGMA_THRESH_LO: 0x62,
-    //   PRE_RANGE_CONFIG_VCSEL_PERIOD: 0x50,
-    //   PRE_RANGE_CONFIG_TIMEOUT_MACROP_HI: 0x51,
-    //   PRE_RANGE_CONFIG_TIMEOUT_MACROP_LO: 0x52,
-    //   SYSTEM_HISTOGRAM_BIN: 0x81,
-    //   HISTOGRAM_CONFIG_INITIAL_PHASE_SELECT: 0x33,
-    //   HISTOGRAM_CONFIG_READOUT_CTRL: 0x55,
-    //   FINAL_RANGE_CONFIG_VCSEL_PERIOD: 0x70,
+    PRE_RANGE_CONFIG_SIGMA_THRESH_HI: 0x61,
+    PRE_RANGE_CONFIG_SIGMA_THRESH_LO: 0x62,
+    PRE_RANGE_CONFIG_VCSEL_PERIOD: 0x50,
+    PRE_RANGE_CONFIG_TIMEOUT_MACROP_HI: 0x51,
+    PRE_RANGE_CONFIG_TIMEOUT_MACROP_LO: 0x52,
+    SYSTEM_HISTOGRAM_BIN: 0x81,
+    HISTOGRAM_CONFIG_INITIAL_PHASE_SELECT: 0x33,
+    HISTOGRAM_CONFIG_READOUT_CTRL: 0x55,
+    FINAL_RANGE_CONFIG_VCSEL_PERIOD: 0x70,
     FINAL_RANGE_CONFIG_TIMEOUT_MACROP_HI: 0x71,
-    //   FINAL_RANGE_CONFIG_TIMEOUT_MACROP_LO: 0x72,
-    //   CROSSTALK_COMPENSATION_PEAK_RATE_MCPS: 0x20,
+    FINAL_RANGE_CONFIG_TIMEOUT_MACROP_LO: 0x72,
+    CROSSTALK_COMPENSATION_PEAK_RATE_MCPS: 0x20,
     MSRC_CONFIG_TIMEOUT_MACROP: 0x46,
-    //   SOFT_RESET_GO2_SOFT_RESET_N: 0xbf,
-    //   IDENTIFICATION_MODEL_ID: 0xc0,
-    //   IDENTIFICATION_REVISION_ID: 0xc2,
-    //   OSC_CALIBRATE_VAL: 0xf8,
-    //   GLOBAL_CONFIG_VCSEL_WIDTH: 0x32,
+    SOFT_RESET_GO2_SOFT_RESET_N: 0xbf,
+    IDENTIFICATION_MODEL_ID: 0xc0,
+    IDENTIFICATION_REVISION_ID: 0xc2,
+    OSC_CALIBRATE_VAL: 0xf8,
+    GLOBAL_CONFIG_VCSEL_WIDTH: 0x32,
     GLOBAL_CONFIG_SPAD_ENABLES_REF_0: 0xb0,
-    //   GLOBAL_CONFIG_SPAD_ENABLES_REF_1: 0xb1,
-    //   GLOBAL_CONFIG_SPAD_ENABLES_REF_2: 0xb2,
-    //   GLOBAL_CONFIG_SPAD_ENABLES_REF_3: 0xb3,
-    //   GLOBAL_CONFIG_SPAD_ENABLES_REF_4: 0xb4,
-    //   GLOBAL_CONFIG_SPAD_ENABLES_REF_5: 0xb5,
+    GLOBAL_CONFIG_SPAD_ENABLES_REF_1: 0xb1,
+    GLOBAL_CONFIG_SPAD_ENABLES_REF_2: 0xb2,
+    GLOBAL_CONFIG_SPAD_ENABLES_REF_3: 0xb3,
+    GLOBAL_CONFIG_SPAD_ENABLES_REF_4: 0xb4,
+    GLOBAL_CONFIG_SPAD_ENABLES_REF_5: 0xb5,
     GLOBAL_CONFIG_REF_EN_START_SELECT: 0xb6,
     DYNAMIC_SPAD_NUM_REQUESTED_REF_SPAD: 0x4e,
     DYNAMIC_SPAD_REF_EN_START_OFFSET: 0x4f,
-    //   POWER_MANAGEMENT_GO1_POWER_FORCE: 0x80,
-    //   VHV_CONFIG_PAD_SCL_SDA__EXTSUP_HV: 0x89,
-    //   ALGO_PHASECAL_LIM: 0x30,
-    //   ALGO_PHASECAL_CONFIG_TIMEOUT: 0x30,
+    POWER_MANAGEMENT_GO1_POWER_FORCE: 0x80,
+    VHV_CONFIG_PAD_SCL_SDA__EXTSUP_HV: 0x89,
+    ALGO_PHASECAL_LIM: 0x30,
+    ALGO_PHASECAL_CONFIG_TIMEOUT: 0x30,
   },
   true
 );
@@ -103,13 +103,21 @@ const OVERHEAD = Object.freeze(
   true
 );
 
+const VSCEL_PERIOD_TYPE = Object.freeze(
+  {
+    PRE_RANGE: 0,
+    FINAL_RANGE: 1,
+  },
+  true
+);
+
 class VL53L0X {
   #io;
   #onError;
 
   #stop_variable;
   #measurement_timing_budget_us;
-  #timeout;
+  #timeout = 0;
 
   #buf = new ArrayBuffer(12);
   #view = new DataView(this.#buf);
@@ -284,22 +292,6 @@ class VL53L0X {
     if ("timeout" in options) {
       this.#timeout = options.timeout;
     }
-
-    if ("rateLimit" in options) {
-      this.#setSignalRateLimit(options.rateLimit);
-    }
-
-    // setVcselPulsePeriod
-
-    if ("timingBudget" in options) {
-      this.#setMeasurementTimingBudget(options.timingBudget);
-    }
-
-    // if ("invert" in options) {
-    //   delete io.invert;
-    //   if (options.invert)
-    //     io.invert = true;
-    // }
   }
 
   close() {
@@ -326,18 +318,115 @@ class VL53L0X {
     return this.#view.getUint16(10, false);
   }
 
+  // define macros
+  #decodeVcselPeriod = (reg_val) => (reg_val + 1) << 1;
+  #calcMacroPeriod = (vcsel_period_pclks) =>
+    (2304 * vcsel_period_pclks * 1655 + 500) / 1000;
+
   #setSignalRateLimit(limit_Mcps) {
     if (limit_Mcps < 0 || limit_Mcps > 511.99) {
       return false;
     }
 
     // Q9.7 fixed point format (9 integer bits, 7 fractional bits)
-    this.#io.writeByte(
+    this.#io.writeWord(
       REGISTERS.FINAL_RANGE_CONFIG_MIN_COUNT_RATE_RTN_LIMIT,
       limit_Mcps * (1 << 7)
-    );
+    ,true);
     return true;
   }
+
+  getSignalRateLimit()
+  {
+    return this.#io.readWord(REGISTERS.FINAL_RANGE_CONFIG_MIN_COUNT_RATE_RTN_LIMIT, true) / (1 << 7);
+  }
+
+  #setMeasurementTimingBudget(budget_us) {
+    var used_budget_us = OVERHEAD.StartOverhead + OVERHEAD.EndOverhead;
+
+    var enables = this.#getSequenceStepEnables();
+    var timeouts = this.#getSequenceStepTimeouts(enables);
+
+    if (enables.tcc) {
+      used_budget_us += timeouts.msrc_dss_tcc_us + OVERHEAD.TccOverhead;
+    }
+
+    if (enables.dss) {
+      used_budget_us += 2 * (timeouts.msrc_dss_tcc_us + OVERHEAD.DssOverhead);
+    } else if (enables.msrc) {
+      used_budget_us += timeouts.msrc_dss_tcc_us + OVERHEAD.MsrcOverhead;
+    }
+
+    if (enables.pre_range) {
+      used_budget_us += timeouts.pre_range_us + OVERHEAD.PreRangeOverhead;
+    }
+
+    if (enables.final_range) {
+      used_budget_us += OVERHEAD.FinalRangeOverhead;
+
+      if (used_budget_us > budget_us) {
+        return false;
+      }
+
+      var final_range_timeout_us = budget_us - used_budget_us;
+
+      // var final_range_timeout_mclks =
+      // timeoutMicrosecondsToMclks(final_range_timeout_us,
+      //                            timeouts.final_range_vcsel_period_pclks);
+
+      if (enables.pre_range) {
+        final_range_timeout_mclks += timeouts.pre_range_mclks;
+      }
+
+      // this.#io(
+      //   REGISTERS.FINAL_RANGE_CONFIG_TIMEOUT_MACROP_HI,
+      //   encodeTimeout(final_range_timeout_mclks)
+      // );
+    }
+    return true;
+  }
+
+  getMeasurementTimingBudget() {
+    var enables;
+    var timeouts;
+
+    var budget_us = StartOverhead + EndOverhead;
+
+    var enables = this.#getSequenceStepEnables();
+    var timeouts = this.#getSequenceStepTimeouts(enables);
+
+    if (enables.tcc) {
+      budget_us += timeouts.msrc_dss_tcc_us + OVERHEAD.TCC;
+    }
+
+    if (enables.dss) {
+      budget_us += 2 * (timeouts.msrc_dss_tcc_us + OVERHEAD.DSS);
+    } else if (enables.msrc) {
+      budget_us += timeouts.msrc_dss_tcc_us + OVERHEAD.MSRC;
+    }
+
+    if (enables.pre_range) {
+      budget_us += timeouts.pre_range_us + OVERHEAD.PRE_RANGE;
+    }
+
+    if (enables.final_range) {
+      budget_us += timeouts.final_range_us + OVERHEAD.FINAL_RANGE;
+    }
+
+    this.#measurement_timing_budget_us = budget_us;
+    return budget_us;
+  }
+
+
+
+
+
+
+
+
+
+
+  
 
   #getSpadInfo() {
     const io = this.#io;
@@ -409,8 +498,8 @@ class VL53L0X {
     const io = this.#io;
     var timeouts = {};
 
-    timeouts.pre_range_vcsel_period_pclks =
-      getVcselPulsePeriod(VcselPeriodPreRange);
+    // timeouts.pre_range_vcsel_period_pclks =
+    //   getVcselPulsePeriod(VcselPeriodPreRange);
     timeouts.msrc_dss_tcc_mclks =
       io.readByte(REGISTERS.MSRC_CONFIG_TIMEOUT_MACROP) + 1;
     // timeouts.msrc_dss_tcc_us =
@@ -439,83 +528,22 @@ class VL53L0X {
     return timeouts;
   }
 
-  // Get the measurement timing budget in microseconds
-  #getMeasurementTimingBudget() {
-    var enables;
-    var timeouts;
-
-    // Start and end overhead times always present"
-    var budget_us = StartOverhead + EndOverhead;
-
-    var enables = this.#getSequenceStepEnables();
-    var timeouts = his.#getSequenceStepTimeouts(enables);
-
-    if (enables.tcc) {
-      budget_us += timeouts.msrc_dss_tcc_us + OVERHEAD.TCC;
+  #getVcselPulsePeriod(type) {
+    const io = this.#io;
+    if (type == VSCEL_PERIOD_TYPE.PRE_RANGE) {
+      return this.#decodeVcselPeriod(
+        io.readByte(REGISTERS.PRE_RANGE_CONFIG_VCSEL_PERIOD)
+      );
+    } else if (type == VSCEL_PERIOD_TYPE.FINAL_RANGE) {
+      return this.#decodeVcselPeriod(
+        io.readByte(REGISTERS.FINAL_RANGE_CONFIG_VCSEL_PERIOD)
+      );
+    } else {
+      return 255;
     }
-
-    if (enables.dss) {
-      budget_us += 2 * (timeouts.msrc_dss_tcc_us + OVERHEAD.DSS);
-    } else if (enables.msrc) {
-      budget_us += timeouts.msrc_dss_tcc_us + OVERHEAD.MSRC;
-    }
-
-    if (enables.pre_range) {
-      budget_us += timeouts.pre_range_us + OVERHEAD.PRE_RANGE;
-    }
-
-    if (enables.final_range) {
-      budget_us += timeouts.final_range_us + OVERHEAD.FINAL_RANGE;
-    }
-
-    this.#measurement_timing_budget_us = budget_us;
-    return budget_us;
   }
 
-  #setMeasurementTimingBudget(budget_us) {
-    var used_budget_us = OVERHEAD.StartOverhead + OVERHEAD.EndOverhead;
-
-    var enables = this.#getSequenceStepEnables();
-    var timeouts = this.#getSequenceStepTimeouts(enables);
-
-    if (enables.tcc) {
-      used_budget_us += timeouts.msrc_dss_tcc_us + OVERHEAD.TccOverhead;
-    }
-
-    if (enables.dss) {
-      used_budget_us += 2 * (timeouts.msrc_dss_tcc_us + OVERHEAD.DssOverhead);
-    } else if (enables.msrc) {
-      used_budget_us += timeouts.msrc_dss_tcc_us + OVERHEAD.MsrcOverhead;
-    }
-
-    if (enables.pre_range) {
-      used_budget_us += timeouts.pre_range_us + OVERHEAD.PreRangeOverhead;
-    }
-
-    if (enables.final_range) {
-      used_budget_us += OVERHEAD.FinalRangeOverhead;
-
-      if (used_budget_us > budget_us) {
-        return false;
-      }
-
-      var final_range_timeout_us = budget_us - used_budget_us;
-
-      // var final_range_timeout_mclks =
-      // timeoutMicrosecondsToMclks(final_range_timeout_us,
-      //                            timeouts.final_range_vcsel_period_pclks);
-
-      if (enables.pre_range) {
-        final_range_timeout_mclks += timeouts.pre_range_mclks;
-      }
-
-      // this.#io(
-      //   REGISTERS.FINAL_RANGE_CONFIG_TIMEOUT_MACROP_HI,
-      //   encodeTimeout(final_range_timeout_mclks)
-      // );
-    }
-    return true;
-  }
+  
 }
 
 export default VL53L0X;
