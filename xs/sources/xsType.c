@@ -248,7 +248,7 @@ txSlot* fxToInstance(txMachine* the, txSlot* theSlot)
 #ifdef mxHostFunctionPrimitive
 	case XS_HOST_FUNCTION_KIND: {
 		const txHostFunctionBuilder* builder = theSlot->value.hostFunction.builder;
-		anInstance = fxNewHostFunction(the, builder->callback, builder->length, builder->id);
+		anInstance = fxNewHostFunction(the, builder->callback, builder->length, builder->id, theSlot->value.hostFunction.profileID);
 		mxPullSlot(theSlot);
 		} break;
 #endif
@@ -1144,6 +1144,8 @@ txSlot* fxNewEnvironmentInstance(txMachine* the, txSlot* environment)
 txBoolean fxEnvironmentDefineOwnProperty(txMachine* the, txSlot* instance, txID id, txIndex index, txSlot* slot, txFlag mask) 
 {
 	txSlot* property = fxOrdinarySetProperty(the, instance, id, index, XS_OWN);
+	if (!property)
+		return 0;
 	property->flag = slot->flag & mask;
 	property->kind = slot->kind;
 	property->value = slot->value;
@@ -1177,12 +1179,16 @@ txSlot* fxEnvironmentGetProperty(txMachine* the, txSlot* instance, txID id, txIn
 		txSlot* result = instance->next->next;
 		while (result) {
 			if (result->ID == id) {
-				result = result->value.closure;
-				alias = result->ID;
-				if (alias) {
-					txSlot* slot = the->aliasArray[alias];
-					if (slot)
-						result = slot;
+				if (result->kind == XS_CLOSURE_KIND) {
+					result = result->value.closure;
+					if (result) {
+						alias = result->ID;
+						if (alias) {
+							txSlot* slot = the->aliasArray[alias];
+							if (slot)
+								result = slot;
+						}	
+					}	
 				}	
 				return result;
 			}
@@ -1213,16 +1219,18 @@ txSlot* fxEnvironmentSetProperty(txMachine* the, txSlot* instance, txID id, txIn
 		txSlot* result = instance->next->next;
 		while (result) {
 			if (result->ID == id) {
-				result = result->value.closure;
-				if (result->flag & XS_DONT_SET_FLAG)
-					mxDebugID(XS_TYPE_ERROR, "set %s: const", id);
-				alias = result->ID;
-				if (alias) {
-					result = the->aliasArray[alias];
-					if (!result) {
-						result = fxNewSlot(the);
-						the->aliasArray[alias] = result;
-					}
+				if (result->kind == XS_CLOSURE_KIND) {
+					result = result->value.closure;
+					if (result->flag & XS_DONT_SET_FLAG)
+						mxDebugID(XS_TYPE_ERROR, "set %s: const", id);
+					alias = result->ID;
+					if (alias) {
+						result = the->aliasArray[alias];
+						if (!result) {
+							result = fxNewSlot(the);
+							the->aliasArray[alias] = result;
+						}
+					}	
 				}	
 				return result;
 			}

@@ -25,7 +25,13 @@ DEBUGGER_SPEED ?= 460800
 XSBUG_HOST ?= localhost
 XSBUG_PORT ?= 5002
 
-EXPECTED_ESP_IDF ?= v4.4.2
+USE_USB ?= 0
+USB_VENDOR_ID ?= beef
+USB_PRODUCT_ID ?= 1cee
+PROGRAMMING_VID ?= 303a
+PROGRAMMING_PID ?= 1001
+
+EXPECTED_ESP_IDF ?= v4.4.3
 
 # ESP32_SUBCLASS is to find some include files in IDFv4
 # values include esp32, esp32s3 and esp32s2
@@ -50,10 +56,14 @@ endif
 
 PLATFORM_DIR = $(MODDABLE)/build/devices/esp32
 
+ifeq ($(IDF_PATH),)
+$(error $$IDF_PATH not set. See set-up instructions at https://github.com/Moddable-OpenSource/moddable/blob/public/documentation/devices/esp32.md)
+endif
+
 IDF_VERSION := $(shell bash -c "cd $(IDF_PATH) && git describe --always --abbrev=0")
 
-ifeq ($(IDF_VERSION),)
-$(warning Could not detect ESP-IDF version.)
+ifeq ($(IDF_VERSION),) 
+$(error Could not detect ESP-IDF version at $$IDF_PATH: $(IDF_PATH).)
 endif
 
 unexport LDFLAGS
@@ -68,12 +78,17 @@ ifeq ($(MAKEFLAGS_JOBS),)
 	MAKEFLAGS_JOBS = --jobs
 endif
 
+USB_OPTION=
+
 SDKCONFIG_H_DIR = $(BLD_DIR)/config
 ifeq ("$(ESP32_SUBCLASS)","esp32c3")
 	ESP32_TARGET = 4
 else
 ifeq ("$(ESP32_SUBCLASS)","esp32s3")
 	ESP32_TARGET = 3
+	ifeq ($(USE_USB),1) 
+		USB_OPTION = -DUSE_USB=1
+	endif
 else
 	ifeq ("$(ESP32_SUBCLASS)","esp32s2")
 		ESP32_TARGET = 2
@@ -82,6 +97,7 @@ else
 	endif
 endif
 endif
+
 
 INC_DIRS = \
  	$(IDF_PATH)/components \
@@ -154,7 +170,7 @@ INC_DIRS = \
  	$(IDF_PATH)/components/spi_flash/include \
  	$(IDF_PATH)/components/tcpip_adapter/include \
  	$(IDF_PATH)/components/tcpip_adapter \
- 	$(IDF_PATH)/components/vfs/include
+ 	$(IDF_PATH)/components/tinyusb/additions/include
 	
 XS_OBJ = \
 	$(LIB_DIR)/xsAll.c.o \
@@ -337,25 +353,58 @@ else
 	SERIAL2XSBUG_PORT = $(UPLOAD_PORT)
 endif
 
-BUILD_AND_FLASH_CMD = idf.py $(PORT_SET) -b $(UPLOAD_SPEED) $(IDF_PY_LOG_FLAG) build flash -D mxDebug=$(DEBUG) -D INSTRUMENT=$(INSTRUMENT) -D TMP_DIR=$(TMP_DIR) -D SDKCONFIG_HEADER="$(SDKCONFIG_H)" -D CMAKE_MESSAGE_LOG_LEVEL=$(CMAKE_LOG_LEVEL) -D DEBUGGER_SPEED=$(DEBUGGER_SPEED) -D ESP32_SUBCLASS=$(ESP32_SUBCLASS)
+BUILD_AND_FLASH_CMD = idf.py $(PORT_SET) -b $(UPLOAD_SPEED) $(IDF_PY_LOG_FLAG) build flash -D mxDebug=$(DEBUG) -D INSTRUMENT=$(INSTRUMENT) -D TMP_DIR=$(TMP_DIR) -D SDKCONFIG_HEADER="$(SDKCONFIG_H)" -D CMAKE_MESSAGE_LOG_LEVEL=$(CMAKE_LOG_LEVEL) -D DEBUGGER_SPEED=$(DEBUGGER_SPEED) -D ESP32_SUBCLASS=$(ESP32_SUBCLASS) $(USB_OPTION)
 BUILD_CMD = idf.py $(IDF_PY_LOG_FLAG) build -D mxDebug=$(DEBUG) -D INSTRUMENT=$(INSTRUMENT) -D TMP_DIR=$(TMP_DIR) -D CMAKE_MESSAGE_LOG_LEVEL=$(CMAKE_LOG_LEVEL) -D DEBUGGER_SPEED=$(DEBUGGER_SPEED) -D ESP32_SUBCLASS=$(ESP32_SUBCLASS) -D SDKCONFIG_DEFAULTS=$(SDKCONFIG_FILE) -D SDKCONFIG_HEADER="$(SDKCONFIG_H)"
 BUILD_ERR = "ESP-IDF Build Failed"
 DEPLOY_CMD = idf.py $(PORT_SET) -b $(UPLOAD_SPEED) $(IDF_PY_LOG_FLAG) flash -D mxDebug=$(DEBUG) -D INSTRUMENT=$(INSTRUMENT) -D TMP_DIR=$(TMP_DIR) -D SDKCONFIG_HEADER="$(SDKCONFIG_H)" -D CMAKE_MESSAGE_LOG_LEVEL=$(CMAKE_LOG_LEVEL) -D DEBUGGER_SPEED=$(DEBUGGER_SPEED)
-IDF_RECONFIGURE_CMD = idf.py $(IDF_PY_LOG_FLAG) reconfigure -D SDKCONFIG_DEFAULTS=$(SDKCONFIG_FILE) -D SDKCONFIG_HEADER="$(SDKCONFIG_H)" -D CMAKE_MESSAGE_LOG_LEVEL=$(CMAKE_LOG_LEVEL) -D DEBUGGER_SPEED=$(DEBUGGER_SPEED) -D IDF_TARGET=$(ESP32_SUBCLASS) -D ESP32_SUBCLASS=$(ESP32_SUBCLASS)
+IDF_RECONFIGURE_CMD = idf.py $(IDF_PY_LOG_FLAG) reconfigure -D SDKCONFIG_DEFAULTS=$(SDKCONFIG_FILE) -D SDKCONFIG_HEADER="$(SDKCONFIG_H)" -D CMAKE_MESSAGE_LOG_LEVEL=$(CMAKE_LOG_LEVEL) -D DEBUGGER_SPEED=$(DEBUGGER_SPEED) -D IDF_TARGET=$(ESP32_SUBCLASS) -D ESP32_SUBCLASS=$(ESP32_SUBCLASS) $(USB_OPTION)
 RELEASE_LAUNCH_CMD = idf.py $(PORT_SET) $(IDF_PY_LOG_FLAG) monitor
 PARTITIONS_BIN = partition-table.bin
 PARTITIONS_PATH = $(BLD_DIR)/partition_table/$(PARTITIONS_BIN)
+
+KILL_XSBUG = 
 
 ifeq ($(DEBUG),1)
 	ifeq ($(HOST_OS),Darwin)
 		KILL_SERIAL_2_XSBUG = $(shell pkill serial2xsbug)
 		DO_XSBUG = open -a $(BUILD_DIR)/bin/mac/release/xsbug.app -g
-		DO_LAUNCH = bash -c "XSBUG_PORT=$(XSBUG_PORT) XSBUG_HOST=$(XSBUG_HOST) serial2xsbug $(SERIAL2XSBUG_PORT) $(DEBUGGER_SPEED) 8N1 -elf $(PROJ_DIR)/build/xs_esp32.elf -bin $(GXX_PREFIX)-elf-gdb"
+		ifeq ($(USE_USB),1)
+			DO_LAUNCH = bash -c "serial2xsbug $(USB_VENDOR_ID):$(USB_PRODUCT_ID) $(DEBUGGER_SPEED) 8N1 -elf $(PROJ_DIR)/build/xs_esp32.elf -bin $(GXX_PREFIX)-elf-gdb"
+			LOG_LAUNCH = bash -c \"serial2xsbug $(USB_VENDOR_ID):$(USB_PRODUCT_ID) $(DEBUGGER_SPEED) 8N1 -elf $(PROJ_DIR)/build/xs_esp32.elf -bin $(GXX_PREFIX)-elf-gdb\"
+		else
+			DO_LAUNCH = bash -c "XSBUG_PORT=$(XSBUG_PORT) XSBUG_HOST=$(XSBUG_HOST) serial2xsbug $(SERIAL2XSBUG_PORT) $(DEBUGGER_SPEED) 8N1 -elf $(PROJ_DIR)/build/xs_esp32.elf -bin $(GXX_PREFIX)-elf-gdb"
+			LOG_LAUNCH = bash -c \"XSBUG_PORT=$(XSBUG_PORT) XSBUG_HOST=$(XSBUG_HOST) serial2xsbug $(SERIAL2XSBUG_PORT) $(DEBUGGER_SPEED) 8N1 -elf $(PROJ_DIR)/build/xs_esp32.elf -bin $(GXX_PREFIX)-elf-gdb\"
+		endif
+
+		ifeq ($(XSBUG_LOG),1)
+			DO_LAUNCH := cd $(MODDABLE)/tools/xsbug-log && node xsbug-log $(LOG_LAUNCH)
+		endif
+
+	### Linux
 	else
 		KILL_SERIAL_2_XSBUG = $(shell pkill serial2xsbug)
 		DO_XSBUG = $(shell nohup $(BUILD_DIR)/bin/lin/release/xsbug > /dev/null 2>&1 &)
-		DO_LAUNCH = bash -c "XSBUG_PORT=$(XSBUG_PORT) XSBUG_HOST=$(XSBUG_HOST) serial2xsbug $(SERIAL2XSBUG_PORT) $(DEBUGGER_SPEED) 8N1"
+		ifeq ($(USE_USB),1)
+#			DO_LAUNCH = bash -c "serial2xsbug $(USB_VENDOR_ID):$(USB_PRODUCT_ID) $(DEBUGGER_SPEED) 8N1"
+			DO_LAUNCH = bash -c "PATH=$(PLATFORM_DIR)/config:$(PATH) ; connectToXsbugLinux $(USB_VENDOR_ID) $(USB_PRODUCT_ID) $(XSBUG_LOG)"
+			PROGRAMMING_MODE = bash -c "PATH=$(PLATFORM_DIR)/config:$(PATH) ; programmingModeLinux $(PROGRAMMING_VID) $(PROGRAMMING_PID) $(XSBUG_LOG)"
+		else
+			LOG_LAUNCH = bash -c \"XSBUG_PORT=$(XSBUG_PORT) XSBUG_HOST=$(XSBUG_HOST) serial2xsbug $(SERIAL2XSBUG_PORT) $(DEBUGGER_SPEED) 8N1\"
+
+			ifeq ($(XSBUG_LOG),1)
+				DO_LAUNCH := cd $(MODDABLE)/tools/xsbug-log && node xsbug-log $(LOG_LAUNCH)
+			else
+				DO_LAUNCH = bash -c "XSBUG_PORT=$(XSBUG_PORT) XSBUG_HOST=$(XSBUG_HOST) serial2xsbug $(SERIAL2XSBUG_PORT) $(DEBUGGER_SPEED) 8N1"
+			endif
+
+		endif
 	endif
+
+	ifeq ($(XSBUG_LOG),1)
+		KILL_XSBUG = $(shell pkill -f xsbug)
+		DO_XSBUG = 
+	endif
+
 else
 	KILL_SERIAL_2_XSBUG = 
 	DO_XSBUG = 
@@ -368,6 +417,7 @@ SDKCONFIG_H = $(SDKCONFIG_H_DIR)/sdkconfig.h
 
 all: precursor
 	$(KILL_SERIAL_2_XSBUG)
+	$(KILL_XSBUG)
 	$(DO_XSBUG)
 	cd $(PROJ_DIR) ; $(BUILD_CMD) || (echo $(BUILD_ERR) && exit 1)
 	$(OBJDUMP) -t $(BLD_DIR)/xs_esp32.elf > $(BIN_DIR)/xs_$(ESP32_SUBCLASS).sym 2> /dev/null
@@ -377,6 +427,7 @@ all: precursor
 	-cp $(PARTITIONS_PATH) $(BIN_DIR) 2> /dev/null
 	-cp $(BLD_DIR)/bootloader/bootloader.bin $(BIN_DIR) 2> /dev/null
 	-cp $(BLD_DIR)/ota_data_initial.bin $(BIN_DIR) 2>/dev/null
+	$(PROGRAMMING_MODE)
 	cd $(PROJ_DIR) ; bash -c "set -o pipefail; $(DEPLOY_CMD) | tee $(PROJ_DIR)/flashOutput"
 	PORT_USED=$$(grep 'Serial port' $(PROJ_DIR)/flashOutput | awk 'END{print($$3)}'); \
 	cd $(PROJ_DIR); \
@@ -390,6 +441,7 @@ deploy:
 xsbug:
 	@echo "# starting xsbug"
 	$(KILL_SERIAL_2_XSBUG)
+	$(KILL_XSBUG)
 	$(DO_XSBUG)
 	PORT_USED=$$(grep 'Serial port' $(PROJ_DIR)/flashOutput | awk 'END{print($$3)}'); \
 	$(DO_LAUNCH)
@@ -469,7 +521,7 @@ else
 endif
 
 idfVersionCheck:
-	python $(PROJ_DIR_TEMPLATE)/versionCheck.py $(EXPECTED_ESP_IDF) $(IDF_VERSION) || (echo "Expected ESP IDF $(EXPECTED_ESP_IDF), found $(IDF_VERSION)"; exit 1)
+	python $(PROJ_DIR_TEMPLATE)/versionCheck.py $(EXPECTED_ESP_IDF) $(IDF_VERSION) || (echo "Expected ESP-IDF $(EXPECTED_ESP_IDF), found $(IDF_VERSION)"; exit 1)
 
 
 $(PROJ_DIR): $(PROJ_DIR_TEMPLATE)

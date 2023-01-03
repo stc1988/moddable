@@ -29,6 +29,9 @@ PIOASM ?= $(HOME)/pico/pico-sdk/build/pioasm/pioasm
 
 PLATFORM_DIR = $(MODDABLE)/build/devices/pico
 
+TOOLS_BIN = $(PICO_GCC_ROOT)/bin
+TOOLS_PREFIX = arm-none-eabi-
+
 DEBUGGER_SPEED ?= 115200
 DEBUGGER_PORT ?= /dev/cu.SLAB_USBtoUART
 
@@ -41,20 +44,45 @@ PICO_PID ?= 000a
 
 UF2CONV = $(PICO_SDK_DIR)/build/elf2uf2/elf2uf2
 
+# spot-check installation
+ifeq ($(wildcard $(PICO_ROOT)),)
+$(error Pico tools directory not found at $$PICO_ROOT: $(PICO_ROOT). Set-up instructions at https://github.com/Moddable-OpenSource/moddable/blob/public/documentation/devices/pico.md)
+endif
+ifeq ($(wildcard $(TOOLS_BIN)/$(TOOLS_PREFIX)gcc),)
+$(error Pico GCC tools for "$(TOOLS_PREFIX)" not found at $$PICO_GCC_ROOT/bin: $(PICO_GCC_ROOT). Set-up instructions at https://github.com/Moddable-OpenSource/moddable/blob/public/documentation/devices/pico.md)
+endif
+ifeq ($(wildcard $(PICO_SDK_DIR)),)
+$(error Pico SDK directory not found at $$PICO_SDK_DIR: $(PICO_SDK_DIR). Set-up instructions at https://github.com/Moddable-OpenSource/moddable/blob/public/documentation/devices/pico.md)
+endif
+ifeq ($(wildcard $(PICO_ROOT)/pico-examples),)
+$(error Pico examples directory not found at $(PICO_ROOT)/pico-examples. Set-up instructions at https://github.com/Moddable-OpenSource/moddable/blob/public/documentation/devices/pico.md)
+endif
+ifeq ($(wildcard $(PIOASM)),)
+$(error Pico pioasm not found at $$PIOASM: $(PIOASM). Update instructions at https://github.com/Moddable-OpenSource/moddable/blob/public/documentation/devices/pico.md)
+endif
+ifeq ($(shell which cmake),)
+$(error cmake not found. Set-up instructions at https://github.com/Moddable-OpenSource/moddable/blob/public/documentation/devices/pico.md)
+endif
+
+KILL_XSBUG =
+
 ifeq ($(HOST_OS),Darwin)
 	DO_COPY = cp $(BIN_DIR)/xs_pico.uf2 $(UF2_VOLUME_PATH)
 	MODDABLE_TOOLS_DIR = $(BUILD_DIR)/bin/mac/release
 	UF2_VOLUME_PATH = /Volumes/$(UF2_VOLUME_NAME)
 
-#	PROGRAMMING_MODE = $(PLATFORM_DIR)/config/waitForVolume $(UF2_VOLUME_PATH)
 	PROGRAMMING_MODE = $(PLATFORM_DIR)/config/programmingMode $(PICO_VID) $(PICO_PID) $(UF2_VOLUME_PATH)
 	KILL_SERIAL_2_XSBUG = $(shell pkill serial2xsbug)
 
 	ifeq ($(DEBUG),1)
-		DO_XSBUG = open -a $(MODDABLE_TOOLS_DIR)/xsbug.app -g
-#	CONNECT_XSBUG=@echo "Connect to xsbug @ $(DEBUGGER_PORT)." ; serial2xsbug $(DEBUGGER_PORT) $(DEBUGGER_SPEED) 8N1
-		CONNECT_XSBUG=@echo "Connect to xsbug @ $(PICO_VID):$(PICO_PID)." ; export XSBUG_PORT=$(XSBUG_PORT) ; export XSBUG_HOST=$(XSBUG_HOST) ; serial2xsbug $(PICO_VID):$(PICO_PID) $(DEBUGGER_SPEED) 8N1
-		NORESTART=-norestart
+		ifeq ($(XSBUG_LOG),1)
+			DO_XSBUG =
+			CONNECT_XSBUG=@echo "Connect to xsbug-log @ $(PICO_VID):$(PICO_PID)." && export XSBUG_PORT=$(XSBUG_PORT) && export XSBUG_HOST=$(XSBUG_HOST) && cd $(MODDABLE)/tools/xsbug-log && node xsbug-log serial2xsbug $(PICO_VID):$(PICO_PID) $(DEBUGGER_SPEED) 8N1
+		else
+			DO_XSBUG = open -a $(MODDABLE_TOOLS_DIR)/xsbug.app -g
+			CONNECT_XSBUG=@echo "Connect to xsbug @ $(PICO_VID):$(PICO_PID)." ; export XSBUG_PORT=$(XSBUG_PORT) ; export XSBUG_HOST=$(XSBUG_HOST) ; serial2xsbug $(PICO_VID):$(PICO_PID) $(DEBUGGER_SPEED) 8N1
+		endif
+#		NORESTART=-norestart
 #		WAIT_FOR_COPY_COMPLETE = $(PLATFORM_DIR)/config/waitForVolume -x $(UF2_VOLUME_PATH)
 	else
 		DO_XSBUG =
@@ -62,6 +90,8 @@ ifeq ($(HOST_OS),Darwin)
 		NORESTART =
 		WAIT_FOR_COPY_COMPLETE = $(PLATFORM_DIR)/config/waitForVolume -x $(UF2_VOLUME_PATH)
 	endif
+
+### Linux
 else
 	DO_COPY = DESTINATION=$$(cat $(TMP_DIR)/volumename); cp $(BIN_DIR)/xs_pico.uf2 $$DESTINATION
 	MODDABLE_TOOLS_DIR = $(BUILD_DIR)/bin/lin/release
@@ -72,11 +102,13 @@ else
 	WAIT_FOR_COPY_COMPLETE = $(PLATFORM_DIR)/config/waitForVolumeLinux -x $(UF2_VOLUME_NAME) $(TMP_DIR)/volumename
 
 	ifeq ($(DEBUG),1)
-		DO_XSBUG = $(shell nohup $(MODDABLE_TOOLS_DIR)/xsbug > /dev/null 2>&1 &)
-#		CONNECT_XSBUG = $(PLATFORM_DIR)/config/connectToXsbugLinux $(PICO_VID) $(PICO_PID)
-		CONNECT_XSBUG = PATH=$(PLATFORM_DIR)/config:$(PATH) ; $(PLATFORM_DIR)/config/connectToXsbugLinux $(PICO_VID) $(PICO_PID)
-#		CONNECT_XSBUG=@echo "Connect to xsbug @ $(PICO_VID):$(PICO_PID)." ; serial2xsbug $(PICO_VID):$(PICO_PID) $(DEBUGGER_SPEED) 8N1
-		NORESTART=-norestart
+		ifeq ($(XSBUG_LOG),1)
+			DO_XSBUG =
+		else
+			DO_XSBUG = $(shell nohup $(MODDABLE_TOOLS_DIR)/xsbug > /dev/null 2>&1 &)
+		endif
+		CONNECT_XSBUG = PATH=$(PLATFORM_DIR)/config:$(PATH) ; $(PLATFORM_DIR)/config/connectToXsbugLinux $(PICO_VID) $(PICO_PID) $(XSBUG_LOG)
+#		NORESTART=-norestart
 	else
 		DO_XSBUG =
 		CONNECT_XSBUG =
@@ -330,7 +362,6 @@ INC_DIRS = \
 
 #	$(PICO_SDK_DIR)/src/rp2_common/pico_stdio_uart/include		\
 
-ifeq ($(USE_WIFI),1)
 INC_DIRS += \
 	$(PICO_SDK_DIR)/src/rp2_common/pico_cyw43_arch/include	\
 	$(PICO_SDK_DIR)/src/rp2_common/cyw43_driver \
@@ -338,7 +369,6 @@ INC_DIRS += \
 	$(PICO_SDK_DIR)/lib/cyw43-driver/src	\
 	$(PICO_SDK_DIR)/lib/cyw43-driver/firmware	\
 	$(PICO_SDK_DIR)/lib/lwip/src/include
-endif
 
 XS_OBJ = \
 	$(LIB_DIR)/xsHosts.c.o \
@@ -474,7 +504,6 @@ PICO_OBJ = \
 #	$(LIB_DIR)/msc_device.c.o \
 #	$(LIB_DIR)/stdio_uart.c.o \
 
-ifeq ($(USE_WIFI),1)
 LWIP_OBJ = \
 	$(LIB_DIR)/cyw43_lwip.c.o	\
 	$(LIB_DIR)/def.c.o	\
@@ -536,8 +565,6 @@ PICO_OBJ += \
 
 #	$(LIB_DIR)/cyw43_arch_threadsafe_background.c.o
 
-endif
-
 PICO_SRC_DIRS = \
 	$(PICO_SDK_DIR)/src/rp2_common/pico_stdlib			\
 	$(PICO_SDK_DIR)/src/rp2_common/hardware_dma			\
@@ -586,7 +613,6 @@ PICO_SRC_DIRS = \
 	$(PICO_SDK_DIR)/src/rp2_common/pico_fix/rp2040_usb_device_enumeration	\
 	$(PICO_SDK_DIR)/src/rp2_common/pico_unique_id
 
-ifeq ($(USE_WIFI),1)
 PICO_SRC_DIRS += \
 	$(PICO_SDK_DIR)/lib/cyw43-driver/src				\
 	$(PICO_SDK_DIR)/lib/cyw43-driver					\
@@ -601,8 +627,6 @@ PICO_SRC_DIRS += \
 PIO_STUFF += \
 	$(TMP_DIR)/cyw43_bus_pio_spi.pio.h
 
-
-endif
 
 PIO_STUFF += \
 	$(TMP_DIR)/ws2812.pio.h
@@ -630,9 +654,6 @@ OTHER_STUFF += \
 	env_vars	\
 	pio_stuff
 
-
-TOOLS_BIN = $(PICO_GCC_ROOT)/bin
-TOOLS_PREFIX = arm-none-eabi-
 
 CC  = $(TOOLS_BIN)/$(TOOLS_PREFIX)gcc
 CPP = $(TOOLS_BIN)/$(TOOLS_PREFIX)g++
@@ -712,21 +733,22 @@ PICO_C_DEFINES= \
 	-DPICO_TARGET_NAME=\"$(NAME)\"	\
 	-DPICO_USE_BLOCKED_RAM=0
 
-ifeq ($(USE_WIFI),1)
 PICO_C_DEFINES += \
 	-DCYW43_LWIP=1				\
 	-DLIB_PICO_CYW43_ARCH=1		\
-	-DPICO_BOARD=\"pico_w\"		\
 	-DPICO_CYW43_ARCH_POLL=1
 
 #	-DPICO_CYW43_ARCH_THREADSAFE_BACKGROUND=1
 
-BOARD_INCLUDE = -include $(PICO_SDK_DIR)/src/boards/include/boards/pico_w.h
+ifeq ($(WIFI_GPIO),1)
+PICO_C_DEFINES += \
+	-DPICO_BOARD=\"pico_w\"		\
+	-DWIFI_GPIO=1
 else
 PICO_C_DEFINES += \
 	-DPICO_BOARD=\"pico\"
-BOARD_INCLUDE = -include $(PICO_SDK_DIR)/src/boards/include/boards/pico.h
 endif
+BOARD_INCLUDE = -include $(PICO_SDK_DIR)/src/boards/include/boards/pico_w.h
 
 C_DEFINES = \
 	$(PICO_C_DEFINES) \

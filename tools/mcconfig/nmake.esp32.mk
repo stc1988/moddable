@@ -19,8 +19,13 @@
 
 HOST_OS = win
 
+!IF "$(IDF_PATH)"==""
+!MESSAGE %IDF_PATH% not set. See set-up instructions at https://github.com/Moddable-OpenSource/moddable/blob/public/documentation/devices/esp32.md
+!ERROR
+!ENDIF
+
 !IF "$(EXPECTED_ESP_IDF)"==""
-EXPECTED_ESP_IDF = v4.4.2
+EXPECTED_ESP_IDF = v4.4.3
 !ENDIF
 
 !IF "$(VERBOSE)"=="1"
@@ -63,6 +68,11 @@ IDF_VERSION = \
 !MESSAGE Could not detect ESP-IDF version.
 !ENDIF
 
+!IF "$(IDF_VERSION)"==""
+!MESSAGE Could not detect ESP-IDF version at %IDF_PATH%: $(IDF_PATH).
+!ERROR
+!ENDIF
+
 PROJ_DIR_TEMPLATE = $(BUILD_DIR)\devices\esp32\xsProj-$(ESP32_SUBCLASS)
 
 !IF "$(UPLOAD_PORT)"==""
@@ -81,13 +91,15 @@ PORT_COMMAND = -p $(UPLOAD_PORT)
 
 PROJ_DIR = $(TMP_DIR)\xsProj-$(ESP32_SUBCLASS)
 
+KILL_XSBUG = 
+
 !IF "$(DEBUG)"=="1"
 KILL_SERIAL2XSBUG= -tasklist /nh /fi "imagename eq serial2xsbug.exe" | (find /i "serial2xsbug.exe" > nul) && taskkill /f /t /im "serial2xsbug.exe" >nul 2>&1
 START_XSBUG= tasklist /nh /fi "imagename eq xsbug.exe" | find /i "xsbug.exe" > nul || (start $(BUILD_DIR)\bin\win\release\xsbug.exe)
 BUILD_CMD = python %IDF_PATH%\tools\idf.py $(IDF_PY_LOG_FLAG) build -D mxDebug=1 -D INSTRUMENT=$(INSTRUMENT) -D TMP_DIR="$(TMP_DIR)" -D SDKCONFIG_HEADER="$(SDKCONFIG_H)" -D CMAKE_MESSAGE_LOG_LEVEL=$(CMAKE_LOG_LEVEL) -D DEBUGGER_SPEED=$(DEBUGGER_SPEED) -D ESP32_SUBCLASS=$(ESP32_SUBCLASS)
 BUILD_MSG =
 DEPLOY_CMD = python %IDF_PATH%\tools\idf.py $(IDF_PY_LOG_FLAG) $(PORT_COMMAND) -b $(UPLOAD_SPEED) flash -D mxDebug=1 -D INSTRUMENT=$(INSTRUMENT) -D TMP_DIR="$(TMP_DIR)" -D SDKCONFIG_HEADER="$(SDKCONFIG_H)" -D CMAKE_MESSAGE_LOG_LEVEL=$(CMAKE_LOG_LEVEL) -D DEBUGGER_SPEED=$(DEBUGGER_SPEED) -D ESP32_SUBCLASS=$(ESP32_SUBCLASS)
-START_SERIAL2XSBUG = echo Launching app... & echo Type Ctrl-C twice after debugging app. & $(BUILD_DIR)\bin\win\release\serial2xsbug $(PORT_TO_USE) $(DEBUGGER_SPEED) 8N1
+START_SERIAL2XSBUG = echo Launching app... & echo Type Ctrl-C twice after debugging app. & set "XSBUG_PORT=$(XSBUG_PORT)" && set "XSBUG_HOST=$(XSBUG_HOST)" && $(BUILD_DIR)\bin\win\release\serial2xsbug $(PORT_TO_USE) $(DEBUGGER_SPEED) 8N1
 !ELSE
 KILL_SERIAL2XSBUG= -tasklist /nh /fi "imagename eq serial2xsbug.exe" | (find /i "serial2xsbug.exe" > nul) && taskkill /f /t /im "serial2xsbug.exe" >nul 2>&1
 START_XSBUG=
@@ -95,6 +107,12 @@ START_SERIAL2XSBUG = echo No debugger for a release build.
 BUILD_CMD = python %IDF_PATH%\tools\idf.py $(IDF_PY_LOG_FLAG) build -D mxDebug=0 -D INSTRUMENT=$(INSTRUMENT) -D TMP_DIR="$(TMP_DIR)" -D SDKCONFIG_HEADER="$(SDKCONFIG_H)" -D CMAKE_MESSAGE_LOG_LEVEL=$(CMAKE_LOG_LEVEL) -D DEBUGGER_SPEED=$(DEBUGGER_SPEED) -D ESP32_SUBCLASS=$(ESP32_SUBCLASS)
 DEPLOY_CMD = python %IDF_PATH%\tools\idf.py $(IDF_PY_LOG_FLAG) $(PORT_COMMAND) -b $(UPLOAD_SPEED) flash -D mxDebug=0 -D INSTRUMENT=$(INSTRUMENT) -D TMP_DIR="$(TMP_DIR)" -D SDKCONFIG_HEADER="$(SDKCONFIG_H)" -D CMAKE_MESSAGE_LOG_LEVEL=$(CMAKE_LOG_LEVEL) -D DEBUGGER_SPEED=$(DEBUGGER_SPEED) -D ESP32_SUBCLASS=$(ESP32_SUBCLASS)
 
+!ENDIF
+
+!IF "$(XSBUG_LOG)"=="1"
+KILL_XSBUG = -tasklist /nh /fi "imagename eq xsbug.exe" | (find /i "xsbug.exe" > nul) && taskkill /f /t /im "xsbug.exe" >nul 2>&1 
+START_SERIAL2XSBUG = echo Launching app... & set "XSBUG_PORT=$(XSBUG_PORT)" && set "XSBUG_HOST=$(XSBUG_HOST)" && cd $(MODDABLE)\tools\xsbug-log && node xsbug-log start /B $(BUILD_DIR)\bin\win\release\serial2xsbug $(PORT_TO_USE) $(DEBUGGER_SPEED) 8N1 
+START_XSBUG =
 !ENDIF
 
 IDF_RECONFIGURE_CMD=python %IDF_PATH%\tools\idf.py $(IDF_PY_LOG_FLAG) reconfigure -D SDKCONFIG_DEFAULTS=$(SDKCONFIG_FILE_MINGW) -D SDKCONFIG_HEADER="$(SDKCONFIG_H)" -D CMAKE_MESSAGE_LOG_LEVEL=$(CMAKE_LOG_LEVEL) -D DEBUGGER_SPEED=$(DEBUGGER_SPEED) -D IDF_TARGET=$(ESP32_SUBCLASS) -D ESP32_SUBCLASS=$(ESP32_SUBCLASS) -D SDKCONFIG_DEFAULTS=$(SDKCONFIG_FILE)
@@ -404,18 +422,18 @@ precursor: idfVersionCheck $(BLE) $(SDKCONFIG_H) $(LIB_DIR) $(BIN_DIR)\xs_$(ESP3
 	copy $(BIN_DIR)\xs_$(ESP32_SUBCLASS).a $(BLD_DIR)\.
 
 debug: precursor
-	-tasklist /nh /fi "imagename eq serial2xsbug.exe" | (find /i "serial2xsbug.exe" > nul) && taskkill /f /t /im "serial2xsbug.exe" >nul 2>&1
-	tasklist /nh /fi "imagename eq xsbug.exe" | find /i "xsbug.exe" > nul || (start $(BUILD_DIR)\bin\win\release\xsbug.exe)
+	$(KILL_SERIAL2XSBUG)
+	$(KILL_XSBUG)
+	$(START_XSBUG)
 	copy $(BIN_DIR)\xs_$(ESP32_SUBCLASS).a $(BLD_DIR)\.
 	-cd $(PROJ_DIR) & python %IDF_PATH%\tools\idf.py $(IDF_PY_LOG_FLAG) $(PORT_COMMAND) -b $(UPLOAD_SPEED) build flash -D INSTRUMENT=$(INSTRUMENT) -D TMP_DIR="$(TMP_DIR)" -D mxDebug=1 -D SDKCONFIG_HEADER="$(SDKCONFIG_H)" -D CMAKE_MESSAGE_LOG_LEVEL=$(CMAKE_LOG_LEVEL) -D DEBUGGER_SPEED=$(DEBUGGER_SPEED) -D ESP32_SUBCLASS=$(ESP32_SUBCLASS) -D SDKCONFIG_DEFAULTS="$(SDKCONFIG_FILE)"
-	-copy $(BLD_DIR)\xs_esp32.map $(BIN_DIR)\.
-	-copy $(BLD_DIR)\xs_esp32.bin $(BIN_DIR)\.
-	-copy $(BLD_DIR)\partition_table\partition-table.bin $(BIN_DIR)\.
-	-copy $(BLD_DIR)\bootloader\bootloader.bin $(BIN_DIR)\.
-	-copy $(PARTITIONS_PATH) $(BIN_DIR)\.
-	-copy $(BLD_DIR)\ota_data_initial.bin $(BIN_DIR)\.
-	(@echo Launching app. Type Ctrl-C twice after debugging app to close serial2xsbug...)
-	$(BUILD_DIR)\bin\win\release\serial2xsbug $(PORT_TO_USE) $(DEBUGGER_SPEED) 8N1
+	-copy $(BLD_DIR)\xs_esp32.map $(BIN_DIR)\. > nul 2>&1
+	-copy $(BLD_DIR)\xs_esp32.bin $(BIN_DIR)\. > nul 2>&1
+	-copy $(BLD_DIR)\partition_table\partition-table.bin $(BIN_DIR)\. > nul 2>&1
+	-copy $(BLD_DIR)\bootloader\bootloader.bin $(BIN_DIR)\. > nul 2>&1
+	-copy $(PARTITIONS_PATH) $(BIN_DIR)\. > nul 2>&1
+	-copy $(BLD_DIR)\ota_data_initial.bin $(BIN_DIR)\. > nul 2>&1
+	$(START_SERIAL2XSBUG)
 
 release: precursor
 	if exist $(BLD_DIR)\xs_esp32.elf del $(BLD_DIR)\xs_esp32.elf
@@ -430,6 +448,7 @@ release: precursor
 
 prepare:
 	$(KILL_SERIAL2XSBUG)
+	$(KILL_XSBUG)
 	$(START_XSBUG)
 	if exist $(BLD_DIR)\xs_esp32.elf del $(BLD_DIR)\xs_esp32.elf
 	if not exist $(BLD_DIR) mkdir $(BLD_DIR)
@@ -449,6 +468,7 @@ build: precursor prepare
 
 xsbug:
 	$(KILL_SERIAL2XSBUG)
+	$(KILL_XSBUG)
 	$(START_XSBUG)
 	$(START_SERIAL2XSBUG)
 
@@ -489,7 +509,7 @@ idfVersionCheck:
 xidfVersionCheck:
 	python $(PROJ_DIR_TEMPLATE)\versionCheck.py $(EXPECTED_ESP_IDF) $(IDF_VERSION)
 	if %ERRORLEVEL% NEQ 0 (
-		echo "Expected ESP IDF $(EXPECTED_ESP_IDF), found $(IDF_VERSION)"
+		echo "Expected ESP-IDF $(EXPECTED_ESP_IDF), found $(IDF_VERSION)"
 		exit 1
 	)
 
