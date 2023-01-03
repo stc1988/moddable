@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2022  Moddable Tech, Inc.
+ * Copyright (c) 2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -20,11 +20,10 @@
 
 /*
   Time-of-Flight ranging sensor
+    Product page: https://www.st.com/en/imaging-and-photonics-solutions/vl53l0x.html
     Data sheet for controller: https://www.st.com/resource/en/datasheet/vl53l0x.pdf
     Reference implementation: https://github.com/pololu/vl53l0x-arduino/
 */
-
-import Timer from "timer";
 
 const REGISTERS = Object.freeze(
   {
@@ -111,6 +110,92 @@ const VSCEL_PERIOD_TYPE = Object.freeze(
   true
 );
 
+const defaultTuningSettings = Object.freeze(
+  [
+    [0xff, 0x01],
+    [0x00, 0x00],
+    [0xff, 0x00],
+    [0x09, 0x00],
+    [0x10, 0x00],
+    [0x11, 0x00],
+    [0x24, 0x01],
+    [0x25, 0xff],
+    [0x75, 0x00],
+    [0xff, 0x01],
+    [0x4e, 0x2c],
+    [0x48, 0x00],
+    [0x30, 0x20],
+    [0xff, 0x00],
+    [0x30, 0x09],
+    [0x54, 0x00],
+    [0x31, 0x04],
+    [0x32, 0x03],
+    [0x40, 0x83],
+    [0x46, 0x25],
+    [0x60, 0x00],
+    [0x27, 0x00],
+    [0x50, 0x06],
+    [0x51, 0x00],
+    [0x52, 0x96],
+    [0x56, 0x08],
+    [0x57, 0x30],
+    [0x61, 0x00],
+    [0x62, 0x00],
+    [0x64, 0x00],
+    [0x65, 0x00],
+    [0x66, 0xa0],
+    [0xff, 0x01],
+    [0x22, 0x32],
+    [0x47, 0x14],
+    [0x49, 0xff],
+    [0x4a, 0x00],
+    [0xff, 0x00],
+    [0x7a, 0x0a],
+    [0x7b, 0x00],
+    [0x78, 0x21],
+    [0xff, 0x01],
+    [0x23, 0x34],
+    [0x42, 0x00],
+    [0x44, 0xff],
+    [0x45, 0x26],
+    [0x46, 0x05],
+    [0x40, 0x40],
+    [0x0e, 0x06],
+    [0x20, 0x1a],
+    [0x43, 0x40],
+    [0xff, 0x00],
+    [0x34, 0x03],
+    [0x35, 0x44],
+    [0xff, 0x01],
+    [0x31, 0x04],
+    [0x4b, 0x09],
+    [0x4c, 0x05],
+    [0x4d, 0x04],
+    [0xff, 0x00],
+    [0x44, 0x00],
+    [0x45, 0x20],
+    [0x47, 0x08],
+    [0x48, 0x28],
+    [0x67, 0x00],
+    [0x70, 0x04],
+    [0x71, 0x01],
+    [0x72, 0xfe],
+    [0x76, 0x00],
+    [0x77, 0x00],
+    [0xff, 0x01],
+    [0x0d, 0x01],
+    [0xff, 0x00],
+    [0x80, 0x01],
+    [0x01, 0xf8],
+    [0xff, 0x01],
+    [0x8e, 0x01],
+    [0x00, 0x01],
+    [0xff, 0x00],
+    [0x80, 0x00],
+  ],
+  true
+);
+
 class VL53L0X {
   #io;
   #onError;
@@ -118,6 +203,7 @@ class VL53L0X {
   #stop_variable;
   #measurement_timing_budget_us;
   #timeout = 0;
+  #timeout_start_ms;
 
   #buf = new ArrayBuffer(12);
   #view = new DataView(this.#buf);
@@ -132,9 +218,9 @@ class VL53L0X {
     this.#onError = options.onError;
 
     if (
-      io.readByte(0xc0) != 0xee ||
-      io.readByte(0xc1) != 0xaa ||
-      io.readByte(0xc2) != 0x10
+      io.readUint8(0xc0) != 0xee ||
+      io.readUint8(0xc1) != 0xaa ||
+      io.readUint8(0xc2) != 0x10
     )
       throw new Error("ERR_REGISTER_ID");
 
@@ -145,7 +231,7 @@ class VL53L0X {
       [0xff, 0x01],
       [0x00, 0x00],
     ]);
-    this.#stop_variable = io.readByte(0x91);
+    this.#stop_variable = io.readUint8(0x91);
 
     this.#writeRegisters([
       [0x00, 0x01],
@@ -153,135 +239,58 @@ class VL53L0X {
       [0x80, 0x00],
     ]);
 
-    var config_control = io.readByte(REGISTERS._MSRC_CONFIG_CONTROL);
-    io.writeByte(REGISTERS._MSRC_CONFIG_CONTROL, config_control | 0x12);
+    let config_control = io.readUint8(REGISTERS._MSRC_CONFIG_CONTROL);
+    io.writeUint8(REGISTERS._MSRC_CONFIG_CONTROL, config_control | 0x12);
 
     this.#setSignalRateLimit(0.25);
 
-    io.writeByte(REGISTERS.SYSTEM_SEQUENCE_CONFIG, 0xff);
+    io.writeUint8(REGISTERS.SYSTEM_SEQUENCE_CONFIG, 0xff);
 
-    var spadInfo = this.#getSpadInfo();
-    var spadMap = io.readBlock(REGISTERS.GLOBAL_CONFIG_SPAD_ENABLES_REF_0, 6);
-
-    io.writeByte(0xff, 0x01);
-    io.writeByte(REGISTERS.DYNAMIC_SPAD_REF_EN_START_OFFSET, 0x00);
-    io.writeByte(REGISTERS.DYNAMIC_SPAD_NUM_REQUESTED_REF_SPAD, 0x2c);
-    io.writeByte(0xff, 0x00);
-    io.writeByte(REGISTERS.GLOBAL_CONFIG_REF_EN_START_SELECT, 0xb4);
-
-    var first_spad_to_enable = spadInfo.type_is_aperture ? 12 : 0; // 12 is the first aperture spad
-    var spads_enabled = 0;
-
-    for (var i = 0; i < 48; i++) {
-      if (i < first_spad_to_enable || spads_enabled == spadInfo.count) {
-        spadMap[i / 8] &= ~(1 << i % 8);
-      } else if ((spadMap[i / 8] >> i % 8) & 0x1) {
-        spads_enabled++;
-      }
-    }
-    io.writeBlock(GLOBAL_CONFIG_SPAD_ENABLES_REF_0, spadMap, 6);
+    let spadInfo = this.#getSpadInfo();
+    let spadMap = io.readBuffer(REGISTERS.GLOBAL_CONFIG_SPAD_ENABLES_REF_0, 6);
+    let spadMapView = new DataView(spadMap);
 
     this.#writeRegisters([
       [0xff, 0x01],
-      [0x00, 0x00],
+      [REGISTERS.DYNAMIC_SPAD_REF_EN_START_OFFSET, 0x00],
+      [REGISTERS.DYNAMIC_SPAD_NUM_REQUESTED_REF_SPAD, 0x2c],
       [0xff, 0x00],
-      [0x09, 0x00],
-      [0x10, 0x00],
-      [0x11, 0x00],
-      [0x24, 0x01],
-      [0x25, 0xff],
-      [0x75, 0x00],
-      [0xff, 0x01],
-      [0x4e, 0x2c],
-      [0x48, 0x00],
-      [0x30, 0x20],
-      [0xff, 0x00],
-      [0x30, 0x09],
-      [0x54, 0x00],
-      [0x31, 0x04],
-      [0x32, 0x03],
-      [0x40, 0x83],
-      [0x46, 0x25],
-      [0x60, 0x00],
-      [0x27, 0x00],
-      [0x50, 0x06],
-      [0x51, 0x00],
-      [0x52, 0x96],
-      [0x56, 0x08],
-      [0x57, 0x30],
-      [0x61, 0x00],
-      [0x62, 0x00],
-      [0x64, 0x00],
-      [0x65, 0x00],
-      [0x66, 0xa0],
-      [0xff, 0x01],
-      [0x22, 0x32],
-      [0x47, 0x14],
-      [0x49, 0xff],
-      [0x4a, 0x00],
-      [0xff, 0x00],
-      [0x7a, 0x0a],
-      [0x7b, 0x00],
-      [0x78, 0x21],
-      [0xff, 0x01],
-      [0x23, 0x34],
-      [0x42, 0x00],
-      [0x44, 0xff],
-      [0x45, 0x26],
-      [0x46, 0x05],
-      [0x40, 0x40],
-      [0x0e, 0x06],
-      [0x20, 0x1a],
-      [0x43, 0x40],
-      [0xff, 0x00],
-      [0x34, 0x03],
-      [0x35, 0x44],
-      [0xff, 0x01],
-      [0x31, 0x04],
-      [0x4b, 0x09],
-      [0x4c, 0x05],
-      [0x4d, 0x04],
-      [0xff, 0x00],
-      [0x44, 0x00],
-      [0x45, 0x20],
-      [0x47, 0x08],
-      [0x48, 0x28],
-      [0x67, 0x00],
-      [0x70, 0x04],
-      [0x71, 0x01],
-      [0x72, 0xfe],
-      [0x76, 0x00],
-      [0x77, 0x00],
-      [0xff, 0x01],
-      [0x0d, 0x01],
-      [0xff, 0x00],
-      [0x80, 0x01],
-      [0x01, 0xf8],
-      [0xff, 0x01],
-      [0x8e, 0x01],
-      [0x00, 0x01],
-      [0xff, 0x00],
-      [0x80, 0x00],
+      [REGISTERS.GLOBAL_CONFIG_REF_EN_START_SELECT, 0xb4],
     ]);
 
-    io.writeByte(REGISTERS.SYSTEM_INTERRUPT_CONFIG_GPIO, 0x04);
-    io.writeByte(
-      REGISTERS.GPIO_HV_MUX_ACTIVE_HIGH,
-      io.readByte(REGISTERS.GPIO_HV_MUX_ACTIVE_HIGH) & ~0x10
-    );
-    io.writeByte(REGISTERS.SYSTEM_INTERRUPT_CLEAR, 0x01);
+    const first_spad_to_enable = spadInfo.type_is_aperture ? 12 : 0; // 12 is the first aperture spad
+    let spads_enabled = 0;
+    for (let i = 0; i < 48; i++) {
+      if (i < first_spad_to_enable || spads_enabled == spadInfo.count) {
+        spadMapView.setUint8(i/8, spadMapView.getUint8(i/8) & ~(1 << i % 8));
+      } else if ((spadMapView.getInt8(i/8) >> i % 8) & 0x1) {
+        spads_enabled++;
+      }
+    }
 
-    var measurement_timing_budget_us = this.#getMeasurementTimingBudget();
-    io.writeByte(REGISTERS.SYSTEM_SEQUENCE_CONFIG, 0xe8);
+    io.writeBuffer(REGISTERS.GLOBAL_CONFIG_SPAD_ENABLES_REF_0, spadMap, 6);
+
+    this.#writeRegisters(defaultTuningSettings);
+    this.#writeRegisters([
+      [REGISTERS.SYSTEM_INTERRUPT_CONFIG_GPIO, 0x04],
+      [
+        REGISTERS.GPIO_HV_MUX_ACTIVE_HIGH,
+        io.readUint8(REGISTERS.GPIO_HV_MUX_ACTIVE_HIGH) & ~0x10,
+      ],
+      [REGISTERS.SYSTEM_INTERRUPT_CLEAR, 0x01],
+    ]);
+
+    let measurement_timing_budget_us = this.#getMeasurementTimingBudget();
+    io.writeUint8(REGISTERS.SYSTEM_SEQUENCE_CONFIG, 0xe8);
     this.#setMeasurementTimingBudget(measurement_timing_budget_us);
 
-    io.writeByte(REGISTERS.SYSTEM_SEQUENCE_CONFIG, 0x01);
+    io.writeUint8(REGISTERS.SYSTEM_SEQUENCE_CONFIG, 0x01);
     this.#performSingleRefCalibration(0x40);
 
-    io.writeByte(REGISTERS.SYSTEM_SEQUENCE_CONFIG, 0x02);
+    io.writeUint8(REGISTERS.SYSTEM_SEQUENCE_CONFIG, 0x02);
     this.#performSingleRefCalibration(0x00);
 
-    io.writeByte(REGISTERS.SYSTEM_SEQUENCE_CONFIG, 0xe8);
+    io.writeUint8(REGISTERS.SYSTEM_SEQUENCE_CONFIG, 0xe8);
 
     this.configure({});
   }
@@ -300,6 +309,25 @@ class VL53L0X {
   }
 
   sample() {
+    return this.#readRangeSingleMillimeters();
+  }
+
+  #readRangeContinuousMillimeters() {
+    const io = this.#io;
+
+    this.#startTimeout();
+    while ((io.readUint8(RESULT_INTERRUPT_STATUS) & 0x07) == 0) {
+      if (this.#checkTimeoutExpired()) {
+        throw new Error("readRangeContinuousMillimeters time out");
+      }
+    }
+    io.readBlock(REGISTERS.RESULT_RANGE_STATUS + 10, this.#buf);
+    io.writeUint8(REGISTERS.SYSTEM_INTERRUPT_CLEAR, 0x01);
+
+    return this.#view.getUint16();
+  }
+
+  #readRangeSingleMillimeters() {
     const io = this.#io;
 
     this.#writeRegisters([
@@ -313,13 +341,18 @@ class VL53L0X {
       [REGISTERS.SYSRANGE_START, 0x01],
     ]);
 
-    io.readBlock(REGISTERS.RESULT_RANGE_STATUS, this.#buf);
-
-    return this.#view.getUint16(10, false);
+    this.#startTimeout();
+    while (io.readUint8(SYSRANGE_START) & 0x01) {
+      if (this.#checkTimeoutExpired()) {
+        throw new Error("readRangeSingleMillimeters time out");
+      }
+    }
+    return this.#readRangeContinuousMillimeters();
   }
 
   // define macros
   #decodeVcselPeriod = (reg_val) => (reg_val + 1) << 1;
+  #encodeVcselPeriod = (period_pclks) => (period_pclks >> 1) - 1;
   #calcMacroPeriod = (vcsel_period_pclks) =>
     (2304 * vcsel_period_pclks * 1655 + 500) / 1000;
 
@@ -329,23 +362,29 @@ class VL53L0X {
     }
 
     // Q9.7 fixed point format (9 integer bits, 7 fractional bits)
-    this.#io.writeWord(
+    this.#io.writeUint16(
       REGISTERS.FINAL_RANGE_CONFIG_MIN_COUNT_RATE_RTN_LIMIT,
-      limit_Mcps * (1 << 7)
-    ,true);
+      limit_Mcps * (1 << 7),
+      true
+    );
     return true;
   }
 
-  getSignalRateLimit()
-  {
-    return this.#io.readWord(REGISTERS.FINAL_RANGE_CONFIG_MIN_COUNT_RATE_RTN_LIMIT, true) / (1 << 7);
+  getSignalRateLimit() {
+    return (
+      this.#io.readUint16(
+        REGISTERS.FINAL_RANGE_CONFIG_MIN_COUNT_RATE_RTN_LIMIT,
+        true
+      ) /
+      (1 << 7)
+    );
   }
 
   #setMeasurementTimingBudget(budget_us) {
-    var used_budget_us = OVERHEAD.StartOverhead + OVERHEAD.EndOverhead;
+    let used_budget_us = OVERHEAD.StartOverhead + OVERHEAD.EndOverhead;
 
-    var enables = this.#getSequenceStepEnables();
-    var timeouts = this.#getSequenceStepTimeouts(enables);
+    let enables = this.#getSequenceStepEnables();
+    let timeouts = this.#getSequenceStepTimeouts(enables);
 
     if (enables.tcc) {
       used_budget_us += timeouts.msrc_dss_tcc_us + OVERHEAD.TccOverhead;
@@ -368,32 +407,32 @@ class VL53L0X {
         return false;
       }
 
-      var final_range_timeout_us = budget_us - used_budget_us;
+      let final_range_timeout_us = budget_us - used_budget_us;
 
-      // var final_range_timeout_mclks =
-      // timeoutMicrosecondsToMclks(final_range_timeout_us,
-      //                            timeouts.final_range_vcsel_period_pclks);
+      let final_range_timeout_mclks = this.#timeoutMicrosecondsToMclks(
+        final_range_timeout_us,
+        timeouts.final_range_vcsel_period_pclks
+      );
 
       if (enables.pre_range) {
         final_range_timeout_mclks += timeouts.pre_range_mclks;
       }
 
-      // this.#io(
-      //   REGISTERS.FINAL_RANGE_CONFIG_TIMEOUT_MACROP_HI,
-      //   encodeTimeout(final_range_timeout_mclks)
-      // );
+      this.#io.writeUint16(
+        REGISTERS.FINAL_RANGE_CONFIG_TIMEOUT_MACROP_HI,
+        this.#encodeTimeout(final_range_timeout_mclks)
+      );
+
+      this.#measurement_timing_budget_us = budget_us;
     }
     return true;
   }
 
-  getMeasurementTimingBudget() {
-    var enables;
-    var timeouts;
+  #getMeasurementTimingBudget() {
+    let budget_us = OVERHEAD.StartOverhead + OVERHEAD.EndOverhead;
 
-    var budget_us = StartOverhead + EndOverhead;
-
-    var enables = this.#getSequenceStepEnables();
-    var timeouts = this.#getSequenceStepTimeouts(enables);
+    let enables = this.#getSequenceStepEnables();
+    let timeouts = this.#getSequenceStepTimeouts(enables);
 
     if (enables.tcc) {
       budget_us += timeouts.msrc_dss_tcc_us + OVERHEAD.TCC;
@@ -417,17 +456,6 @@ class VL53L0X {
     return budget_us;
   }
 
-
-
-
-
-
-
-
-
-
-  
-
   #getSpadInfo() {
     const io = this.#io;
     this.#writeRegisters([
@@ -435,55 +463,61 @@ class VL53L0X {
       [0xff, 0x01],
       [0x00, 0x00],
       [0xff, 0x06],
-    ]);
-
-    io.writeByte(0x83, io.readByte(0x83) | 0x04);
-
-    this.#writeRegisters([
+      [0x83, io.readUint8(0x83) | 0x04],
       [0xff, 0x07],
       [0x81, 0x01],
       [0x80, 0x01],
       [0x94, 0x6b],
       [0x83, 0x00],
     ]);
+    this.#startTimeout();
+    while (io.readUint8(0x83) == 0x00) {
+      if (this.#checkTimeoutExpired()) {
+        throw new Error("getSpadInfo time out");
+      }
+    }
 
-    io.writeByte(0x83, 0x01);
+    io.writeUint8(0x83, 0x01);
+    let tmp = io.readUint8(0x92);
 
     this.#writeRegisters([
       [0x81, 0x00],
       [0xff, 0x06],
-    ]);
-
-    io.writeByte(0x83, io.readByte(0x83) & ~0x04);
-
-    this.#writeRegisters([
+      [0x83, io.readUint8(0x83) & ~0x04],
       [0xff, 0x01],
       [0x00, 0x01],
       [0xff, 0x00],
       [0x80, 0x00],
     ]);
 
-    var tmp = io.readByte(0x92);
     return { count: tmp & 0x7f, type_is_aperture: (tmp >> 7) & 0x01 };
   }
 
   #writeRegisters(pairs) {
-    for (var pair of pair) {
-      this.#io.writeByte(pair[0], pair[1]);
+    for (let pair of pairs) {
+      this.#io.writeUint8(pair[0], pair[1]);
     }
   }
 
   #performSingleRefCalibration(vhv_init_byte) {
     const io = this.#io;
 
-    io.writeByte(REGISTERS.SYSRANGE_START, 0x01 | vhv_init_byte);
-    io.writeByte(REGISTERS.SYSTEM_INTERRUPT_CLEAR, 0x01);
-    io.writeByte(REGISTERS.SYSRANGE_START, 0x00);
+    io.writeUint8(REGISTERS.SYSRANGE_START, 0x01 | vhv_init_byte);
+
+    this.#startTimeout();
+    while ((io.readUint8(REGISTERS.RESULT_INTERRUPT_STATUS) & 0x07) == 0) {
+      if (this.#checkTimeoutExpired()) {
+        throw new Error("performSingleRefCalibration time out");
+      }
+    }
+
+    io.writeUint8(REGISTERS.SYSTEM_INTERRUPT_CLEAR, 0x01);
+    io.writeUint8(REGISTERS.SYSRANGE_START, 0x00);
   }
 
   #getSequenceStepEnables() {
-    var enables = {};
-    var sequence_config = this.#io.readReg(REGISTERS.SYSTEM_SEQUENCE_CONFIG);
+    let enables = {};
+    let sequence_config = this.#io.readUint8(REGISTERS.SYSTEM_SEQUENCE_CONFIG);
 
     enables.tcc = (sequence_config >> 4) & 0x1;
     enables.dss = (sequence_config >> 3) & 0x1;
@@ -496,34 +530,42 @@ class VL53L0X {
 
   #getSequenceStepTimeouts(enables) {
     const io = this.#io;
-    var timeouts = {};
+    let timeouts = {};
 
-    // timeouts.pre_range_vcsel_period_pclks =
-    //   getVcselPulsePeriod(VcselPeriodPreRange);
+    timeouts.pre_range_vcsel_period_pclks = this.#getVcselPulsePeriod(
+      VSCEL_PERIOD_TYPE.PRE_RANGE
+    );
     timeouts.msrc_dss_tcc_mclks =
-      io.readByte(REGISTERS.MSRC_CONFIG_TIMEOUT_MACROP) + 1;
-    // timeouts.msrc_dss_tcc_us =
-    //   timeoutMclksToMicroseconds(timeouts->msrc_dss_tcc_mclks,
-    //   timeouts->pre_range_vcsel_period_pclks);
+      io.readUint8(REGISTERS.MSRC_CONFIG_TIMEOUT_MACROP) + 1;
+    timeouts.msrc_dss_tcc_us = this.#timeoutMclksToMicroseconds(
+      timeouts.msrc_dss_tcc_mclks,
+      timeouts.pre_range_vcsel_period_pclks
+    );
 
-    // timeouts->pre_range_mclks =
-    //   decodeTimeout(readReg16Bit(PRE_RANGE_CONFIG_TIMEOUT_MACROP_HI));
-    // timeouts->pre_range_us =
-    //   timeoutMclksToMicroseconds(timeouts->pre_range_mclks,
-    //                              timeouts->pre_range_vcsel_period_pclks);
+    timeouts.pre_range_mclks = this.#decodeTimeout(
+      io.readUint16(REGISTERS.PRE_RANGE_CONFIG_TIMEOUT_MACROP_HI)
+    );
+    timeouts.pre_range_us = this.#timeoutMclksToMicroseconds(
+      timeouts.pre_range_mclks,
+      timeouts.pre_range_vcsel_period_pclks
+    );
 
-    // timeouts.final_range_vcsel_period_pclks = getVcselPulsePeriod(VcselPeriodFinalRange);
+    timeouts.final_range_vcsel_period_pclks = this.#getVcselPulsePeriod(
+      VSCEL_PERIOD_TYPE.FINAL_RANGE
+    );
 
-    // timeouts.final_range_mclks =
-    //   decodeTimeout(readReg16Bit(FINAL_RANGE_CONFIG_TIMEOUT_MACROP_HI));
+    timeouts.final_range_mclks = this.#decodeTimeout(
+      io.readUint16(REGISTERS.FINAL_RANGE_CONFIG_TIMEOUT_MACROP_HI)
+    );
 
     if (enables.pre_range) {
       timeouts.final_range_mclks -= timeouts.pre_range_mclks;
     }
 
-    // timeouts.final_range_us =
-    //   timeoutMclksToMicroseconds(timeouts.final_range_mclks,
-    //                              timeouts.final_range_vcsel_period_pclks);
+    timeouts.final_range_us = this.#timeoutMclksToMicroseconds(
+      timeouts.final_range_mclks,
+      timeouts.final_range_vcsel_period_pclks
+    );
 
     return timeouts;
   }
@@ -532,18 +574,55 @@ class VL53L0X {
     const io = this.#io;
     if (type == VSCEL_PERIOD_TYPE.PRE_RANGE) {
       return this.#decodeVcselPeriod(
-        io.readByte(REGISTERS.PRE_RANGE_CONFIG_VCSEL_PERIOD)
+        io.readUint8(REGISTERS.PRE_RANGE_CONFIG_VCSEL_PERIOD)
       );
     } else if (type == VSCEL_PERIOD_TYPE.FINAL_RANGE) {
       return this.#decodeVcselPeriod(
-        io.readByte(REGISTERS.FINAL_RANGE_CONFIG_VCSEL_PERIOD)
+        io.readUint8(REGISTERS.FINAL_RANGE_CONFIG_VCSEL_PERIOD)
       );
     } else {
       return 255;
     }
   }
 
-  
+  #startTimeout() {
+    this.#timeout_start_ms = Date.now();
+  }
+  #checkTimeoutExpired() {
+    this.#timeout > 0 && Date.now() - timeout_start_ms > this.#timeout;
+  }
+
+  #decodeTimeout(reg_val) {
+    return ((reg_val & 0x00ff) << ((reg_val & 0xff00) >> 8)) + 1;
+  }
+
+  #encodeTimeout(timeout_mclks) {
+    let ls_byte = 0;
+    let ms_byte = 0;
+
+    if (timeout_mclks > 0) {
+      ls_byte = timeout_mclks - 1;
+
+      while ((ls_byte & 0xffffff00) > 0) {
+        ls_byte >>= 1;
+        ms_byte++;
+      }
+
+      return (ms_byte << 8) | (ls_byte & 0xff);
+    } else {
+      return 0;
+    }
+  }
+
+  #timeoutMclksToMicroseconds(timeout_period_mclks, vcsel_period_pclks) {
+    const macro_period_ns = this.#calcMacroPeriod(vcsel_period_pclks);
+    return (timeout_period_mclks * macro_period_ns + 500) / 1000;
+  }
+
+  #timeoutMicrosecondsToMclks(timeout_period_us, vcsel_period_pclks) {
+    const macro_period_ns = this.#calcMacroPeriod(vcsel_period_pclks);
+    return (timeout_period_us * 1000 + macro_period_ns / 2) / macro_period_ns;
+  }
 }
 
 export default VL53L0X;
