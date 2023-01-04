@@ -205,9 +205,6 @@ class VL53L0X {
   #timeout = 500;
   #timeout_start_ms;
 
-  #buf = new ArrayBuffer(12);
-  #view = new DataView(this.#buf);
-
   constructor(options) {
     const io = (this.#io = new options.sensor.io({
       address: 0x29,
@@ -262,8 +259,11 @@ class VL53L0X {
     let spads_enabled = 0;
     for (let i = 0; i < 48; i++) {
       if (i < first_spad_to_enable || spads_enabled == spadInfo.count) {
-        spadMapView.setUint8(i/8, spadMapView.getUint8(i/8) & ~(1 << i % 8));
-      } else if ((spadMapView.getInt8(i/8) >> i % 8) & 0x1) {
+        spadMapView.setUint8(
+          i / 8,
+          spadMapView.getUint8(i / 8) & ~(1 << i % 8)
+        );
+      } else if ((spadMapView.getInt8(i / 8) >> i % 8) & 0x1) {
         spads_enabled++;
       }
     }
@@ -321,10 +321,10 @@ class VL53L0X {
         throw new Error("readRangeContinuousMillimeters time out");
       }
     }
-    io.readBlock(REGISTERS.RESULT_RANGE_STATUS + 10, this.#buf);
-    io.writeUint8(REGISTERS.SYSTEM_INTERRUPT_CLEAR, 0x01);
 
-    return this.#view.getUint16();
+    let distance_mm = io.readUint16(REGISTERS.RESULT_RANGE_STATUS + 10, true);
+    io.writeUint8(REGISTERS.SYSTEM_INTERRUPT_CLEAR, 0x01);
+    return distance_mm;
   }
 
   #readRangeSingleMillimeters() {
@@ -589,7 +589,7 @@ class VL53L0X {
     this.#timeout_start_ms = Date.now();
   }
   #checkTimeoutExpired() {
-    this.#timeout > 0 && (Date.now() - this.#timeout_start_ms) > this.#timeout;
+    this.#timeout > 0 && Date.now() - this.#timeout_start_ms > this.#timeout;
   }
 
   #decodeTimeout(reg_val) {
