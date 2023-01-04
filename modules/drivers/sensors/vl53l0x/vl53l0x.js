@@ -202,7 +202,7 @@ class VL53L0X {
 
   #stop_variable;
   #measurement_timing_budget_us;
-  #timeout = 0;
+  #timeout = 500;
   #timeout_start_ms;
 
   #buf = new ArrayBuffer(12);
@@ -316,7 +316,7 @@ class VL53L0X {
     const io = this.#io;
 
     this.#startTimeout();
-    while ((io.readUint8(RESULT_INTERRUPT_STATUS) & 0x07) == 0) {
+    while ((io.readUint8(REGISTERS.RESULT_INTERRUPT_STATUS) & 0x07) == 0) {
       if (this.#checkTimeoutExpired()) {
         throw new Error("readRangeContinuousMillimeters time out");
       }
@@ -342,7 +342,7 @@ class VL53L0X {
     ]);
 
     this.#startTimeout();
-    while (io.readUint8(SYSRANGE_START) & 0x01) {
+    while (io.readUint8(REGISTERS.SYSRANGE_START) & 0x01) {
       if (this.#checkTimeoutExpired()) {
         throw new Error("readRangeSingleMillimeters time out");
       }
@@ -589,7 +589,7 @@ class VL53L0X {
     this.#timeout_start_ms = Date.now();
   }
   #checkTimeoutExpired() {
-    this.#timeout > 0 && Date.now() - timeout_start_ms > this.#timeout;
+    this.#timeout > 0 && (Date.now() - this.#timeout_start_ms) > this.#timeout;
   }
 
   #decodeTimeout(reg_val) {
