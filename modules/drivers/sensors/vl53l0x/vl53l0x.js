@@ -241,56 +241,56 @@ class VL53L0X {
 
     this.#setSignalRateLimit(0.25);
 
-    io.writeUint8(REGISTERS.SYSTEM_SEQUENCE_CONFIG, 0xff);
+    // io.writeUint8(REGISTERS.SYSTEM_SEQUENCE_CONFIG, 0xff);
 
-    let spadInfo = this.#getSpadInfo();
-    let spadMap = io.readBuffer(REGISTERS.GLOBAL_CONFIG_SPAD_ENABLES_REF_0, 6);
-    let spadMapView = new DataView(spadMap);
+    // let spadInfo = this.#getSpadInfo();
+    // let spadMap = io.readBuffer(REGISTERS.GLOBAL_CONFIG_SPAD_ENABLES_REF_0, 6);
+    // let spadMapView = new DataView(spadMap);
 
-    this.#writeRegisters([
-      [0xff, 0x01],
-      [REGISTERS.DYNAMIC_SPAD_REF_EN_START_OFFSET, 0x00],
-      [REGISTERS.DYNAMIC_SPAD_NUM_REQUESTED_REF_SPAD, 0x2c],
-      [0xff, 0x00],
-      [REGISTERS.GLOBAL_CONFIG_REF_EN_START_SELECT, 0xb4],
-    ]);
+    // this.#writeRegisters([
+    //   [0xff, 0x01],
+    //   [REGISTERS.DYNAMIC_SPAD_REF_EN_START_OFFSET, 0x00],
+    //   [REGISTERS.DYNAMIC_SPAD_NUM_REQUESTED_REF_SPAD, 0x2c],
+    //   [0xff, 0x00],
+    //   [REGISTERS.GLOBAL_CONFIG_REF_EN_START_SELECT, 0xb4],
+    // ]);
 
-    const first_spad_to_enable = spadInfo.type_is_aperture ? 12 : 0; // 12 is the first aperture spad
-    let spads_enabled = 0;
-    for (let i = 0; i < 48; i++) {
-      if (i < first_spad_to_enable || spads_enabled == spadInfo.count) {
-        spadMapView.setUint8(
-          i / 8,
-          spadMapView.getUint8(i / 8) & ~(1 << i % 8)
-        );
-      } else if ((spadMapView.getInt8(i / 8) >> i % 8) & 0x1) {
-        spads_enabled++;
-      }
-    }
+    // const first_spad_to_enable = spadInfo.type_is_aperture ? 12 : 0; // 12 is the first aperture spad
+    // let spads_enabled = 0;
+    // for (let i = 0; i < 48; i++) {
+    //   if (i < first_spad_to_enable || spads_enabled == spadInfo.count) {
+    //     spadMapView.setUint8(
+    //       i / 8,
+    //       spadMapView.getUint8(i / 8) & ~(1 << i % 8)
+    //     );
+    //   } else if ((spadMapView.getInt8(i / 8) >> i % 8) & 0x1) {
+    //     spads_enabled++;
+    //   }
+    // }
 
-    io.writeBuffer(REGISTERS.GLOBAL_CONFIG_SPAD_ENABLES_REF_0, spadMap, 6);
+    // io.writeBuffer(REGISTERS.GLOBAL_CONFIG_SPAD_ENABLES_REF_0, spadMap, 6);
 
-    this.#writeRegisters(defaultTuningSettings);
-    this.#writeRegisters([
-      [REGISTERS.SYSTEM_INTERRUPT_CONFIG_GPIO, 0x04],
-      [
-        REGISTERS.GPIO_HV_MUX_ACTIVE_HIGH,
-        io.readUint8(REGISTERS.GPIO_HV_MUX_ACTIVE_HIGH) & ~0x10,
-      ],
-      [REGISTERS.SYSTEM_INTERRUPT_CLEAR, 0x01],
-    ]);
+    // this.#writeRegisters(defaultTuningSettings);
+    // this.#writeRegisters([
+    //   [REGISTERS.SYSTEM_INTERRUPT_CONFIG_GPIO, 0x04],
+    //   [
+    //     REGISTERS.GPIO_HV_MUX_ACTIVE_HIGH,
+    //     io.readUint8(REGISTERS.GPIO_HV_MUX_ACTIVE_HIGH) & ~0x10,
+    //   ],
+    //   [REGISTERS.SYSTEM_INTERRUPT_CLEAR, 0x01],
+    // ]);
 
-    let measurement_timing_budget_us = this.#getMeasurementTimingBudget();
-    io.writeUint8(REGISTERS.SYSTEM_SEQUENCE_CONFIG, 0xe8);
-    this.#setMeasurementTimingBudget(measurement_timing_budget_us);
+    // let measurement_timing_budget_us = this.#getMeasurementTimingBudget();
+    // io.writeUint8(REGISTERS.SYSTEM_SEQUENCE_CONFIG, 0xe8);
+    // this.#setMeasurementTimingBudget(measurement_timing_budget_us);
 
-    io.writeUint8(REGISTERS.SYSTEM_SEQUENCE_CONFIG, 0x01);
-    this.#performSingleRefCalibration(0x40);
+    // io.writeUint8(REGISTERS.SYSTEM_SEQUENCE_CONFIG, 0x01);
+    // this.#performSingleRefCalibration(0x40);
 
-    io.writeUint8(REGISTERS.SYSTEM_SEQUENCE_CONFIG, 0x02);
-    this.#performSingleRefCalibration(0x00);
+    // io.writeUint8(REGISTERS.SYSTEM_SEQUENCE_CONFIG, 0x02);
+    // this.#performSingleRefCalibration(0x00);
 
-    io.writeUint8(REGISTERS.SYSTEM_SEQUENCE_CONFIG, 0xe8);
+    // io.writeUint8(REGISTERS.SYSTEM_SEQUENCE_CONFIG, 0xe8);
 
     this.configure({});
   }
@@ -315,15 +315,15 @@ class VL53L0X {
   #readRangeContinuousMillimeters() {
     const io = this.#io;
 
-    this.#startTimeout();
-    while ((io.readUint8(REGISTERS.RESULT_INTERRUPT_STATUS) & 0x07) == 0) {
-      if (this.#checkTimeoutExpired()) {
-        throw new Error("readRangeContinuousMillimeters time out");
-      }
-    }
-
+    // this.#startTimeout();
+    // while ((io.readUint8(REGISTERS.RESULT_INTERRUPT_STATUS) & 0x07) == 0) {
+    //   if (this.#checkTimeoutExpired()) {
+    //     throw new Error("readRangeContinuousMillimeters time out");
+    //   }
+    // }
+ 
     let distance_mm = io.readUint16(REGISTERS.RESULT_RANGE_STATUS + 10, true);
-    io.writeUint8(REGISTERS.SYSTEM_INTERRUPT_CLEAR, 0x01);
+    // io.writeUint8(REGISTERS.SYSTEM_INTERRUPT_CLEAR, 0x01);
     return distance_mm;
   }
 
@@ -341,12 +341,12 @@ class VL53L0X {
       [REGISTERS.SYSRANGE_START, 0x01],
     ]);
 
-    this.#startTimeout();
-    while (io.readUint8(REGISTERS.SYSRANGE_START) & 0x01) {
-      if (this.#checkTimeoutExpired()) {
-        throw new Error("readRangeSingleMillimeters time out");
-      }
-    }
+    // this.#startTimeout();
+    // while (io.readUint8(REGISTERS.SYSRANGE_START) & 0x01) {
+    //   if (this.#checkTimeoutExpired()) {
+    //     throw new Error("readRangeSingleMillimeters time out");
+    //   }
+    // }
     return this.#readRangeContinuousMillimeters();
   }
 
