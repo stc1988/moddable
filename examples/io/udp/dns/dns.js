@@ -55,10 +55,9 @@ class Resolver {
 		if ("localhost" === host)
 			host = "127.0.0.1";
 		
-		let parts = host.split(".");
-		let isAddress = false;
-		if (4 === parts.length) {
-			isAddress = true;
+		const parts = host.split(".");
+		let isAddress = 4 === parts.length;
+		if (isAddress) {
 			for (let i = 0; i < 4; i++) {
 				if (parseInt(parts[i]) != parts[i])
 					isAddress = false; 
@@ -73,14 +72,14 @@ class Resolver {
 			isAddress
 		}
 		this.#requests.push(request);
-		this.#timer ??= Timer.set(this.#task.bind(this), 0, 1000);
+		this.#timer ??= Timer.set(() => this.#task(), 0, 1000);
 	} 
 	#send(request) {
 		const packet = new Serializer({query: true, recursionDesired: true, opcode: DNS.OPCODE.QUERY, id: request.id});
 		packet.add(DNS.SECTION.QUESTION, request.host, DNS.RR.A, DNS.CLASS.IN);
 
 		try {
-			this.#timer ??= Timer.repeat(this.#task.bind(this), 1000);
+			this.#timer ??= Timer.repeat(() => this.#task(), 1000);
 
 			this.#socket ??= new (this.#UDP.io)({
 				target: this,

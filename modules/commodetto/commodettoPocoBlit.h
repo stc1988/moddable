@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2020  Moddable Tech, Inc.
+ * Copyright (c) 2016-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -90,7 +90,9 @@ enum {
 	kPocoFlagErrorDisplayListOverflow = 1 << 4,
 	kPocoFlagErrorStackProblem = 1 << 5,
 	kPocoFlagDidBegin = 1 << 6,
-	kPocoFlagContinue = 1 << 7
+	kPocoFlagContinue = 1 << 7,
+	kPocoFlagBuffer = 1 << 8,
+	kPocoFlagErrorUnimplemented = 1 << 9
 };
 
 struct PocoRecord {
@@ -117,11 +119,13 @@ struct PocoRecord {
 
 	int16_t				rowBytes;		// scanline stride for blitters
 
-	uint8_t				flags;
+	uint16_t			flags;
 	uint8_t				stackDepth;
 
 	// native pixel output dispatch
 	void				*outputRefcon;
+
+	void				*reservedPocoJS;
 
 #if kCommodettoBitmapCLUT16 == kPocoPixelFormat
 	uint8_t				*clut;

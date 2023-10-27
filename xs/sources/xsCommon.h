@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2022  Moddable Tech, Inc.
+ * Copyright (c) 2016-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -44,7 +44,7 @@
 	#define mx_dtoa 1
 #endif
 #if __GNUC__ >= 5
-	#if ESP32
+	#if ESP32 && (__GNUC__ < 11)		// ESP-IDF v5 uses GNUC 11... this is here for ESP-IDF v4
 		#undef __has_builtin
 		#define __has_builtin(x) 1
 	#endif
@@ -104,8 +104,8 @@ typedef struct {
 #define XS_ATOM_SIGNATURE 0x5349474E /* 'SIGN' */
 #define XS_ATOM_SYMBOLS 0x53594D42 /* 'SYMB' */
 #define XS_ATOM_VERSION 0x56455253 /* 'VERS' */
-#define XS_MAJOR_VERSION 13
-#define XS_MINOR_VERSION 0
+#define XS_MAJOR_VERSION 14
+#define XS_MINOR_VERSION 2
 #define XS_PATCH_VERSION 0
 
 #define XS_DIGEST_SIZE 16
@@ -366,6 +366,10 @@ enum {
 	XS_CODE_UNSIGNED_RIGHT_SHIFT,
 	XS_CODE_UNWIND_1,
 	XS_CODE_UNWIND_2,
+	XS_CODE_USED_1,
+	XS_CODE_USED_2,
+	XS_CODE_USING,
+	XS_CODE_USING_ASYNC,
 	XS_CODE_VAR_CLOSURE_1,
 	XS_CODE_VAR_CLOSURE_2,
 	XS_CODE_VAR_LOCAL_1,
@@ -374,6 +378,7 @@ enum {
 	XS_CODE_WITH,
 	XS_CODE_WITHOUT,
 	XS_CODE_YIELD,
+	XS_CODE_PROFILE,
 	XS_CODE_COUNT
 };
 
@@ -388,6 +393,8 @@ enum {
 	XS_METHOD_FLAG = 16,
 	XS_GETTER_FLAG = 32,
 	XS_SETTER_FLAG = 64,
+	XS_IMPORT_FLAG = 32,
+	XS_IMPORT_META_FLAG = 64,
 };
 
 enum {
@@ -418,6 +425,7 @@ extern txBoolean fxIsIdentifierNext(txU4 c);
 extern txBoolean fxIsSpace(txInteger character);
 extern txString fxSkipSpaces(txString string);
 
+extern txBoolean fxParseHex(txU1 c, txU4* value);
 extern txBoolean fxParseHexEscape(txString* string, txInteger* character);
 extern txBoolean fxParseUnicodeEscape(txString* string, txInteger* character, txInteger braces, txInteger separator);
 extern txString fxStringifyHexEscape(txString string, txInteger character);
@@ -451,6 +459,7 @@ txFlag fxStringToIndex(void* dtoa, txString theString, txIndex* theIndex);
 
 /* ? */
 mxExport char* fxCStackLimit();
+mxExport txID fxGenerateProfileID(void* console);
 mxExport void fxGenerateTag(void* console, txString buffer, txInteger bufferSize, txString path);
 mxExport void fxVReport(void* console, txString theFormat, c_va_list theArguments);
 mxExport void fxVReportError(void* console, txString thePath, txInteger theLine, txString theFormat, c_va_list theArguments);
@@ -475,6 +484,7 @@ enum {
 	XS_REGEXP_Y = 1 << 6,
 	XS_REGEXP_D = 1 << 7,
 };
+mxExport txInteger* fxAllocateRegExpData(void* the, txInteger* code);
 mxExport txBoolean fxCompileRegExp(void* the, txString pattern, txString modifier, txInteger** code, txInteger** data, txString errorBuffer, txInteger errorSize);
 mxExport void fxDeleteRegExp(void* the, txInteger* code, txInteger* data);
 mxExport txInteger fxMatchRegExp(void* the, txInteger* code, txInteger* data, txString subject, txInteger offset);
@@ -646,7 +656,9 @@ extern void fxBigIntParseX(txBigInt* bigint, txString string, txSize length);
 
 enum {
 	XS_NO_ID = 0,
-	_Symbol_asyncIterator = 1,
+	_Symbol_asyncDispose = 1,
+	_Symbol_asyncIterator,
+	_Symbol_dispose,
 	_Symbol_hasInstance,
 	_Symbol_isConcatSpreadable,
 	_Symbol_iterator,
@@ -662,6 +674,7 @@ enum {
 	_AggregateError,
 	_Array,
 	_ArrayBuffer,
+	_AsyncDisposableStack,
 	_Atomics,
 	_BigInt,
 	_BigInt64Array,
@@ -669,6 +682,7 @@ enum {
 	_Boolean,
 	_DataView,
 	_Date,
+	_DisposableStack,
 	_Error,
 	_EvalError,
 	_FinalizationRegistry,
@@ -680,6 +694,7 @@ enum {
 	_JSON,
 	_Map,
 	_Math,
+	_ModuleSource,
 	_Number,
 	_Object,
 	_Promise,
@@ -690,8 +705,8 @@ enum {
 	_RegExp,
 	_Set,
 	_SharedArrayBuffer,
-	_StaticModuleRecord,
 	_String,
+	_SuppressedError,
 	_Symbol,
 	_SyntaxError,
 	_TypeError,
@@ -751,6 +766,7 @@ enum {
 	_acos,
 	_acosh,
 	_add,
+	_adopt,
 	_aliases,
 	_all,
 	_allSettled,
@@ -765,6 +781,7 @@ enum {
 	_asin,
 	_asinh,
 	_assign,
+	_asyncDispose,
 	_asyncIterator,
 	_at,
 	_atan,
@@ -812,12 +829,17 @@ enum {
 	_count,
 	_create,
 	_default,
+	_defer,
 	_defineProperties,
 	_defineProperty,
 	_delete,
 	_deleteProperty,
 	_deref,
 	_description,
+	_detached,
+	_dispose,
+	_disposeAsync,
+	_disposed,
 	_done,
 	_dotAll,
 	_eachDown,
@@ -826,6 +848,7 @@ enum {
 	_entries,
 	_enumerable,
 	_enumerate,
+	_error,
 	_errors,
 	_evaluate,
 	_every,
@@ -907,7 +930,6 @@ enum {
 	_hypot_,
 	_id,
 	_idiv,
-	_idivmod,
 	_ignoreCase,
 	_imod,
 	_import,
@@ -920,6 +942,7 @@ enum {
 	_indexOf,
 	_indices,
 	_input,
+	_irandom,
 	_irem,
 	_is,
 	_isArray,
@@ -958,8 +981,11 @@ enum {
 	_min,
 	_mod,
 	_module,
+	_move,
 	_multiline,
 	_name,
+	_needsImport,
+	_needsImportMeta,
 	_new_target,
 	_next,
 	_normalize,
@@ -1056,6 +1082,7 @@ enum {
 	_subarray,
 	_substr,
 	_substring,
+	_suppressed,
 	_tan,
 	_tanh,
 	_test,
@@ -1076,6 +1103,9 @@ enum {
 	_toLowerCase,
 	_toPrecision,
 	_toPrimitive,
+	_toReversed,
+	_toSorted,
+	_toSpliced,
 	_toString,
 	_toStringTag,
 	_toTimeString,
@@ -1094,12 +1124,14 @@ enum {
 	_unscopables,
 	_unshift,
 	_uri,
+	_use,
 	_value,
 	_valueOf,
 	_values,
 	_wait,
 	_wake,
 	_weak,
+	_with,
 	_writable,
 	_xor,
 	__empty_string_,
@@ -1124,8 +1156,27 @@ extern const txString gxIDStrings[XS_ID_COUNT];
 
 #define mxPtrDiff(_DIFF) ((txSize)(_DIFF))
 
+#ifndef mxAliasInstance
+	#define mxAliasInstance 1
+#endif
+
+#ifndef mxDebugEval
+	#define mxDebugEval 0
+#endif
+
+#ifndef mxExplicitResourceManagement
+	#define mxExplicitResourceManagement 0
+#endif
+
 #ifndef mxIntegerDivideOverflowException
 	#define mxIntegerDivideOverflowException 1
+#endif
+
+#ifndef mxCanonicalNaN
+	#define mxCanonicalNaN 0
+#else
+	extern float* gxCanonicalNaN32;
+	extern double* gxCanonicalNaN64;
 #endif
 
 #ifdef __cplusplus

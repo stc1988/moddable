@@ -1,6 +1,6 @@
 # Files
-Copyright 2017-2022 Moddable Tech, Inc.<BR>
-Revised: August 5, 2022
+Copyright 2017-2023 Moddable Tech, Inc.<BR>
+Revised: September 7, 2023
 
 ## Table of Contents
 
@@ -37,7 +37,7 @@ As a rule, scripts should always prefix full paths with this root.
 
 The forward slash character (`/`) is always used as a path separator, even on hosts that natively use a different path separator.
 
-The `System.config()` function, described below, provides the length of the longest supported path through the `maxPathLength` property. 
+The `System.config()` function, described below, provides the length of the longest supported path through the `maxPathLength` property.
 
 <a id="file"></a>
 ### class File
@@ -232,7 +232,7 @@ Directory.delete(config.file.root + "tmp");
 - **Source code:** [file](../../modules/files/file)
 - **Relevant Examples:** [files](../../examples/files/files/)
 
-The File `Iterator` class enumerates the files and subdirectories in a directory. 
+The File `Iterator` class enumerates the files and subdirectories in a directory.
 
 ```js
 import {Iterator} from "file";
@@ -247,6 +247,8 @@ The constructor takes as its sole argument the path of the directory to iterate 
 ```js
 let iterator = new Iterator(config.file.root);
 ```
+
+The iterator instance is a JavaScript [iterable object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for...of) so it may be used in `for...of` loops. An example is provided below.
 
 ***
 
@@ -276,6 +278,17 @@ while (item = iterator.next()) {
 ```
 
 The iterator's `next` function returns an object.  If the object has a `length` property, it is a file; if there is no `length` property, it is a directory.
+
+This is a variation of the same example using a `for...of` loop.
+
+```js
+for (const item of (new Iterator(config.file.root))) {
+	if (undefined === item.length)
+		trace(`Directory: ${item.name}\n`);
+	else
+		trace(`File: ${item.name}, ${item.length} bytes\n`);
+}
+```
 
 ***
 
@@ -407,19 +420,34 @@ By default, the FAT32 file system is mounted at `/mod`. To change the default ro
 #### littlefs
 The [littlefs](https://github.com/littlefs-project/littlefs) file system is "a little fail-safe filesystem designed for microcontrollers." It provides a high reliability, hierarchical file system in a small code footprint (about 60 KB) using minimal memory (well under 1 KB) with a high degree of configurability. littlefs also supports long file names (up to 255 characters) and formats a new partition very quickly.
 
-The Moddable SDK supports littlefs using the APIs described above. To use littlefs, include its manifest. 
+The Moddable SDK supports littlefs using the APIs described above. To use littlefs, include its manifest.
 
 ```json
-"includes": {
+"include": {
 	"$MODDABLE/modules/files/file/manifest_littlefs.json"
 }
 ```
 
 > **Note**: A project may use the littlefs manifest or the default file manifest (`$MODDABLE/modules/files/file/manifest.json`). Both cannot currently be included in the same project.
 
-On ESP32, littlefs uses the "storage" partition to hold the file system. On ESP8266, the file system is stored in the upper 3 MB of flash (the same area used by SPIFFS). On other devices, littlefs uses a 64 KB static memory buffer to hold the file system. This RAM disk mode allows littlefs to be used with the simulator.
+The backing store for littlefs varies depending the host platform:
 
-The littlefs implementation is thread safe on devices running FreeRTOS (ESP32) allowing littlefs to be used with Workers. Thread safety is irrelevant on ESP8266 as it runs as a single process. The thread safety support may be extended for other runtime environments.
+- **ESP32** - littlefs uses the "storage" partition to hold the file system.
+- **ESP8266** - the file system is stored in the upper 3 MB of flash (the same area used by SPIFFS).
+- **nRF52** - littlefs uses the free space following the firmware image and installed mod. The default size is 64 KB, which may be overridden by `MODDEF_FILE_LFS_PARITION_SIZE` in the manifest `defines`. If there is not enough space, an exception is thrown when accessing the file system.
+- **Others**, littlefs uses a static memory buffer to hold the file system. The default size is 64 KB, which may be overridden by `MODDEF_FILE_LFS_PARITION_SIZE` in the manifest. This RAM disk mode allows littlefs to be used with the simulator.
+
+```json
+	"defines": {
+		"file": {
+			"lfs": {
+				"partition_size": 131072
+			}
+		}
+	},
+```
+
+The littlefs implementation is thread safe on devices running FreeRTOS (ESP32 and nRF52) allowing littlefs to be used with Workers. Thread safety is irrelevant on ESP8266 as it runs as a single process. The thread safety support may be extended for other runtime environments.
 
 The littlefs implementation can be configured to trade-off performance and memory use. The default configuration in the Moddable SDK uses the least memory possible. For projects that make lightweight use of the file system, this offers adequate performance. To improve performance, the configuration may be changed in the project's manifest. The `read_size`, `prog_size`, `lookahead_size`, and `block_cycles` values are described in [`lfs.h`](https://github.com/littlefs-project/littlefs/blob/40dba4a556e0d81dfbe64301a6aa4e18ceca896c/lfs.h#L194-L230). Experimentation has shown that increasing the four `*_size` settings from 16 bytes to 512 gives a significant performance boost at the expense of 2 KB of RAM.
 
@@ -443,7 +471,7 @@ When not in use (when all files and file iterators are closed), the littlefs imp
 ## class ZIP
 
 - **Source code:** [zip](../../modules/files/zip)
-- **Relevant Examples:** [zip](../../examples/files/zip/)
+- **Relevant Examples:** [zip](../../examples/files/zip/), [httpzip](../../examples/network/http/httpzip)
 
 The `ZIP` class implements read-only file system access to the contents of a ZIP file stored in memory. Typically these are stored in flash memory. A ZIP file is a convenient way to embed a read-only file system into a project.
 
@@ -584,7 +612,7 @@ if (Resource.exists(path))
 
 ***
 
-### `slice(begin[, end])`
+### `slice(begin[[, end], copy])`
 
 The `slice` function returns a portion of the resource in an `ArrayBuffer`. The default value of `end` is the resource size.
 
@@ -593,6 +621,8 @@ let resource = new Resource("table.dat");
 let buffer1 = resource.slice(5);		// Get a buffer starting from offset 5
 let buffer2 = resource.slice(0, 10);	// Get a buffer of the first 10 bytes
 ```
+
+The optional `copy` argument defaults to `true`. If it is set to `false`, the return value is a read-only `HostBuffer` that references the original resource data. This option is useful for creating a reference to a portion of the resource data without copying it to RAM.
 
 ***
 
@@ -607,7 +637,7 @@ The `Preference` class provides storage of persistent preference storage. Prefer
 ```js
 import Preference from "preference";
 ```
-	
+
 Preferences are grouped by domain. A domain contains one or more keys. Each domain/key pair holds a single value, which is either a `Boolean`, integer (e.g. `Number` with no fractional part), `String` or `ArrayBuffer`.
 
 ```js
@@ -662,16 +692,18 @@ Preference.delete("wifi", "password");
 ### `static keys(domain)`
 
 Returns an array of all keys under the given domain.
- 
+
 ```js
 let wifiKeys = Preference.keys("wifi");
 for (let key of wifiKeys)
 	trace(`${key}: ${Preference.get("wifi", key)}\n`);
 ```
- 
+
 ***
 
 <a id="flash"></a>
 ## class Flash
 
 This class is not yet documented.
+
+N.B. The `readString()` API is considered experimental. It assumes that the input is a valid UTF-8 string.

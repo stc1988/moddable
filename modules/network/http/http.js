@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2021  Moddable Tech, Inc.
+ * Copyright (c) 2016-2023 Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -60,7 +60,7 @@ export class Request {
 
 		this.method = dictionary.method;
 		this.path = dictionary.path;
-		this.host = dictionary.host ? dictionary.host : (dictionary.address + ":" + dictionary.port);
+		this.host = dictionary.host ? dictionary.host : dictionary.address;
 		if (dictionary.headers)
 			this.headers = dictionary.headers;
 		if (dictionary.body)
@@ -120,32 +120,8 @@ export class Request {
 		delete this.buffers;
 		delete this.callback;
 		delete this.done;
-		delete this.suspended;
 		delete this.server;
 		this.state = 11;
-	}
-	suspend(value) {
-		this.socket.suspend(value);
-		if (value)
-			this.suspended = true;
-		else {
-			this.suspended = Timer.set(id => {
-				if (id !== this.suspended) return;
-
-				delete this.suspended;
-
-				let value = this.socket.read();
-				if (value)
-					this.socket.callback(2, value);
-
-				if (this.suspended || !this.socket)
-					return;		// read callback can suspend
-
-				value = this.socket.write();
-				if (value)
-					this.socket.callback(3, value);
-			});
-		}
 	}
 };
 Request.requestFragment = 0;
@@ -155,7 +131,6 @@ Request.headersComplete = 3;
 Request.responseFragment = 4;
 Request.responseComplete = 5;
 Request.error = -2;
-Object.freeze(Request.prototype);
 
 function callback(message, value) {
 	let socket = this.socket;
@@ -166,15 +141,14 @@ function callback(message, value) {
 
 		this.state = 1;		// advance to sending request headers state
 
-		let parts = [];
-		parts.push(this.method, " ", this.path, " HTTP/1.1\r\n");
-			//@@ Date: would be nice here...
+		const parts = [];
+		parts.push(`${this.method} `, this.path, " HTTP/1.1\r\n");
 		parts.push("Connection: close\r\n");
 
 		let length, host = this.host;
-		for (let i = 0; i < (this.headers ? this.headers.length : 0); i += 2) {
+		for (let i = 0; i < (this.headers?.length ?? 0); i += 2) {
 			let name = this.headers[i].toString();
-			parts.push(name, ": ", this.headers[i + 1].toString(), "\r\n");
+			parts.push(`${name}: `, this.headers[i + 1].toString(), "\r\n");
 			name = name.toLowerCase();
 			if ("content-length" === name)
 				length = true;
@@ -183,31 +157,49 @@ function callback(message, value) {
 		}
 
 		if (this.body && (true !== this.body) && !length) {
-			let length = (this.body instanceof ArrayBuffer) ? this.body.byteLength : this.body.length;
-			parts.push("content-length: ", length.toString(), "\r\n");
+			length = (this.body instanceof ArrayBuffer) ? this.body.byteLength : this.body.length;
+			parts.push(`content-length: ${length}\r\n`);
 		}
 
 		if (host)
-			parts.push("Host: ", host, "\r\n");
+			parts.push(`Host: ${host}\r\n`);
 
 		parts.push("\r\n");
-		socket.write.apply(socket, parts);
 
 		delete this.method;
 		delete this.path;
 		delete this.host;
 		delete this.headers;
 
-		if (undefined === this.body) {
-			this.state = 3;		// advance to receiving status state
-			return;
-		}
+		this.parts = parts;
 
-		this.state = 2;			// begin to transmit request body immediately, if possbile
 		message = 3;
+		value = socket.write();
 	}
 
 	if (3 === message) {	// safe to write more data
+		if (1 == this.state) {
+			const p = [], parts = this.parts;
+			while (value && parts.length) {
+				const length = parts[0].length;
+				if (length <= value) {
+					p.push(parts.shift());
+					value -= length;
+				}
+				else {
+					p.push(parts[0].slice(0, value));
+					parts[0] = parts[0].slice(value);
+					value = 0;
+				}
+			}
+			socket.write.apply(socket, p);
+			if (parts.length) return;
+
+			delete this.parts;
+
+			this.state = (undefined === this.body) ? 3 : 2;		// if no body, advance to receiving status state, otherwise begin to transmit request body immediately, if possbile
+		}
+
 		if (2 === this.state) {
 			if (true === this.body) {
 				let body = this.callback(Request.requestFragment, socket.write());
@@ -248,7 +240,7 @@ function callback(message, value) {
 
 			this.callback(Request.status, parseInt(status[1]));
 
-			if ((this.state >= 11) || !socket.read() || this.suspended)
+			if ((this.state >= 11) || !socket.read())
 				return;
 		}
 
@@ -286,10 +278,6 @@ function callback(message, value) {
 						}
 						return;
 					}
-
-					if (this.suspended)
-						return;
-
 					break;
 				}
 
@@ -310,7 +298,7 @@ function callback(message, value) {
 						return done.call(this);
 				}
 
-				if ((this.state >= 11) || this.suspended)
+				if (this.state >= 11)
 					return;
 			}
 		}
@@ -369,9 +357,6 @@ function callback(message, value) {
 
 					if (0 === this.chunk)
 						this.line = 2;	// should be two more bytes to read (CR/LF)... skip them when they become available
-
-					if (this.suspended)
-						return;
 				}
 			}
 			else if (undefined !== this.total) {
@@ -536,7 +521,6 @@ Server.prepareResponse = 8;
 Server.responseFragment = 9;
 Server.responseComplete = 10;
 Server.error = -1;
-Object.freeze(Server.prototype);
 
 function server(message, value, etc) {
 	let socket = this.socket;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2022  Moddable Tech, Inc.
+ * Copyright (c) 2016-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -36,9 +36,10 @@
 	#include "freertos/semphr.h"
 
 	static void workerLoop(void *pvParameter);
-#elif qca4020
+#elif qca4020 || nrf52
 	#include "FreeRTOS.h"
 	#include "task.h"
+	#include "semphr.h"
 	static void workerLoop(void *pvParameter);
 #endif
 
@@ -50,10 +51,7 @@ struct modWorkerRecord {
 	xsSlot					owner;
 	xsSlot					ownerPort;
 	xsSlot					workerPort;
-	uint32_t				allocation;
-	uint32_t				stackCount;
-	uint32_t				slotCount;
-	uint32_t				keyCount;
+	xsCreation				creation;
 	xsBooleanValue			closing;
 	xsBooleanValue			shared;
 #ifdef INC_FREERTOS_H
@@ -77,6 +75,8 @@ static void workerDeliverConnect(xsMachine *the, modWorker worker, uint8_t *mess
 
 static int workerStart(modWorker worker);
 static void workerTerminate(xsMachine *the, modWorker worker, uint8_t *message, uint16_t messageLength);
+
+static void doModMessagePostToMachine(xsMachine *the, xsMachine *targetThe, uint8_t *message, modMessageDeliver callback, void *refcon);
 
 static modWorker gWorkers;
 
@@ -133,6 +133,16 @@ void xs_worker_destructor(void *data)
 	}
 }
 
+static void getIntegerProperty(xsMachine *the, xsSlot *slot, xsIdentifier id, xsIntegerValue *value)
+{
+	if (!xsmcHas(*slot, id))
+		return;
+	
+	xsSlot tmp;
+	xsmcGet(tmp, *slot, id);
+	*value = xsmcToInteger(tmp);
+}
+
 static void workerConstructor(xsMachine *the, xsBooleanValue shared)
 {
 	modCriticalSectionDeclare;
@@ -182,23 +192,68 @@ static void workerConstructor(xsMachine *the, xsBooleanValue shared)
 #ifdef INC_FREERTOS_H
 			worker->task = target->task;
 #endif
-			modMessagePostToMachine(worker->the, NULL, 0, (modMessageDeliver)workerDeliverConnect, worker);
+			doModMessagePostToMachine(the, worker->the, NULL, (modMessageDeliver)workerDeliverConnect, worker);
 			goto done;
 		}
 	}
 
+	xsCreation *creationP;
+	(void *)xsPreparationAndCreation(&creationP);
+	worker->creation = *creationP;
 	if (xsmcArgc > 1) {
-		xsmcGet(xsVar(0), xsArg(1), xsID_allocation);
-		worker->allocation = xsmcToInteger(xsVar(0));
+		if (xsmcHas(xsArg(1), xsID_allocation) ||
+			 xsmcHas(xsArg(1), xsID_stackCount) ||
+			 xsmcHas(xsArg(1), xsID_slotCount) ||
+		 	 xsmcHas(xsArg(1), xsID_keyCount)) {
+#ifdef mxDebug
+			xsTrace("deprecated worker creation parameters detected. update recommended.\n");
+#endif
+			xsIntegerValue allocation, stackCount, slotCount, keyCount;
+			xsmcGet(xsVar(0), xsArg(1), xsID_allocation);
+			allocation = xsmcToInteger(xsVar(0));
 
-		xsmcGet(xsVar(0), xsArg(1), xsID_stackCount);
-		worker->stackCount = xsmcToInteger(xsVar(0));
+			xsmcGet(xsVar(0), xsArg(1), xsID_stackCount);
+			stackCount = xsmcToInteger(xsVar(0));
 
-		xsmcGet(xsVar(0), xsArg(1), xsID_slotCount);
-		worker->slotCount = xsmcToInteger(xsVar(0));
+			xsmcGet(xsVar(0), xsArg(1), xsID_slotCount);
+			slotCount = xsmcToInteger(xsVar(0));
 
-		xsmcGet(xsVar(0), xsArg(1), xsID_keyCount);
-		worker->keyCount = xsmcToInteger(xsVar(0));
+			xsmcGet(xsVar(0), xsArg(1), xsID_keyCount);
+			keyCount = xsmcToInteger(xsVar(0));
+
+			if (allocation)
+				worker->creation.staticSize = allocation;
+
+			if (stackCount)
+				worker->creation.stackCount = stackCount;
+
+			if (slotCount)
+				worker->creation.initialHeapCount = slotCount;
+			
+			if (keyCount)
+				worker->creation.initialKeyCount = keyCount;
+		}
+		else {
+			getIntegerProperty(the, &xsArg(1), xsID_static, &worker->creation.staticSize);
+			xsmcGet(xsVar(0), xsArg(1), xsID_chunk);
+			if (xsmcTest(xsVar(0))) {
+				getIntegerProperty(the, &xsVar(0), xsID_initial, &worker->creation.initialChunkSize);
+				getIntegerProperty(the, &xsVar(0), xsID_incremental, &worker->creation.incrementalChunkSize);
+			}
+			xsmcGet(xsVar(0), xsArg(1), xsID_heap);
+			if (xsmcTest(xsVar(0))) {
+				getIntegerProperty(the, &xsVar(0), xsID_initial, &worker->creation.initialHeapCount);
+				getIntegerProperty(the, &xsVar(0), xsID_incremental, &worker->creation.incrementalHeapCount);
+			}
+			getIntegerProperty(the, &xsArg(1), xsID_stack, &worker->creation.stackCount);
+			xsmcGet(xsVar(0), xsArg(1), xsID_keys);
+			if (xsmcTest(xsVar(0))) {
+				getIntegerProperty(the, &xsVar(0), xsID_initial, &worker->creation.initialKeyCount);
+				getIntegerProperty(the, &xsVar(0), xsID_incremental, &worker->creation.incrementalKeyCount);
+				getIntegerProperty(the, &xsVar(0), xsID_name, &worker->creation.nameModulo);
+				getIntegerProperty(the, &xsVar(0), xsID_symbol, &worker->creation.symbolModulo);
+			}
+		}
 	}
 
 #ifdef INC_FREERTOS_H
@@ -218,6 +273,11 @@ static void workerConstructor(xsMachine *the, xsBooleanValue shared)
 	#endif
 
 	xTaskCreate(workerLoop, worker->module, kStack, worker, 10, &worker->task);
+#elif nrf52
+	#define kWorkerTaskPriority		(tskIDLE_PRIORITY + 1) 
+	#define kStack ((10 * 1024) / sizeof(StackType_t))
+
+	xTaskCreate(workerLoop, worker->module, kStack, worker, kWorkerTaskPriority, &worker->task);
 #endif
 
 	modMachineTaskWait(the);
@@ -287,8 +347,7 @@ void xs_worker_postfrominstantiator(xsMachine *the)
 		xsUnknownError("worker closing");
 
 	message = xsMarshall(xsArg(0));
-	if (modMessagePostToMachine(worker->the, (uint8_t *)&message, sizeof(message), (modMessageDeliver)workerDeliverMarshall, worker))
-		xsUnknownError("post from instantiator failed");
+	doModMessagePostToMachine(the, worker->the, message, (modMessageDeliver)workerDeliverMarshall, worker);
 }
 
 void xs_worker_postfromworker(xsMachine *the)
@@ -300,20 +359,21 @@ void xs_worker_postfromworker(xsMachine *the)
 		xsUnknownError("worker closing");
 
 	message = xsMarshall(xsArg(0));
-	if (modMessagePostToMachine(worker->parent, (uint8_t *)&message, sizeof(message), (modMessageDeliver)workerDeliverMarshall, worker))
-		xsUnknownError("post from worker failed");
+	doModMessagePostToMachine(the, worker->parent, message, (modMessageDeliver)workerDeliverMarshall, worker);
 }
 
 void xs_worker_close(xsMachine *the)
 {
 	modWorker worker = xsmcGetHostDataValidate(xsThis, (void *)xs_emptyworker_destructor);
-	modMessagePostToMachine(worker->parent, NULL, 0, (modMessageDeliver)workerTerminate, worker);
+	doModMessagePostToMachine(the, worker->parent, NULL, (modMessageDeliver)workerTerminate, worker);
 }
 
 void workerDeliverMarshall(xsMachine *the, modWorker worker, uint8_t *message, uint16_t messageLength)
 {
-	if (worker->closing)
+	if (worker->closing) {
+		c_free(*(char **)message);
 		return;
+	}
 
 	xsBeginHost(the);
 
@@ -359,7 +419,7 @@ int workerStart(modWorker worker)
 	xsMachine *the;
 	int result = 0;
 
-	the = modCloneMachine(worker->allocation, worker->stackCount, worker->slotCount, worker->keyCount, worker->module);
+	the = modCloneMachine(&worker->creation, worker->module);
 	if (!the)
 		return -1;
 
@@ -419,13 +479,40 @@ void workerTerminate(xsMachine *the, modWorker worker, uint8_t *message, uint16_
 	xs_worker_destructor(worker);
 }
 
+void doModMessagePostToMachine(xsMachine *the, xsMachine *targetThe, uint8_t *message, modMessageDeliver callback, void *refcon)
+{
+	char *error;
+	int result;
+
+	if (message) {
+		result = modMessagePostToMachine(targetThe, (uint8_t *)&message, sizeof(message), callback, refcon);
+		if (!result)
+			return;
+		c_free(message);
+	}
+	else {
+		result = modMessagePostToMachine(targetThe, NULL, 0, callback, refcon);
+		if (!result)
+			return;
+	}
+
+	if (-1 == result)
+		error = "no memory";
+	else if (-2 == result)
+		error = "timeout";
+	else
+		error = "unknown";
+
+	xsUnknownError(error);
+}
+
 #ifdef INC_FREERTOS_H
 
 void workerLoop(void *pvParameter)
 {
 	modWorker worker = (modWorker)pvParameter;
 
-#if CONFIG_TASK_WDT
+#if CONFIG_ESP_TASK_WDT
 	esp_task_wdt_add(NULL);
 #endif
 
@@ -442,6 +529,8 @@ void workerLoop(void *pvParameter)
 		modMessageService(worker->the, modTimersNext());
 #if qca4020
 		qca4020_watchdog();
+#elif nrf52
+		modWatchDogReset();
 #endif
 	}
 }
@@ -453,7 +542,7 @@ extern void fxSampleInstrumentation(xsMachine * the, xsIntegerValue count, xsInt
 void workerSampleInstrumentation(modTimer timer, void *refcon, int refconSize)
 {
 	xsMachine *the = *(xsMachine **)refcon;
-#if ESP32
+#ifdef INC_FREERTOS_H
 	extern SemaphoreHandle_t gInstrumentMutex;
 	xSemaphoreTake(gInstrumentMutex, portMAX_DELAY);
 #endif
@@ -461,7 +550,7 @@ void workerSampleInstrumentation(modTimer timer, void *refcon, int refconSize)
 	fxSampleInstrumentation(the, 0, NULL);
 	modInstrumentMachineReset(the);
 
-#if ESP32
+#ifdef INC_FREERTOS_H
 	xSemaphoreGive(gInstrumentMutex);
 #endif
 }

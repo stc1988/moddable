@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "errno.h"
+#include "pico.h"
 #include "pico/stdlib.h"
 
 #ifdef __cplusplus
@@ -187,10 +188,10 @@ typedef void (*modMessageDeliver)(void *the, void *refcon, uint8_t *message, uin
  */
 
 #if defined(__XS__)
-    void modMachineTaskInit(xsMachine *the);
-    void modMachineTaskUninit(xsMachine *the);
-    void modMachineTaskWait(xsMachine *the);
-    void modMachineTaskWake(xsMachine *the);
+	void modMachineTaskInit(xsMachine *the);
+	void modMachineTaskUninit(xsMachine *the);
+	void modMachineTaskWait(xsMachine *the);
+	void modMachineTaskWake(xsMachine *the);
 #endif
 
 #define MOD_TASKS (false)
@@ -356,6 +357,8 @@ extern void pico_reboot(uint32_t kind);
 #define c_strstr strstr
 #define c_strrchr strrchr
 #define c_isEmpty(s) (!c_read8(s))
+#define c_strcspn strcspn
+#define c_strspn strspn
 
 /* ERROR */
 
@@ -416,6 +419,12 @@ extern uint8_t modSPIErase(uint32_t offset, uint32_t size);
 extern void pico_get_mac(uint8_t *id_out);		// 64 bit identifier
 
 uint32_t pico_get_reset_reason(void);
+
+#if CYW43_LWIP
+int pico_use_cyw43();
+int pico_cyw43_inited();
+void pico_unuse_cyw43();
+#endif
 
 #ifdef __cplusplus
 }

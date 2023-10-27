@@ -16,6 +16,22 @@
                 ]
             }
         },
+        "pico": {
+            "modules": {
+                "*": [
+                    "$(MODULES)/network/wifi/*",
+                    "$(MODULES)/network/wifi/pico/*"
+                ]
+            }
+        },
+        "nrf52": {
+            "modules": {
+                "*": [
+                    "$(MODULES)/network/wifi/*",
+                    "$(MODULES)/network/wifi/nrf52/*"
+                ]
+            }
+        },
         "lin": {
             "modules": {
                 "*": [

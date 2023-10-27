@@ -9,7 +9,7 @@
 		]
 	},
 	"defines": {
-		"audioin": {
+		"audioIn": {
 			"sampleRate": 22050,
 			"bitsPerSample": 16
 		}
@@ -24,7 +24,7 @@
 			}
 		},
 		"...": {
-			"error": "AUdioIn module unsupported"
+			"error": "audioIn module unsupported"
 		}
 	}
 }

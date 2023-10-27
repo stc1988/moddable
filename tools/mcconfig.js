@@ -54,7 +54,8 @@ class MakeFile extends MAKEFILE {
 				creation.heap.initial, ",", 
 				creation.heap.incremental, ",", 
 				creation.stack, ",", 
-				creation.keys.available, ",", 
+				creation.keys.initial, ",", 
+				creation.keys.incremental, ",", 
 				creation.keys.name, ",", 
 				creation.keys.symbol, ",",
 				creation.parser.buffer, ",",
@@ -89,7 +90,7 @@ class MakeFile extends MAKEFILE {
 		for (var result of [].concat(tool.jsFiles, tool.tsFiles)) {
 			this.write("\\\n\t$(MODULES_DIR)");
 			this.write(tool.slash);
-			this.write(result.target);
+			this.write(result.target.replaceAll('#', '\\#'));
 		}	
 		for (var result of tool.cFiles) {
 			var sourceParts = tool.splitPath(result.source);
@@ -122,13 +123,13 @@ class MakeFile extends MAKEFILE {
 			var sourceParts = tool.splitPath(result.source);
 			this.line("$(TMP_DIR)", tool.slash, sourceParts.name, sourceParts.extension, ".xsi: ", source);
 			this.echo(tool, "xsid ", sourceParts.name, sourceParts.extension, ".xsi");
-			this.line("\t$(XSID) ", source, " -o $(@D)");
+			this.line("\txsid ", source, " -o $(@D)");
 		}
 		for (var result of tool.hFiles) {
 			var sourceParts = tool.splitPath(result);
 			this.line("$(TMP_DIR)", tool.slash, sourceParts.name, ".h.xsi: ", result);
 			this.echo(tool, "xsid ", sourceParts.name, ".h.xsi");
-			this.line("\t$(XSID) ", result, " -o $(@D)");
+			this.line("\txsid ", result, " -o $(@D)");
 		}
 		this.line("");
 	}
@@ -140,8 +141,8 @@ class MakeFile extends MAKEFILE {
 		}	
 		this.line("");
 		if (tool.format) {
-			this.line("DISPLAY = ", formatValues[tool.format]);
-			this.line("ROTATION = ", tool.rotation);
+			this.line("COMMODETTOBITMAPFORMAT = ", formatValues[tool.format]);
+			this.line("POCOROTATION = ", tool.rotation);
 		}
 		this.write("HEADERS =");
 		for (var header of tool.hFiles) {
@@ -293,6 +294,28 @@ class espNMakeFile extends NMakeFile {
 }
 
 class esp32NMakeFile extends NMakeFile {
+	constructor(path) {
+		super(path)
+	}
+	generateObjectsRules(tool) {
+		for (var result of tool.cFiles) {
+			var source = result.source;
+			var target = result.target;
+			this.line("$(TMP_DIR)\\", target, ": ", source, " $(HEADERS)");
+			if (result.recipe) {
+				var recipe = tool.recipes[result.recipe];
+				recipe = recipe.replace(/\$</g, source);
+				this.write(recipe);
+			}
+			else {
+				this.echo(tool, "cc ", target);
+				this.line("\t$(CC) $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) ", source, " -o $@");
+			}
+		}
+	}
+}
+
+class nrf52NMakeFile extends NMakeFile {
 	constructor(path) {
 		super(path)
 	}
@@ -762,6 +785,7 @@ export default class extends Tool {
 		}
 		else
 			this.fragmentPath = path;
+		this.nativeCode = true;
 	}
 	createDirectories(path, first, last) {
 		this.createDirectory(path);
@@ -864,21 +888,31 @@ export default class extends Tool {
 		this.config = config;
 	}
 	filterCreation(creation) {
-		if (!creation.chunk) creation.chunk = { };
+		creation.chunk ??= {};
 		if (!creation.chunk.initial) creation.chunk.initial = 32768;
-		if (!creation.chunk.incremental) creation.chunk.incremental = 1024;
-		if (!creation.heap) creation.heap = { };
+		creation.chunk.incremental ??= 1024;
+		creation.heap ??= {};
 		if (!creation.heap.initial) creation.heap.initial = 2048;
-		if (!creation.heap.incremental) creation.heap.incremental = 64;
-		if (!creation.stack) creation.stack = 512;
-		if (!creation.keys) creation.keys = {};
-		if (!creation.keys.available) creation.keys.available = 256;
+		creation.heap.incremental ??= 64;
+		creation.stack ??= 384;
+		creation.keys ??= {};
+		if (creation.keys.initial) {
+			creation.keys.incremental ??= 0;
+		}
+		else if (creation.keys.available) {
+			creation.keys.initial = creation.keys.available;
+			creation.keys.incremental = 0;
+		}
+		else {
+			creation.keys.initial = 256;
+			creation.keys.incremental = 0;
+		}
 		if (!creation.keys.name) creation.keys.name = 127;
 		if (!creation.keys.symbol) creation.keys.symbol = 127;
-		if (!creation.parser) creation.parser = {};
+		creation.parser ??= {};
 		if (!creation.parser.buffer) creation.parser.buffer = 32768;
 		if (!creation.parser.table) creation.parser.table = 1993;
-		if (!creation.static) creation.static = 0;
+		creation.static ??= 0;
 		if (!creation.main) creation.main = "main";
 		if ((this.platform == "x-android") || (this.platform == "x-android-simulator") || (this.platform == "x-ios") || (this.platform == "x-ios-simulator")) {
 			creation.main = this.ipAddress;
@@ -1122,6 +1156,8 @@ export default class extends Tool {
 		var file = new DefinesFile(this.tmpPath + this.slash + "mc.defines.h", this);
 		file.generate(this);
 
+		this.writeFileString(this.tmpPath + this.slash + "manifest_flat.json", JSON.stringify(this.manifest, undefined, "\t")); 
+
 		var path = this.tmpPath + this.slash + "makefile", file;
 		if (this.windows) {
 			if (this.platform == "synergy")
@@ -1130,6 +1166,8 @@ export default class extends Tool {
 				file = new espNMakeFile(path);
 			else if (this.platform == "esp32")
 				file = new esp32NMakeFile(path);
+			else if (this.platform == "nrf52")
+				file = new nrf52NMakeFile(path);
 			else
 				file = new NMakeFile(path);
 		}
@@ -1149,18 +1187,32 @@ export default class extends Tool {
 		}
 
 		if (this.make) {
+			let cmd;
 			if (this.buildTarget) {
 				if (this.windows)
-					this.then("nmake", "/nologo", "/f", path, this.buildTarget);
+					cmd = ["nmake", "/nologo", "/f", path, this.buildTarget];
 				else 
-					this.then("make", "-f", path, this.buildTarget);
-			}
-			else {
+					cmd = ["make", "-f", path, this.buildTarget];
+			} else {
 				if (this.windows)
-					this.then("nmake", "/nologo", "/f", path);
+					cmd = ["nmake", "/nologo", "/f", path];
 				else
-					this.then("make", "-f", path);
+					cmd = ["make", "-f", path];
 			}
+
+			if ("esp32" === this.platform) {
+				if (!this.getenv("IDF_PATH"))
+					throw new Error ("$IDF_PATH not set. See set-up instructions at https://github.com/Moddable-OpenSource/moddable/blob/public/documentation/devices/esp32.md");
+
+				if (this.spawn(this.windows ? "where" : "which", "idf.py") !== 0) { // IDF installed but not sourced
+					if (this.windows)
+						cmd = ["cmd", "/C", `set IDF_EXPORT_QUIET=1 && pushd %IDF_PATH% && "%IDF_TOOLS_PATH%\\idf_cmd_init.bat" && popd && ${cmd.join(" ")}`];
+					else
+						cmd = ["bash", "-c", `export IDF_EXPORT_QUIET=1 && source $IDF_PATH/export.sh && ${cmd.join(" ")}`];
+				}
+			}
+
+			this.then.apply(this, cmd);
 		}
 	}
 }

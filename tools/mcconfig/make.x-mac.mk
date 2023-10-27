@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016-2021  Moddable Tech, Inc.
+# Copyright (c) 2016-2023  Moddable Tech, Inc.
 #
 #   This file is part of the Moddable SDK Tools.
 # 
@@ -59,7 +59,6 @@ XS_OBJECTS = \
 	$(LIB_DIR)/xsNumber.c.o \
 	$(LIB_DIR)/xsObject.c.o \
 	$(LIB_DIR)/xsPlatforms.c.o \
-	$(LIB_DIR)/xsProfile.c.o \
 	$(LIB_DIR)/xsPromise.c.o \
 	$(LIB_DIR)/xsProperty.c.o \
 	$(LIB_DIR)/xsProxy.c.o \
@@ -94,8 +93,11 @@ ifeq ($(INSTRUMENT),1)
 endif
 C_INCLUDES += $(DIRECTORIES)
 C_INCLUDES += $(foreach dir,$(XS_DIRECTORIES) $(TMP_DIR),-I$(dir))
+MACOS_ARCH ?=
+MACOS_VERSION_MIN ?= -mmacosx-version-min=10.7
+
 # XS_C_FLAGS = -c -arch i386
-XS_C_FLAGS = -c
+XS_C_FLAGS = -c $(MACOS_ARCH) $(MACOS_VERSION_MIN)
 ifeq ($(DEBUG),)
 	XS_C_FLAGS += -D_RELEASE=1 -O3
 else
@@ -107,12 +109,7 @@ C_FLAGS = $(XS_C_FLAGS)
 LIBRARIES = -framework CoreFoundation -framework CoreServices -framework Cocoa
 
 # LINK_FLAGS = -arch i386 -ObjC
-LINK_FLAGS = -ObjC
-
-MCLOCAL = $(BUILD_DIR)/bin/mac/debug/mclocal
-XSC = $(BUILD_DIR)/bin/mac/debug/xsc
-XSID = $(BUILD_DIR)/bin/mac/debug/xsid
-XSL = $(BUILD_DIR)/bin/mac/debug/xsl
+LINK_FLAGS = -ObjC $(MACOS_ARCH) $(MACOS_VERSION_MIN)
 	
 VPATH += $(XS_DIRECTORIES)
 
@@ -152,7 +149,7 @@ $(TMP_DIR)/mc.xs.c.o: $(TMP_DIR)/mc.xs.c $(HEADERS)
 	
 $(TMP_DIR)/mc.xs.c: $(MODULES) $(MANIFEST)
 	@echo "# xsl modules"
-	$(XSL) -b $(MODULES_DIR) -o $(TMP_DIR) $(PRELOADS) $(CREATION) $(MODULES)
+	xsl -b $(MODULES_DIR) -o $(TMP_DIR) $(PRELOADS) $(CREATION) $(MODULES)
 	
 $(RESOURCES_DIR)/main.icns: $(MAIN_DIR)/mac/main.icns
 	cp -rf $< $@

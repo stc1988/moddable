@@ -4,19 +4,30 @@
 		"$(MODDABLE)/modules/drivers/ili9341/manifest.json",
 		"$(MODULES)/pins/pwm/manifest.json",
 		"$(MODULES)/drivers/button/manifest.json",
-		"$(MODULES)/drivers/led/manifest.json"
+		"$(MODULES)/drivers/led/manifest.json",
+		"$(MODULES)/drivers/sensors/ft6206/manifest.json"
 	],
 	"modules": {
-		"setup/target": "./setup-target",
-		"embedded:sensor/touch/FT6x06": "$(MODULES)/drivers/sensors/ft6206/ft6206"
+		"setup/target": "./setup-target"
 	},
 	"preload": [
-		"embedded:sensor/touch/FT6x06",
 		"setup/target"
 	],
 	"config": {
 		"screen": "ili9341",
 		"backlight": 18
+	},
+	"creation": {
+		"static": 0,
+		"chunk": {
+			"initial": 78848,
+			"incremental": 0
+		},
+		"heap": {
+			"initial": 4928,
+			"incremental": 0
+		},
+		"stack": 512
 	},
 	"defines": {
 		"i2c": {

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020-2022 Moddable Tech, Inc.
+# Copyright (c) 2020-2023 Moddable Tech, Inc.
 #
 #   This file is part of the Moddable SDK Tools.
 # 
@@ -19,10 +19,15 @@
 
 
 file(TO_CMAKE_PATH "$ENV{MODDABLE}" ENV_MODDABLE)
-set(COMPONENT_SRCS "main.c")
-set(COMPONENT_ADD_INCLUDEDIRS ${ENV_MODDABLE}/xs/platforms/esp  ${ENV_MODDABLE}/xs/platforms/mc ${ENV_MODDABLE}/xs/includes ${ENV_MODDABLE}/modules/base/instrumentation)
+file(TO_CMAKE_PATH "$ENV{IDF_PATH}" ENV_IDF_PATH)
+file(TO_CMAKE_PATH "${TMP_DIR}" C_TMP_DIR)
 
-register_component()
+# register_component()
+
+idf_component_register(
+			SRCS "main.c"
+			INCLUDE_DIRS "." ${ENV_MODDABLE}/xs/platforms/esp  ${ENV_MODDABLE}/xs/platforms/mc ${ENV_MODDABLE}/xs/includes ${ENV_MODDABLE}/modules/base/instrumentation ${C_TMP_DIR}
+			)
 
 if (mxDebug EQUAL "1")
     target_compile_options(${COMPONENT_TARGET} PRIVATE -DmxDebug=1)
@@ -30,9 +35,20 @@ endif()
 if (DEBUGGER_SPEED)
     target_compile_options(${COMPONENT_TARGET} PRIVATE -DDEBUGGER_SPEED=${DEBUGGER_SPEED})
 endif()
+if (INSTRUMENT EQUAL "1")
+    target_compile_options(${COMPONENT_TARGET} PRIVATE -DMODINSTRUMENTATION=1)
+endif()
+
+if (USE_USB)
+    target_compile_options(${COMPONENT_TARGET} PRIVATE -DUSE_USB=${USE_USB})
+endif()
 
 add_prebuilt_library(xsesp32 ${CMAKE_BINARY_DIR}/xs_${ESP32_SUBCLASS}.a
-             PRIV_REQUIRES driver nvs_flash esp_adc_cal vfs spiffs fatfs bt)
+			REQUIRES esp_timer esp_wifi spi_flash bt esp_lcd nvs_flash spiffs
+		)
+
+#            REQUIRES spi_flash bt esp_lcd
+#   PRIV_REQUIRES driver nvs_flash esp_adc_cal vfs spiffs fatfs bt esp_lcd)
 
 target_link_libraries(${COMPONENT_LIB} PRIVATE xsesp32)
 

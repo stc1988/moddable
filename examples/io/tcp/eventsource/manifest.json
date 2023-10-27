@@ -1,0 +1,19 @@
+{
+	"include": [
+		"$(MODDABLE)/examples/manifest_base.json",
+		"$(MODDABLE)/examples/manifest_net.json",
+		"$(MODDABLE)/examples/io/tcp/eventsource/manifest_eventsource.json"
+	],
+	"creation": {
+		"stack": 1024,
+		"static": 65536
+	},
+	"modules": {
+		"*": "./main"
+	},
+	"data": { 
+		"*": [
+			"$(MODULES)/crypt/data/ca222"
+		]
+	}
+}

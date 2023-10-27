@@ -338,15 +338,15 @@ void fxCommandReceived(txSerialTool self, void *bufferIn, int size)
 {
 	uint8_t *buffer = bufferIn;
 	uint16_t resultId = (buffer[1] << 8) | buffer[2];
-	uint16_t resultCode = (buffer[3] << 8) | buffer[4];
+	int16_t resultCode = (buffer[3] << 8) | buffer[4];
 
 	if (resultCode) {
-		fprintf(stderr, "### fxCommandReceived: remote operation failed with resultCode %d\n", resultCode);
+		fprintf(stderr, "### fxCommandReceived: remote operation id %#04x failed with resultCode %d\n", (int)resultId, (int)resultCode);
 		exit(-1);
 	}
 #if mxTraceCommands
 	else
-		fprintf(stderr, "### fxCommandReceived: remote operation SUCCESS with resultCode %d\n", resultCode);
+		fprintf(stderr, "### fxCommandReceived: remote operation id %#04x SUCCESS with resultCode %d\n", (int)resultId, (int)resultCode);
 #endif
 
 	if (0xff02 == resultId) {	// uninstall
@@ -512,8 +512,21 @@ void fxReadNetworkBuffer(txSerialMachine machine, char* buffer, int size)
 			current++;
 		}
 		offset = limit - former;
-		if (offset)
+		if (offset) {
+			static char* logout = "logout/>\r\n";
+			static int c = 10;
 			fxWriteSerial(self, former, offset);
+			if (offset >= c) {
+				int i;
+				for (i = 0; i < c; i++) {
+					if (former[i] != logout[i])
+						break;
+				}
+				if (i == c) {
+					exit(0);
+				}
+			}
+		}
 	}
 }
 

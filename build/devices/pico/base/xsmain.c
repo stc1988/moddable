@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2021  Moddable Tech, Inc.
+ * Copyright (c) 2016-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -27,6 +27,10 @@
 #include "xsHost.h"
 #include "xsHosts.h"
 
+#if CYW43_LWIP
+#include "pico/cyw43_arch.h"
+#endif
+
 //#include "mc.defines.h"
 #ifndef MODDEF_XS_TEST
 	#define MODDEF_XS_TEST 1
@@ -46,7 +50,7 @@ void xs_setup(void)
 #endif
 
 	while (true) {
-		gThe = modCloneMachine(0, 0, 0, 0, NULL);
+		gThe = modCloneMachine(NULL, NULL);
 
 		modRunMachineSetup(gThe);
 
@@ -54,6 +58,11 @@ void xs_setup(void)
 		xsMachine *the = gThe;
 		while (gThe) {
 			modTimersExecute();
+#if CYW43_LWIP
+			if (pico_cyw43_inited()) {
+				cyw43_arch_poll();
+			}
+#endif
 			modMessageService(the, modTimersNext());
 
 			modInstrumentationAdjust(Turns, +1);
@@ -62,6 +71,11 @@ void xs_setup(void)
 #else
 		while (true) {
 			modTimersExecute();
+#if CYW43_LWIP
+			if (pico_cyw43_inited()) {
+				cyw43_arch_poll();
+			}
+#endif
 			modMessageService(the, modTimersNext());
 
 			modInstrumentationAdjust(Turns, +1);

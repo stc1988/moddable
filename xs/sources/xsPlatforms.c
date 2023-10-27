@@ -87,13 +87,21 @@ void fxDeleteMachinePlatform(txMachine* the)
 
 void fxBuildKeys(txMachine* the)
 {
-	int i;
-	for (i = 0; i < XS_SYMBOL_ID_COUNT; i++) {
-		txID id = the->keyIndex;
-		txSlot* description = fxNewSlot(the);
-		fxCopyStringC(the, description, gxIDStrings[i]);
-		the->keyArray[id] = description;
-		the->keyIndex++;
+	int i = 0;
+	{
+		txSlot* key = fxFindKey(the);
+		key->flag = XS_INTERNAL_FLAG | XS_DONT_DELETE_FLAG;
+		i++;
+	}
+	for (; i < XS_SYMBOL_ID_COUNT; i++) {
+		txSlot* key = fxFindKey(the);
+		txSlot* instance = fxNewInstance(the);
+		txSlot* property = fxNextSymbolProperty(the, instance, i, XS_NO_ID, XS_INTERNAL_FLAG);
+		fxNextStringXProperty(the, property, gxIDStrings[i], XS_NO_ID, XS_INTERNAL_FLAG);
+		key->flag = XS_INTERNAL_FLAG | XS_DONT_DELETE_FLAG;
+		key->kind = XS_REFERENCE_KIND;
+		key->value.reference = instance;
+		mxPop();
 	}
 	for (; i < XS_ID_COUNT; i++) {
 		fxID(the, gxIDStrings[i]);
@@ -143,6 +151,7 @@ txID fxFindModule(txMachine* the, txSlot* realm, txID moduleID, txSlot* slot)
 #endif
 	char buffer[C_PATH_MAX];
 	txInteger dot = 0;
+	txInteger hash = 0;
 	txString slash;
 	txString path;
 	fxToStringBuffer(the, slot, name, sizeof(name));
@@ -154,10 +163,18 @@ txID fxFindModule(txMachine* the, txSlot* realm, txID moduleID, txSlot* slot)
 			dot = 2;
 		}
 	}
+	else if (name[0] == '#') {
+		hash = 1;
+	}
+	else if (c_strncmp(name, "moddable:", 9) == 0)
+		c_memmove(name, name + 9, c_strlen(name) - 8);
+	
 #if mxWindows
 	{
 		char c;
 		slash = name;
+		if (!c_strncmp(name, "xsbug://", 8))
+			slash += 8;
 		while ((c = *slash)) {
 			if (c == '/')
 				*slash = '\\';
@@ -191,7 +208,27 @@ txID fxFindModule(txMachine* the, txSlot* realm, txID moduleID, txSlot* slot)
 				return XS_NO_ID;
 		}
 		*slash = 0;
+		if ((c_strlen(buffer) + c_strlen(name + dot)) >= sizeof(buffer))
+			mxRangeError("path too long");
 		c_strcat(buffer, name + dot);
+	}
+	else if (hash) {
+		if (moduleID == XS_NO_ID)
+			return XS_NO_ID;
+		path = buffer;
+		c_strcpy(path, fxGetKeyName(the, moduleID));
+		slash = c_strchr(buffer, mxSeparator);
+		if (!slash)
+			return XS_NO_ID;
+		if (path[0] == '@') {
+			slash = c_strchr(slash + 1, mxSeparator);
+			if (!slash)
+				return XS_NO_ID;
+		}
+		*(slash + 1) = 0;
+		if ((c_strlen(buffer) + c_strlen(name)) >= sizeof(buffer))
+			mxRangeError("path too long");
+		c_strcat(buffer, name);
 	}
 	else
 		path = name;
@@ -286,17 +323,19 @@ txScript* fxParseScript(txMachine* the, void* stream, txGetter getter, txUnsigne
 		fxParserTree(parser, stream, getter, flags, NULL);
 #ifdef mxDebug
 		parser->flags |= mxDebugFlag;
-		if (!parser->source) {
-			char tag[16];
-			parser->flags |= mxDebugFlag;
-			fxGenerateTag(the, tag, sizeof(tag), C_NULL);
-			parser->source = fxNewParserSymbol(parser, tag);
-		}
-		if (fxIsConnected(the)) {
-			if (getter == fxStringGetter)
-				fxFileEvalString(the, ((txStringStream*)stream)->slot->value.string, parser->source->string);
-			else if (getter == fxStringCGetter)
-				fxFileEvalString(the, ((txStringCStream*)stream)->buffer, parser->source->string);
+		if (!the->debugEval) {
+			if (!parser->source) {
+				char tag[16];
+				parser->flags |= mxDebugFlag;
+				fxGenerateTag(the, tag, sizeof(tag), C_NULL);
+				parser->source = fxNewParserSymbol(parser, tag);
+			}
+			if (fxIsConnected(the)) {
+				if (getter == fxStringGetter)
+					fxFileEvalString(the, ((txStringStream*)stream)->slot->value.string, parser->source->string);
+				else if (getter == fxStringCGetter)
+					fxFileEvalString(the, ((txStringCStream*)stream)->buffer, parser->source->string);
+			}
 		}
 #endif
 		fxParserHoist(parser);
@@ -339,6 +378,10 @@ void fxAbort(txMachine* the, int status)
 		break;
 	case XS_DEAD_STRIP_EXIT:
 		why = "dead strip";
+#ifdef mxDebug
+		if (the->debugEval)
+			mxUnknownError(why);
+#endif
 		break;
 	case XS_DEBUGGER_EXIT:
 		break;

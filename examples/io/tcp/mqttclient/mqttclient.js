@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022  Moddable Tech, Inc.
+ * Copyright (c) 2021-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -54,7 +54,7 @@ const NumberFormat = "number";
 class MQTTClient {
 	#socket;
 	#options;
-	#state;
+	#state = "resolving";
 	#writable = 0;		// to socket
 	#readable = 0;		// from socket
 	#payload = 0;		// from current message
@@ -63,43 +63,53 @@ class MQTTClient {
 
 	constructor(options) {
 		this.#options = {
-			onReadable: options.onReadable,
-			onWritable: options.onWritable,
-			onControl: options.onControl,
-			onClose: options.onClose,
-			onError: options.onError,
-			host: options.host ?? options.address,
+			host: options.host,
 			port: options.port,
 			id: options.id ?? "",
-			user: options.user,
-			password: options.password,
 			clean: options.clean ?? true,
-			will: options.will,
-			keepalive: options.keepalive ?? 0,
+			keepalive: options.keepAlive ?? options.keepalive ?? 0,		// for compatibilty. should eventually be removed
 			pending: []
 		};
 
 		if (!this.#options.host) throw new Error("host required");
 
-		this.#state = "resolving";
+		let value;
+		if (value = options.onReadable) this.#options.onReadable = value; 
+		if (value = options.onWritable) this.#options.onWritable = value; 
+		if (value = options.onControl) this.#options.onControl = value; 
+		if (value = options.onClose) this.#options.onClose = value; 
+		if (value = options.onError) this.#options.onError = value; 
+		if (value = options.user) this.#options.user = value; 
+		if (value = options.password) this.#options.password = value; 
+		if (value = options.will) this.#options.will = value; 
 		
 		const dns = new options.dns.io(options.dns);
-
 		dns.resolve({
 			host: this.#options.host, 
-		
+
 			onResolved: (host, address) => {
-				this.#socket = new options.socket.io({
-					...options.socket,
-					address,
-					port: this.#options.port ?? 80,
-					onReadable: this.#onReadable.bind(this),
-					onWritable: this.#onWritable.bind(this),
-					onError: this.#onError.bind(this)
-				});
-				this.#state = "connecting";
+				try {
+					this.#state = "connecting";
+					this.#socket = new options.socket.io({
+						...options.socket,
+						address,
+						host,
+						port: this.#options.port ?? 1883,
+						onReadable: count => this.#onReadable(count),
+						onWritable: count => this.#onWritable(count),
+						onError: error => this.#onError(error)
+					});
+					
+					this.#options.connecting = Timer.set(() => {
+						delete this.#options.connecting; 
+						this.#onError();
+					}, 30_000);		//@@ configurable
+				}
+				catch {
+					this.#onError?.();
+				}
 			},
-			onError: (err) => {
+			onError: () => {
 				this.#onError?.();
 			},
 		});
@@ -108,6 +118,7 @@ class MQTTClient {
 		Timer.clear(this.#options?.pending.timer);
 		Timer.clear(this.#options?.timer);
 		Timer.clear(this.#options?.keepalive);
+		Timer.clear(this.#options?.connecting);
 		this.#state = "closed";
 		this.#socket?.close();
 		this.#socket = undefined;
@@ -132,6 +143,7 @@ class MQTTClient {
 			if (0 === this.#options.remaining) {
 				delete this.#options.remaining;
 				this.#state = "connected";
+				this.#options.last = Date.now();
 			}
 				
 			return (this.#writable > Overhead) ? (this.#writable - Overhead) : 0;
@@ -247,7 +259,10 @@ class MQTTClient {
 			default:
 				throw new Error("unknown");
 		}
-		
+
+		if ("connected" === this.#state)
+			this.#options.last = Date.now();
+
 		return (this.#writable > Overhead) ? (this.#writable - Overhead) : 0;
 	}
 	read(count) {
@@ -274,7 +289,6 @@ class MQTTClient {
 	}
 	#onReadable(count) {
 		this.#readable = count;
-		this.#options.last = Date.now();
 
 		if (this.#payload)
 			return;
@@ -302,14 +316,17 @@ class MQTTClient {
 				// remaining length
 				case 1:
 					byte = socket.read();
-					parse.state = byte & 0x80 ? 2 : (parse.operation << 4);
 					parse.length = byte & 0x7F;
-
-					if (0 === parse.length) {		// no payload - handle immediately (PINGREQ, PINGRESP, DISCONNECT)
-						if (this.#parsed(parse))
-							return;
-						parse = {state: 0};
-					} 
+					if (byte & 0x80)
+						parse.state = 2
+					else {
+						parse.state = parse.operation << 4;
+						if (!parse.length) {		// no payload - handle immediately (PINGREQ, PINGRESP, DISCONNECT)
+							if (this.#parsed(parse))
+								return;
+							parse = {state: 0};
+						} 
+					}
 					break;
 
 				case 2:
@@ -578,6 +595,9 @@ class MQTTClient {
 		const socket = this.#socket;
 		const state = this.#state;
 		if ("connecting" === state) {
+			Timer.clear(options.connecting);
+			delete options.connecting;
+
 			const keepalive = Math.round(options.keepalive / 1000);
 			const id = makeStringBuffer(options.id);
 			const user = makeStringBuffer(options.user);
@@ -626,7 +646,7 @@ class MQTTClient {
 			delete options.will;
 
 			if (keepalive) {
-				options.keepalive = Timer.repeat(this.#keepalive.bind(this), keepalive * 500);
+				options.keepalive = Timer.repeat(() => this.#keepalive(), keepalive * 500);
 				options.keepalive.interval = keepalive * 1000;
 				options.last = Date.now();
 			}
@@ -648,15 +668,19 @@ class MQTTClient {
 				this.#options.onWritable?.call(this, this.#writable - Overhead);
 		}
 	}
-	#onError() {
+	#onError(msg) {
+		trace("mqttClient error: ", msg ?? "unknown", "\n");
 		this.#options.onError?.call(this);
 		this.close();
 	} 
 	#parsed(msg) {
 		const operation = msg.operation;
 // 		traceOperation(false, operation);
-		if (MQTTClient.CONNACK === operation)
+		if (MQTTClient.CONNACK === operation) {
+			if (msg.returnCode)
+				return void this.#onError("connection rejected")
 			this.#state = "connected";
+		}
 		else if ((MQTTClient.PUBREC === operation) || (MQTTClient.PUBREL === operation)) {
 			this.#queue({
 				operation: (MQTTClient.PUBREC === operation) ? MQTTClient.PUBREL : MQTTClient.PUBCOMP,
@@ -689,12 +713,12 @@ class MQTTClient {
 		const interval = options.keepalive.interval;
 		const now = Date.now();
 		if ((options.last + (interval >> 1)) > now)
-			return;		// received data within the keepalive interval
+			return;		// wrote control packet within the keepalive interval
 
 		if ((options.last + (interval + (interval >> 1))) < now)
 			return void this.#onError("time out"); // no response in too long
 
-		for (let i = 0, queue = this.#queue, length = queue.length; i < length; i++) {
+		for (let i = 0, queue = this.#options.pending, length = queue.length; i < length; i++) {
 			if (queue[i].keepalive && (MQTTClient.PINGREQ === queue[i].operation))
 				return void this.#onError("time out"); // unsent keepalive ping, exit
 		}

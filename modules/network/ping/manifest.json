@@ -1,0 +1,20 @@
+{
+	"include": "$(MODDABLE)/examples/manifest_net.json",
+	"platforms": {
+		"qca4020": {
+			"modules": {
+				"*": [
+					"$(BUILD)/devices/qca4020/modules/ping/*"
+				]
+			}
+		},
+		"...": {
+			"modules": {
+				"*": [
+					"$(MODDABLE)/modules/network/ping/ping"
+				]
+			}
+		}	
+	},
+	"preload": "ping"
+}

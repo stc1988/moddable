@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2022 Moddable Tech, Inc
+ * Copyright (c) 2020-2023 Moddable Tech, Inc
  *
  *   This file is part of the Moddable SDK Tools.
  *
@@ -20,9 +20,9 @@
 
  interface Trace {
 	(...log: (string | number | boolean)[]):void;
-	left(log: string | ArrayBuffer, conversation?: string):void;
-	center(log: string | ArrayBuffer, conversation?: string):void;
-	right(log: string | ArrayBuffer, conversation?: string):void;
+	left(log: string | ArrayBufferLike, conversation?: string):void;
+	center(log: string | ArrayBufferLike, conversation?: string):void;
+	right(log: string | ArrayBufferLike, conversation?: string):void;
 }
 declare const trace:Trace;
 
@@ -53,7 +53,7 @@ interface JSON {
 }
 
 interface StringConstructor {
-	fromArrayBuffer(buffer: ArrayBuffer): string;
+	fromArrayBuffer(buffer: ArrayBufferLike): string;
 }
 
 interface ArrayBufferConstructor {
@@ -62,12 +62,28 @@ interface ArrayBufferConstructor {
 }
 
 interface ArrayBuffer {
-	concat(...buffers: ArrayBuffer[]): ArrayBuffer;
+	concat(...buffers: ArrayBufferLike[]): ArrayBuffer;
 }
 
 interface BigIntConstructor {
 	bitLength(value: BigInt): number
-	fromArrayBuffer(buffer: ArrayBuffer): BigInt
+	fromArrayBuffer(buffer: ArrayBufferLike): BigInt
 }
+
+// integer math proposal
+interface Math {
+	idiv(a: number, b: number): number
+	imod(a: number, b: number): number
+	imuldiv(a: number, b: number, c: number): number
+	irandom(a: number, b: number): number
+	irem(a: number, b: number): number
+	mod(a: number, b: number): number
+}
+
+// already defined by TypeScript (because Web)
+// interface Error {
+// 	stack: string
+// }
+
 
 // Compartment?

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2018  Moddable Tech, Inc.
+ * Copyright (c) 2016-2022  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -191,6 +191,7 @@ struct PiuViewStruct {
 	uint8_t blend;
 	uint8_t updating;
 	PiuTick idleTicks;
+	PiuInterval idle;
 	// cache references to accelerate the update loop
 	xsSlot* screen;
 	xsSlot* pixels;
@@ -216,7 +217,6 @@ struct PiuViewStruct {
 typedef void (*PiuViewDrawContentProc)(void* it, PiuView* view, PiuCoordinate x, PiuCoordinate y, PiuDimension sw, PiuDimension sh);
 
 extern void PiuViewDrawContent(PiuView* self, PiuViewDrawContentProc proc, void* it, PiuCoordinate x, PiuCoordinate y, PiuDimension sw, PiuDimension sh);
-extern void PiuViewDrawFrame(PiuView* self, uint8_t *data, uint32_t dataSize, PiuCoordinate x, PiuCoordinate y, PiuDimension sw, PiuDimension sh);
 extern void PiuViewInvalidateRegion(PiuView* self, PiuRegion* region);
 extern void PiuViewReceiver(PocoPixel *pixels, int byteLength, void *refCon);
 extern void PiuViewValidateRegion(PiuView* self, PiuRegion* region);

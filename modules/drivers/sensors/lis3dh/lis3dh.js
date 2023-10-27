@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2021  Moddable Tech, Inc.
+ * Copyright (c) 2016-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -25,8 +25,6 @@
 	Datasheet: https://www.st.com/resource/en/datasheet/lis3dh.pdf
 
 */
-
-import Timer from "timer";
 
 const Register = Object.freeze({
 	WHOAMI: 0x0F,
@@ -84,7 +82,6 @@ const Gconversion = 9.80665;
 class LIS3DH {
 	#io;
 	#onAlert;
-	#onError;
 	#monitor;
 	#values = new Int16Array(3);
 	#multiplier = (1 / 16380) * Gconversion;
@@ -94,30 +91,33 @@ class LIS3DH {
 	#lowPower = 0;
 
 	constructor(options) {
-		const io = this.#io = new options.sensor.io({
+		const io = new options.sensor.io({
 			hz: 400_000,
 			address: 0x18,
 			...options.sensor
 		});
 
-		this.#onError = options.onError;
+		try {
+			if (0x33 !== io.readUint8(Register.WHOAMI))
+				throw new Error("unexpected sensor");
 
-		if (0x33 !== io.readByte(Register.WHOAMI)) {
-			this.#onError("unexpected sensor");
-			this.close();
-			return;
+			this.#io = io;
+		}
+		catch (e) {
+			io.close();
+			throw e;
 		}
 
 		const {alert, onAlert} = options;
 		if (alert && onAlert) {
-			this.#onAlert = options.onAlert;
+			this.#onAlert = onAlert;
 			this.#monitor = new alert.io({
 				mode: alert.io.InputPullUp,
 				...alert,
 				edge: alert.io.Falling,
 				onReadable: () => this.#onAlert()
 			});
-			io.writeByte(Register.CTRL6, Config.Interrupt.ACTIVE_LOW);
+			io.writeUint8(Register.CTRL6, Config.Interrupt.ACTIVE_LOW);
         }
 
 		this.configure({});
@@ -139,34 +139,34 @@ class LIS3DH {
 			this.#lowPower = options.lowPower ? 0b1000 : 0;
 
 		// CTRL1 - Enable axes, normal mode @ rate
-		io.writeByte(Register.CTRL1, this.#accelEnabled | this.#lowPower | (this.#rate << 4));
+		io.writeUint8(Register.CTRL1, this.#accelEnabled | this.#lowPower | (this.#rate << 4));
 
 		// CTRL4 - Full Scale, Block data update, big endian, High res
-		io.writeByte(Register.CTRL4, 0x88 | (this.#range << 4));
+		io.writeUint8(Register.CTRL4, 0x88 | (this.#range << 4));
 
 		if (undefined !== options.alert) {
 			const alert = options.alert;
 
 			if (undefined !== alert.mode) {
 				if (alert.mode === Config.Alert.MOVEMENT) {
-					io.writeByte(Register.CTRL2, 0b0000_0001);	// HP filter
-					io.writeByte(Register.CTRL3, 0b0100_0000);
-					io.writeByte(Register.CTRL5, 0b0000_1000);  // latch INT1
-					io.writeByte(Register.INT1CFG, 0b0010_1010); // enable xh,yh,zh
+					io.writeUint8(Register.CTRL2, 0b0000_0001);	// HP filter
+					io.writeUint8(Register.CTRL3, 0b0100_0000);
+					io.writeUint8(Register.CTRL5, 0b0000_1000);  // latch INT1
+					io.writeUint8(Register.INT1CFG, 0b0010_1010); // enable xh,yh,zh
 				}
 			}
 			if (undefined !== alert.threshold)
-				io.writeByte(Register.INT1THS, alert.threshold & 0x7F);
+				io.writeUint8(Register.INT1THS, alert.threshold & 0x7F);
 
 			if (undefined !== alert.duration)
-				io.writeByte(Register.INT1DUR, alert.duration & 0x7F);
+				io.writeUint8(Register.INT1DUR, alert.duration & 0x7F);
         }
 		else {
 			// CTRL2 - Filter
-			io.writeByte(Register.CTRL2, 0);
+			io.writeUint8(Register.CTRL2, 0);
 
 			// CTRL3 - Interrupt1
-			io.writeByte(Register.CTRL3, 0);
+			io.writeUint8(Register.CTRL3, 0);
 		}
 
 		if (this.#range === Config.Range.RANGE_16_G)
@@ -181,13 +181,12 @@ class LIS3DH {
 		this.#multiplier *= Gconversion;
 	}
 	status() {
-		return this.#io.readByte(Register.INT1SRC);
+		return this.#io.readUint8(Register.INT1SRC);
 	}
 	close() {
 		this.#monitor?.close();
-		this.#monitor = undefined;
-		this.#io.close();
-		this.#io = undefined;
+		this.#io?.close();
+		this.#io = this.#monitor = undefined;
 	}
 	sample() {
 		const io = this.#io;
@@ -195,7 +194,7 @@ class LIS3DH {
 		let ret = {};
 
 		if (this.#accelEnabled) {
-			io.readBlock(Register.OUT_X_L | 0x80, values);
+			io.readBuffer(Register.OUT_X_L | 0x80, values.buffer);
 			ret.x = values[0] * multiplier;
 			ret.y = values[1] * multiplier;
 			ret.z = values[2] * multiplier;
@@ -204,6 +203,5 @@ class LIS3DH {
 		return ret;
 	}
 }
-Object.freeze(LIS3DH.prototype);
 
 export default LIS3DH;

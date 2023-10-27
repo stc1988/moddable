@@ -1,6 +1,6 @@
 # Data
 Copyright 2017-2022 Moddable Tech, Inc.<BR>
-Revised: June 20, 2022
+Revised: September 8, 2022
 
 ## Table of Contents
 
@@ -8,8 +8,9 @@ Revised: June 20, 2022
 * [Hex](#hex)
 * [CRC](#crc)
 * [QRCode](#qrcode)
-* [Text](#text)
+* [TextDecoder & Text Encoder](#text)
 * [Inflate & Deflate (zlib)](#zlib)
+* [URL & URLSearchParams](#url)
 
 <a id="base64"></a>
 ## class Base64
@@ -121,7 +122,7 @@ Include the module's manifest to use it in a project:
 #### `CRC8(polynomial [, initial [, reflectInput [, reflectOutput [, xorOutput]]]])`
 #### `CRC16(polynomial [, initial [, reflectInput [, reflectOutput [, xorOutput]]]])`
 
-The `CRC8` and `CRC16` functions take a number of options used to specify the CRC checksum to calculate. 
+The `CRC8` and `CRC16` functions take a number of options used to specify the CRC checksum to calculate.
 
 | Parameter | Default | Description |
 | :---: | :---: | :--- |
@@ -135,39 +136,39 @@ The `polynomial`, `initial` and `xorOutput` values are 8-bit integers for CRC8 a
 
 The [crc example](../../examples/data/crc/main.js) demonstrates the definition of the parameters for a number of common CRC checksums:
 
-- `CRC-8` 
-- `CRC-8/CDMA2000` 
-- `CRC-8/DARC` 
-- `CRC-8/DVB-S2` 
-- `CRC-8/EBU` 
-- `CRC-8/I-CODE` 
-- `CRC-8/ITU` 
-- `CRC-8/MAXIM` 
-- `CRC-8/ROHC` 
-- `CRC-8/WCDM` 
-- `CRC-16/CCITT-FALSE` 
-- `CRC-16/ARC` 
-- `CRC-16/ARG-CCITT` 
-- `CRC-16/BUYPASS` 
-- `CRC-16/CDMA2000` 
-- `CRC-16/DDS-110` 
-- `CRC-16/DECT-R` 
-- `CRC-16/DECT-X` 
-- `CRC-16/DNP` 
-- `CRC-16/EN-13757` 
-- `CRC-16/GENIBUS` 
-- `CRC-16/MAXIM` 
-- `CRC-16/MCRF4XX` 
-- `CRC-16/RIELLO` 
-- `CRC-16/T10-DIF` 
-- `CRC-16/TELEDISK` 
-- `CRC-16/TMS37157` 
-- `CRC-16/USB` 
-- `CRC-A` 
-- `CRC-16/KERMIT` 
-- `CRC-16/MODBUS` 
-- `CRC-16/X-25` 
-- `CRC-16/XMODE` 
+- `CRC-8`
+- `CRC-8/CDMA2000`
+- `CRC-8/DARC`
+- `CRC-8/DVB-S2`
+- `CRC-8/EBU`
+- `CRC-8/I-CODE`
+- `CRC-8/ITU`
+- `CRC-8/MAXIM`
+- `CRC-8/ROHC`
+- `CRC-8/WCDM`
+- `CRC-16/CCITT-FALSE`
+- `CRC-16/ARC`
+- `CRC-16/ARG-CCITT`
+- `CRC-16/BUYPASS`
+- `CRC-16/CDMA2000`
+- `CRC-16/DDS-110`
+- `CRC-16/DECT-R`
+- `CRC-16/DECT-X`
+- `CRC-16/DNP`
+- `CRC-16/EN-13757`
+- `CRC-16/GENIBUS`
+- `CRC-16/MAXIM`
+- `CRC-16/MCRF4XX`
+- `CRC-16/RIELLO`
+- `CRC-16/T10-DIF`
+- `CRC-16/TELEDISK`
+- `CRC-16/TMS37157`
+- `CRC-16/USB`
+- `CRC-A`
+- `CRC-16/KERMIT`
+- `CRC-16/MODBUS`
+- `CRC-16/X-25`
+- `CRC-16/XMODE`
 
 
 ### `close()`
@@ -212,7 +213,7 @@ The following properties are supported in the options object:
 
 | Property | Description |
 | :---: | :--- |
-| `maxVersion` |  A number between 1 and 40 inclusive indicating the maximum version of the generated QR Code. The version number determines the amount of data the QR Code can contain. The implementation uses the mimumum version number possible for the size of the data provided. This property is optional and defaults to 40. |
+| `maxVersion` |  A number between 1 and 40 inclusive indicating the maximum version of the generated QR Code. The version number determines the amount of data the QR Code can contain. The implementation uses the minimum version number possible for the size of the data provided. This property is optional and defaults to 40. |
 | `input` |  A `String` or buffer containing the data to encode into the QR Code. This property is required. |
 
 The `qrCode` function throws an exception if it detects invalid parameters or that there is not enough memory to generate the QR Code.
@@ -248,9 +249,9 @@ Include the modules' manifest to use them in a project:
 	]
 ```
 
-The `TextDecoder` implements the [TextDecoder class](https://developer.mozilla.org/en-US/docs/Web/API/TextDecoder) as [specified by WhatWG](https://encoding.spec.whatwg.org/#interface-textdecoder). It accepts only UTF-8 input data.
+The `TextDecoder` implements the [TextDecoder class](https://developer.mozilla.org/en-US/docs/Web/API/TextDecoder) as [specified by WHATWG](https://encoding.spec.whatwg.org/#interface-textdecoder). It accepts only UTF-8 input data.
 
-The `TextEncoder` implements the [TextEncoder class](https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder) as [specified by WhatWG](https://encoding.spec.whatwg.org/#interface-textencoder). The implementation includes `encodeInto()`.
+The `TextEncoder` implements the [TextEncoder class](https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder) as [specified by WHATWG](https://encoding.spec.whatwg.org/#interface-textencoder). The implementation includes `encodeInto()`.
 
 <a id="zlib"></a>
 ## zlib: class Inflate and class Deflate
@@ -274,3 +275,26 @@ Include the modules' manifest to use them in a project:
 The [inflate example](../../examples/data/inflate/main.js) demonstrates how to decompress data as a one-shot operation and using the `onData` callback for streaming.
 
 > **Note**: A significant amount of memory is required for zlib decompression and especially for compression. These libraries may not work on all microcontrollers because of memory constraints.
+
+<a id="url"></a>
+## class URL and class URLSearchParams
+The `URL` and `URLSearchParams` classes provide utilities for working with URLs and their search parameters.
+
+```js
+import URL from "url";
+import {URL, URLSearchParams} from "url";
+```
+
+Include the module's manifest to use it in a project:
+
+```json
+	"include": [
+		"$(MODULES)/data/url/manifest.json"
+	]
+```
+
+`URL` implements the [URL class](https://developer.mozilla.org/en-US/docs/Web/API/URL) as [specified by WHATWG](https://url.spec.whatwg.org/#url-class). The implementation fully conforms to the standard with two exceptions: [Punycode](https://en.wikipedia.org/wiki/Punycode) and [IDNA](https://www.unicode.org/reports/tr46/) support are unimplemented. These are used primarily for the display and safe handling of user-entered URLs in browsers, which are not generally a concern on embedded systems. With some effort (and increase in code size), the implementation could support both.
+
+`URLSearchParams` implements the [URLSearchParams class](https://developer.mozilla.org/en-US/docs/Web/API/URL) as [specified by WHATWG](https://url.spec.whatwg.org/#urlsearchparams).
+
+[Tests for both](https://github.com/Moddable-OpenSource/moddable/tree/public/tests/modules/data/url) are included in the Moddable SDK. They are based on the tests used to validate these APIs in web browsers.

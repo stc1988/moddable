@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2022  Moddable Tech, Inc.
+ * Copyright (c) 2016-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -25,6 +25,7 @@
 #include "xsHost.h"
 #include "xsHosts.h"
 #include "modTimer.h"
+#include "modInstrumentation.h"
 
 extern "C" {
 	#include "user_interface.h"		// to get system_soft_wdt_feed
@@ -80,7 +81,7 @@ void setup()
 	wifi_set_opmode_current(NULL_MODE);
 
 #ifdef mxDebug
-	gThe = modCloneMachine(0, 0, 0, 0, NULL);
+	gThe = modCloneMachine(NULL, NULL);
 	if (!gThe) {
 		modLog("can't clone: no memory?");
 		while (true)
@@ -89,14 +90,14 @@ void setup()
 
 	modRunMachineSetup(gThe);
 #else
-	modRunMachineSetup(modCloneMachine(0, 0, 0, 0, NULL));
+	modRunMachineSetup(modCloneMachine(NULL, NULL));
 #endif
 }
 
 
 void loop(void)
 {
-#if mxDebug
+#ifdef mxDebug
 	fxReceiveLoop();
 #endif
 
@@ -107,6 +108,9 @@ void loop(void)
 		if (delayMS)
 			modDelayMilliseconds(delayMS);
 	}
+#ifdef mxInstrument
+	modInstrumentationAdjust(Turns, +1);
+#endif
 }
 
 /*

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020  Moddable Tech, Inc.
+ * Copyright (c) 2019-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -24,12 +24,17 @@
 #include "xsHost.h"
 #include "builtinCommon.h"
 
+#if kPinBanks
+
 #if ESP32
+	#include "soc/soc_caps.h"
 	portMUX_TYPE gCommonCriticalMux = portMUX_INITIALIZER_UNLOCKED;
 
 	static uint32_t gDigitalAvailable[kPinBanks] = {
-		0xFFFFFFFF,		//@@
-		0xFFFFFF		//@@
+		SOC_GPIO_VALID_GPIO_MASK & 0xFFFFFFFF,
+#if kPinBanks > 1
+		SOC_GPIO_VALID_GPIO_MASK >> 32
+#endif
 	};
 #elif defined(__ets__)
 	static uint32_t gDigitalAvailable[kPinBanks] = {
@@ -45,9 +50,25 @@
 		(1 << 15) |
 		(1 << 16)
 	};
+#elif nrf52
+	static uint32_t gDigitalAvailable[kPinBanks] = {
+		0xFFFFFFFF,
+		0x0000FFFF
+	};
+#elif defined(PICO_BUILD)
+    critical_section_t gCommonCriticalMux;
+
+	static uint8_t builtinInitialized = 0;
+	static uint32_t gDigitalAvailable[kPinBanks] = {
+		0x3FFFFFFF,		//@@
+#if CYW43_LWIP
+		0x00000001		//@@
+#else
+		0x00000000		//@@
+#endif
+	};
 #endif
 
-#if __COMMON__PINS__
 uint8_t builtinArePinsFree(uint32_t bank, uint32_t pins)
 {
 	return ((bank < kPinBanks) && (pins == (gDigitalAvailable[bank] & pins))) ? 1 : 0;
@@ -67,7 +88,7 @@ void builtinFreePins(uint32_t bank, uint32_t pins)
 	if (bank < kPinBanks)
 		gDigitalAvailable[bank] |= pins;
 }
-#endif
+#endif /* kPinBanks */
 
 xsSlot *builtinGetCallback(xsMachine *the, xsIdentifier id)
 {
@@ -170,4 +191,14 @@ uint32_t builtinGetUnsignedInteger(xsMachine *the, xsSlot *slot)
 
 	return (uint32_t)value;
 }
+
+#if defined(PICO_BUILD)
+uint8_t builtinInitIO()
+{
+	if (!builtinInitialized) {
+		critical_section_init(&gCommonCriticalMux);
+		builtinInitialized = 1;
+	}
+}
+#endif
 

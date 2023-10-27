@@ -1,0 +1,17 @@
+{
+	"modules": {
+		"url": "./url"
+	},
+	"preload": [
+		"url"
+	],
+	"platforms": {
+		"esp": {
+			"recipes": {
+				"strings-in-flash-force-l32": [
+					"url*"
+				]
+			}
+		}
+	}
+}

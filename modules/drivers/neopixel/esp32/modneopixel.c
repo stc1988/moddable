@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017  Moddable Tech, Inc.
+ * Copyright (c) 2016-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Tools.
  *
@@ -24,10 +24,6 @@
 
 #include "neopixel.h"
 
-#ifndef MODDEF_NEOPIXEL_RMT_CHANNEL
-	#define MODDEF_NEOPIXEL_RMT_CHANNEL (RMT_CHANNEL_0)
-#endif
-
 typedef struct {
 	pixel_settings_t	px;
 
@@ -46,7 +42,7 @@ static void setPixel(xsNeoPixel np, uint16_t index, uint32_t color);
 void xs_neopixel_destructor(void *data)
 {
 	if (data) {
-		xsNeoPixel np = data;
+		xsNeoPixel np = ((void *)((char *)data - offsetof(xsNeoPixelRecord, pixels)));
 
 		np_clear(&np->px);
 		np_show(&np->px);
@@ -57,37 +53,45 @@ void xs_neopixel_destructor(void *data)
 void xs_neopixel(xsMachine *the)
 {
 	xsNeoPixel np;
-	int pin, length, wstype;
+	int pin = -1, length = 0, wstype;
 	pixel_settings_t *px;
-	char *order;
+	char *order = NULL;
 	uint8_t shift;
 
 	xsmcVars(3);
+	if (xsmcHas(xsArg(0), xsID_length)) {
+		xsmcGet(xsVar(0), xsArg(0), xsID_length);
+		length = xsmcToInteger(xsVar(0));
+	}
 #ifdef MODDEF_NEOPIXEL_LENGTH
-	length = MODDEF_NEOPIXEL_LENGTH;
-#else
-	xsmcGet(xsVar(0), xsArg(0), xsID_length);
-	length = xsmcToInteger(xsVar(0));
+	else
+		length = MODDEF_NEOPIXEL_LENGTH;
+#endif
 	if (!length)
 		xsRangeError("no pixels");
-#endif
 
+	if (xsmcHas(xsArg(0), xsID_pin)) {
+		xsmcGet(xsVar(0), xsArg(0), xsID_pin);
+		pin = xsmcToInteger(xsVar(0));
+	}
 #ifdef MODDEF_NEOPIXEL_PIN
-	pin = MODDEF_NEOPIXEL_PIN;
-#else
-	xsmcGet(xsVar(0), xsArg(0), xsID_pin);
-	pin = xsmcToInteger(xsVar(0));
-#endif
-
-#ifdef MODDEF_NEOPIXEL_ORDER
-	order = MODDEF_NEOPIXEL_ORDER;
-#else
-	xsmcGet(xsVar(0), xsArg(0), xsID_order);
-	if (xsmcTest(xsVar(0)))
-		order = xsmcToString(xsVar(0));
 	else
-		order = "GRB";
+		pin = MODDEF_NEOPIXEL_PIN;
 #endif
+	if (pin < 0)
+		xsRangeError("no pin");
+
+	if (xsmcHas(xsArg(0), xsID_order)) {
+		xsmcGet(xsVar(0), xsArg(0), xsID_order);
+		if (xsmcTest(xsVar(0)))
+			order = xsmcToString(xsVar(0));
+	}
+#ifdef MODDEF_NEOPIXEL_ORDER
+	else
+		order = MODDEF_NEOPIXEL_ORDER;
+#endif
+	if (!order)
+		order = "GRB";
 
 	wstype = c_strlen(order);
 	if (3 == wstype)
@@ -97,13 +101,15 @@ void xs_neopixel(xsMachine *the)
 	else
 		xsUnknownError("invalid order");
 
-	np = c_calloc(sizeof(xsNeoPixelRecord) + ((length - 1) * sizeof(uint32_t)), 1);
+	np = c_calloc(sizeof(xsNeoPixelRecord) + 4 + 2 * ((length - 1) * sizeof(uint32_t)), 1);
 	if (!np)
 		xsUnknownError("no memory");
-	xsmcSetHostData(xsThis, &np->pixels);
+	xsmcSetHostBuffer(xsThis, &np->pixels, length * sizeof(uint32_t));
 
 	px = &np->px;
 	px->pixels = (void *)np->pixels;
+	px->modPixels = (void *)&(np->pixels[length]);
+
 	px->pixel_count = length;
 	px->brightness = 0x40;
 	c_strcpy(px->color_order, order);
@@ -128,70 +134,40 @@ void xs_neopixel(xsMachine *the)
 	}
 
 	px->nbits = (1 == wstype) ? 32 : 24;
-	if (xsmcHas(xsArg(0), xsID_timing)) {
-		uint8_t i;
-
-		xsmcGet(xsVar(0), xsArg(0), xsID_timing);
-		for (i = 0; i < 3; i++) {
-			bit_timing_t *bt;
-
-			if (0 == i) {
-				xsmcGet(xsVar(1), xsVar(0), xsID_mark);
-				bt = &px->timings.mark;
-			}
-			else if (1 == i) {
-				xsmcGet(xsVar(1), xsVar(0), xsID_reset);
-				bt = &px->timings.reset;
-			}
-			else if (2 == i) {
-				xsmcGet(xsVar(1), xsVar(0), xsID_space);
-				bt = &px->timings.space;
-			}
-
-			xsmcGet(xsVar(2), xsVar(1), xsID_level0);
-			bt->level0 = xsmcToInteger(xsVar(2));
-			xsmcGet(xsVar(2), xsVar(1), xsID_level1);
-			bt->level1 = xsmcToInteger(xsVar(2));
-			xsmcGet(xsVar(2), xsVar(1), xsID_duration0);
-			bt->duration0 = xsmcToInteger(xsVar(2)) / RMT_PERIOD_NS;
-			xsmcGet(xsVar(2), xsVar(1), xsID_duration1);
-			bt->duration1 = xsmcToInteger(xsVar(2)) / RMT_PERIOD_NS;
-		}
-	}
-	else {
-		px->timings.mark.level0 = 1;
-		px->timings.space.level0 = 1;
-		px->timings.mark.duration0 = 12;
-
-		if (1 == wstype) {
-			px->timings.mark.duration1 = 12;
-			px->timings.space.duration0 = 6;
-			px->timings.space.duration1 = 18;
-			px->timings.reset.duration0 = 900;
-			px->timings.reset.duration1 = 900;
-		}
-		else {
-			px->timings.mark.duration1 = 14;
-			px->timings.space.duration0 = 7;
-			px->timings.space.duration1 = 16;
-			px->timings.reset.duration0 = 600;
-			px->timings.reset.duration1 = 600;
-		}
-	}
 
 	px->pin = pin;
-	px->rmtChannel = MODDEF_NEOPIXEL_RMT_CHANNEL;
-	neopixel_init(px);
-
-	np_show(px);
+	if (-1 == neopixel_init(px)) {
+		xs_neopixel_close(the);
+		xsUnknownError("no rmt");
+	}
+	else {
+		np_show(px);
+	}
 }
 
 void xs_neopixel_close(xsMachine *the)
 {
-	xsNeoPixel np = xsmcGetHostDataNeoPixel(xsThis);
+	xsNeoPixel np = xsmcGetHostData(xsThis);
 	if (!np) return;
 	xs_neopixel_destructor(np);
 	xsmcSetHostData(xsThis, NULL);
+}
+
+void xs_neopixel_getPixel(xsMachine *the)
+{
+	xsNeoPixel np = xsmcGetHostDataNeoPixel(xsThis);
+	int index = xsmcToInteger(xsArg(0));
+
+	if ((index >= np->px.pixel_count) || (index < 0))
+		return;
+
+	if (24 == np->px.nbits) {
+		uint8_t *p = (index * 3) + (uint8_t *)np->pixels;
+		int color = (p[0] << 16) | (p[1] << 8) | p[2];
+		xsmcSetInteger(xsResult, color);
+	}
+	else
+		xsmcSetInteger(xsResult, np->pixels[index]);
 }
 
 void xs_neopixel_setPixel(xsMachine *the)
@@ -201,7 +177,7 @@ void xs_neopixel_setPixel(xsMachine *the)
 	uint32_t color = xsmcToInteger(xsArg(1));
 
 	if ((index >= np->px.pixel_count) || (index < 0))
-		xsRangeError("invalid");
+		return;
 
 	setPixel(np, (uint16_t)index, color);
 }
@@ -216,10 +192,13 @@ void xs_neopixel_fill(xsMachine *the)
 	if (argc > 1) {
 		index = xsmcToInteger(xsArg(1));
 		if ((index < 0) || (index >= count))
-			xsRangeError("invalid");
+			return;
 
-		if (argc > 2)
+		if (argc > 2) {
 			count = xsmcToInteger(xsArg(2));
+			if (count <= 0)
+				return;
+		}
 
 		if ((index + count) > np->px.pixel_count)
 			count = np->px.pixel_count - index;
@@ -265,9 +244,9 @@ void xs_neopixel_byteLength_get(xsMachine *the)
 void xs_neopixel_makeRGB(xsMachine *the)
 {
 	xsNeoPixel np = xsmcGetHostDataNeoPixel(xsThis);
-	int r = xsmcToInteger(xsArg(0)) << np->redShift;
-	int g = xsmcToInteger(xsArg(1)) << np->greenShift;
-	int b = xsmcToInteger(xsArg(2)) << np->blueShift;
+	int r = (xsmcToInteger(xsArg(0)) & 0xFF) << np->redShift;
+	int g = (xsmcToInteger(xsArg(1)) & 0xFF) << np->greenShift;
+	int b = (xsmcToInteger(xsArg(2)) & 0xFF) << np->blueShift;
 
 	if (24 == np->px.nbits)
 		xsmcSetInteger(xsResult, r | g | b);

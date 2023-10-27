@@ -148,6 +148,9 @@ void fxBuildGlobal(txMachine* the)
 
 	mxPush(mxObjectPrototype);
 	slot = fxNewObjectInstance(the);
+#if mxExplicitResourceManagement
+	slot = fxNextHostFunctionProperty(the, slot, mxCallback(fx_Iterator_dispose), 0, mxID(_Symbol_dispose), XS_DONT_ENUM_FLAG);
+#endif
 	slot = fxNextHostFunctionProperty(the, slot, mxCallback(fx_Iterator_iterator), 0, mxID(_Symbol_iterator), XS_DONT_ENUM_FLAG);
 	mxPull(mxIteratorPrototype);
 	
@@ -157,7 +160,7 @@ void fxBuildGlobal(txMachine* the)
 	fxNewHostConstructor(the, mxCallback(fx_Enumerator), 0, XS_NO_ID);
 	mxPull(mxEnumeratorFunction);
 	
-	fxNewHostFunction(the, mxCallback(fxThrowTypeError), 0, XS_NO_ID);
+	fxNewHostFunction(the, mxCallback(fxThrowTypeError), 0, XS_NO_ID, XS_NO_ID);
 	mxThrowTypeErrorFunction = *the->stack;
 	slot = the->stack->value.reference;
 	slot->flag |= XS_DONT_PATCH_FLAG;
@@ -203,6 +206,16 @@ txSlot* fxCheckIteratorInstance(txMachine* the, txSlot* slot, txID id)
 	}
 	mxTypeError("this is no iterator");
 	return C_NULL;
+}
+
+txSlot* fxCheckIteratorResult(txMachine* the, txSlot* result) 
+{
+	txSlot* value = result->value.reference->next;
+	while (value && (value->flag & XS_INTERNAL_FLAG))
+		value = value->next;
+	mxCheck(the, (value != C_NULL) && (value->ID == mxID(_value)));
+	mxCheck(the, (value->next != C_NULL) && (value->next->ID == mxID(_done)));
+	return value;
 }
 
 txBoolean fxIteratorNext(txMachine* the, txSlot* iterator, txSlot* next, txSlot* value)
@@ -285,6 +298,13 @@ txSlot* fxNewIteratorInstance(txMachine* the, txSlot* iterable, txID id)
 	mxPop();
 	return instance;
 }
+
+#if mxExplicitResourceManagement
+void fx_Iterator_dispose(txMachine* the)
+{	
+	fxIteratorReturn(the, mxThis);
+}
+#endif
 
 void fx_Iterator_iterator(txMachine* the)
 {
@@ -397,7 +417,7 @@ void fx_Enumerator_next(txMachine* the)
 txBoolean fxGlobalDeleteProperty(txMachine* the, txSlot* instance, txID id, txIndex index) 
 {
 	txBoolean result = fxOrdinaryDeleteProperty(the, instance, id, index);
-	if (id && (id < XS_INTRINSICS_COUNT) && result) {
+	if ((XS_SYMBOL_ID_COUNT <= id) && (id < XS_INTRINSICS_COUNT) && result) {
 		txSlot* globals = instance->next;
 		globals->value.table.address[id] = C_NULL;
 	}
@@ -407,7 +427,7 @@ txBoolean fxGlobalDeleteProperty(txMachine* the, txSlot* instance, txID id, txIn
 txSlot* fxGlobalGetProperty(txMachine* the, txSlot* instance, txID id, txIndex index, txFlag flag) 
 {
 	txSlot* result = C_NULL;
-	if (id && (id < XS_INTRINSICS_COUNT)) {
+	if ((XS_SYMBOL_ID_COUNT <= id) && (id < XS_INTRINSICS_COUNT)) {
 		txSlot* globals = instance->next;
 		result = globals->value.table.address[id];
 		if (!result) {
@@ -423,7 +443,7 @@ txSlot* fxGlobalGetProperty(txMachine* the, txSlot* instance, txID id, txIndex i
 txSlot* fxGlobalSetProperty(txMachine* the, txSlot* instance, txID id, txIndex index, txFlag flag) 
 {
 	txSlot* result = C_NULL;
-	if (id && (id < XS_INTRINSICS_COUNT)) {
+	if ((XS_SYMBOL_ID_COUNT <= id) && (id < XS_INTRINSICS_COUNT)) {
 		txSlot* globals = instance->next;
 		result = globals->value.table.address[id];
 		if (!result) {

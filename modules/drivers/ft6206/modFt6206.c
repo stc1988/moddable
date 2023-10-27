@@ -2,17 +2,17 @@
  * Copyright (c) 2016-2021 Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
- * 
+ *
  *   The Moddable SDK Runtime is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU Lesser General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
  *   (at your option) any later version.
- * 
+ *
  *   The Moddable SDK Runtime is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU Lesser General Public License for more details.
- * 
+ *
  *   You should have received a copy of the GNU Lesser General Public License
  *   along with the Moddable SDK Runtime.  If not, see <http://www.gnu.org/licenses/>.
  *
@@ -20,7 +20,7 @@
 
 /*
 	FT6206 I2C touch driver
-	
+
 	modeled on https://github.com/adafruit/Adafruit_FT6206_Library
 */
 
@@ -74,7 +74,7 @@
 #ifndef MODDEF_FT6206_RAW
 	#define MODDEF_FT6206_RAW (false)
 #endif
-#if MODDEF_FT6206_RAW || !defined(MODDEF_FT6206_RAW_LEFT) || !defined(MODDEF_FT6206_RAW_RIGHT) || !defined(MODDEF_FT6206_RAW_TOP) || !defined(MODDEF_FT6206_RAW_BOTTOM) 
+#if MODDEF_FT6206_RAW || !defined(MODDEF_FT6206_RAW_LEFT) || !defined(MODDEF_FT6206_RAW_RIGHT) || !defined(MODDEF_FT6206_RAW_TOP) || !defined(MODDEF_FT6206_RAW_BOTTOM)
 	#define MODDEF_FT6206_CALIBRATE (false)
 #else
 	#define MODDEF_FT6206_CALIBRATE (true)
@@ -120,7 +120,7 @@ void xs_FT6202(xsMachine *the)
 
 	xsmcVars(1);
 
-	modI2CConfig(ft->i2c, MODDEF_FT6206_HZ, MODDEF_FT6206_SDA, MODDEF_FT6206_SCL, MODDEF_FT6206_ADDR, 1000);
+	modI2CConfig(ft->i2c, MODDEF_FT6206_HZ, MODDEF_FT6206_SDA, MODDEF_FT6206_SCL, MODDEF_FT6206_ADDR, 250);
 	modI2CInit(&ft->i2c);
 
 	data[0] = FT6206_REG_VENDID;
@@ -128,7 +128,7 @@ void xs_FT6202(xsMachine *the)
 	if (err) xsUnknownError("write FT6206_REG_VENDID failed");
 	err = modI2CRead(&ft->i2c, data, 1, true);
 	if (err) xsUnknownError("read FT6206_REG_VENDID failed");
-	if (17 != data[0]) xsUnknownError("bad FT6206_REG_VENDID");
+	if ((0 != data[0]) && (1 != data[0]) && (2 != data[0]) && (17 != data[0])) xsUnknownError("bad FT6206_REG_VENDID");
 
 	data[0] = FT6206_REG_CHIPID;
 	err = modI2CWrite(&ft->i2c, data, 1, false);

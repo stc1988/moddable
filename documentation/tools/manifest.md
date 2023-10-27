@@ -1,6 +1,6 @@
 # Manifest
-Copyright 2017-2021 Moddable Tech, Inc.<BR>
-Revised: June 16, 2021
+Copyright 2017-2023 Moddable Tech, Inc.<BR>
+Revised: August 3, 2023
 
 A manifest is a JSON file that describes the modules and resources necessary to build a Moddable app. This document explains the properties of the JSON object and how manifests are processed by the Moddable SDK build tools.
 
@@ -11,6 +11,7 @@ A manifest is a JSON file that describes the modules and resources necessary to 
 * [Properties](#properties)
 	* [`build`](#build)
 	* [`include`](#include)
+		* [Including git repositories](#include-git)
 	* [`creation`](#creation)
 	* [`defines`](#defines)
 	* [`config`](#config)
@@ -29,20 +30,20 @@ A manifest is a JSON file that describes the modules and resources necessary to 
 
 As a simple example, consider the manifest of the [balls example app](../../examples/piu/balls). It is quite short:
 
-```
+```json
 {
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
-		"$(MODDABLE)/examples/manifest_piu.json",
+		"$(MODDABLE)/examples/manifest_piu.json"
 	],
 	"modules": {
-		"*": "./main",
+		"*": "./main"
 	},
 	"resources":{
 		"*": [
-			"./balls",
+			"./balls"
 		]
-	},
+	}
 }
 ```
 
@@ -58,38 +59,54 @@ The `modules` and `resources` objects list modules and resources that are specif
 
 The `build` object defines the environment variables used to build paths in other paths in the manifest. Notice that the manifest can access shell environment variables like `MODDABLE`.
 
-```js
+```json
 "build": {
 	"BUILD": "$(MODDABLE)/build",
 	"MODULES": "$(MODDABLE)/modules",
 	"COMMODETTO": "$(MODULES)/commodetto",
-	"PIU": "$(MODULES)/piu",
-},
+	"PIU": "$(MODULES)/piu"
+}
 ```
 
 When you build an application, the default output directory name is taken from the directory name containing the manifest. You can specify a different output directory name by specifying a `NAME` environment variable in the `build` object.
 
-```js
+```json
 "build": {
 	"NAME": "balls"
 }
 ```
-	
-#### `ESP32-specific environment variables`
 
-The `esp32` platform object supports a number of optional environment variables applications can use to customize the Moddable SDK build for ESP32 and ESP32-S2:
+#### ESP32-specific environment variables
+
+The `esp32` platform object supports a number of optional environment variables applications can use to customize the Moddable SDK build for ESP32 devices:
 
 | Variable | Description |
-| --- | :--- | 
-| `SDKCONFIGPATH` | Pathname to a directory containing custom [sdkconfig defaults](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/build-system.html#custom-sdkconfig-defaults) entries. 
-| `PARTITIONS_FILE` | Full pathname to a [partition table](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/partition-tables.html) in CSV format.
+| --- | :--- |
+| `ESP32_SUBCLASS` | If a device other than the `esp32`, set `esp32s2`, `esp32s3`, `esp32c3`, `esp32c6`, or `esp32h2`
+| `SDKCONFIGPATH` | Pathname to a directory containing custom [sdkconfig defaults](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/build-system.html#custom-sdkconfig-defaults) entries.
+| `PARTITIONS_FILE` | Pathname to a [partition table](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/partition-tables.html) in CSV format.
 | `BOOTLOADERPATH` | Pathname to a directory containing a custom [ESP-IDF bootloader component](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/bootloader.html#custom-bootloader).
+| `C_FLAGS_SUBPLATFORM` | C compiler flags to use when compiling Moddable SDK sources.
+| `USE_USB` | Configure the device to use the USB port for programming and debugging.
 
 > Note: This document does not cover native code ESP32 and ESP-IDF build details. Refer to the [ESP-IDF documentation](https://docs.espressif.com/projects/esp-idf/en/v4.2/esp32/get-started/index.html) for additional information.
- 
+
+#### `ESP32_SUBCLASS`
+
+The target ESP32 subclass for a build is specified using the `ESP32_SUBCLASS` property.
+
+Valid `ESP32_SUBCLASS`:
+|   |
+| :--- |
+| `esp32s2` |
+| `esp32s3` |
+| `esp32c3` |
+| `esp32c6` |
+| `esp32h2` |
+
 The [modClock](https://github.com/Moddable-OpenSource/moddable/tree/public/contributed/modClock) example app leverages the `SDKCONFIGPATH` and `PARTITIONS_FILE` environment variables:
 
-```js
+```json
 "build": {
 	"SDKCONFIGPATH": "$(MODDABLE)/contributed/modClock/sdkconfig",
 	"PARTITIONS_FILE": "$(MODDABLE)/contributed/modClock/sdkconfig/partitions.csv"
@@ -97,6 +114,60 @@ The [modClock](https://github.com/Moddable-OpenSource/moddable/tree/public/contr
 ```
 
 In this example, the modClock [partitions.csv](https://github.com/Moddable-OpenSource/moddable/blob/public/contributed/modClock/sdkconfig/partitions.csv) file completely replaces the base Moddable SDK [partitions.csv](https://github.com/Moddable-OpenSource/moddable/blob/public/build/devices/esp32/xsProj-esp32/partitions.csv) file at build time to provide additional partitions for OTA updates. The `sdkconfig` directory contains sdkconfig files that override and supplement the base Moddable SDK [sdkconfig.defaults](https://github.com/Moddable-OpenSource/moddable/blob/public/build/devices/esp32/xsProj-esp32/sdkconfig.defaults) entries. The following section describes how the Moddable ESP32 build processes sdkconfig files.
+
+The `C_FLAGS_SUBPLATFORM` environment variable is for use in manifests of subplatforms (and should not be used elsewhere). It allows compiler specific settings unique to a subplatform. For example, a subplatform using first generation ESP32 silicon with external PSRAM would enable the following settings to cause the compiler to generate code to work around the silicon bugs:
+
+```json
+"build": {
+	"C_FLAGS_SUBPLATFORM": "-mfix-esp32-psram-cache-issue -mfix-esp32-psram-cache-strategy=memw"
+},
+```
+
+#### How partitions.csv is processed
+The [ESP-IDF partition table](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/partition-tables.html) must contain certain partitions to support certain features:
+
+- [Mods](../xs/mods.md) requires a partition to store the mod's archive
+- Files requires a partition to store the file system
+- Over-the-Air (OTA) updates require two OTA app partitions plus an OTA Data partition
+
+The `mcconfig` tool can automatically modify the partition map to support these features. This simplifies development by eliminating the need to manually create a targeted partition table for projects. It makes optimal use of flash space, by only creating partitions for features that are used by the project.
+
+The `mcconfig` tool creates new partitions by dividing the factory app partition based on the features used by the project. The default partition tables for Moddable SDK devices all have a single factory app partition and so support this feature of `mcconfig`.
+
+To determine the features in-use, `mcconfig` checks the following manifest [defines](#defines). These defines are set in the manifests that require them, so it is usually unnecessary to set them in project manifests.
+
+- Mods – if `XS_MODS` is set to a non-zero value, mods are considered to be in use
+
+```json
+"defines": {
+	"XS_MODS": 1
+}
+```
+- Files - if `file partition` is set to the name of a partition, files are considered to be in use
+
+```json
+"defines": {
+	"file": {
+		"partition": "#storage"
+	}
+}
+```
+- OTA – if `ota autospilt` is set, OTA is considered to be in-use.
+
+```json
+"defines": {
+	"ota": {
+		"autosplit": 1
+	}
+}
+```
+If the partitions.csv file for the project includes a partition for these features, `mcconfig` does not automatically create the corresponding partition. For example, if a mods partition is defined in the partitions.csv file, `mcconfig` does not create one from the factory app partition.
+
+The partitions created have the following sizes. Options could be implemented in the future to configure these sizes.
+
+- Mods - 256 KB
+- Storage - 64 KB
+- OTA - 8 KB is reserved for the OTA Data partition required by the ESP-IDF. The space in the factory app partition not used for other partitions is divided into two OTA app partitions.
 
 #### How sdkconfig files are processed
 
@@ -112,6 +183,16 @@ The Moddable SDK sdkconfig defaults files are located in the `$MODDABLE/build/de
 5. On release builds, the application `$(SDKCONFIGPATH)/sdkconfig.defaults.release` options, when provided,  are merged.
 6. On release instrumented builds, the application `$(SDKCONFIGPATH)/sdkconfig.inst` options, when provided, are merged.
 
+### `USE_USB`
+
+Some ESP32 devices support USB directly instead of using a USB-to-serial chip to program. For example, the `esp32-s2`, `esp32-s3` and `esp32-c3` class devices. The `esp32` does not support USB.
+
+1. `esp32-s2` devices support TinyUSB. Set `"USE_USB": "1"`.
+2. `esp32-s3` devices support both TinyUSB and JTAG-CDC. Set `"USE_USB"` to either `1` for TinyUSB or `2` for JTAG-CDC.
+3. `esp32c3` devices support JTAG-CDC. Set `"USE_USB": "2"`.
+
+
+
 ***
 
 <a id="include"></a>
@@ -119,11 +200,11 @@ The Moddable SDK sdkconfig defaults files are located in the `$MODDABLE/build/de
 
 The `include` array lists other manifests to include. It's often convenient to include other manifests to avoid repeating common properties in every manifest. For example, the [`bmp280` example](../../examples/drivers/bmp280) includes `manifest_base.json` and the manifest for the BMP280 temperature/barometric pressure sensor:
 
-```
+```json
 "include": [
 	"$(MODDABLE)/examples/manifest_base.json",
-	"$(MODULES)/drivers/bmp280/manifest.json",
-],
+	"$(MODULES)/drivers/bmp280/manifest.json"
+]
 ```
 
 Each example application in the Moddable SDK includes at least one of the manifests in the [examples directory](../../examples/).
@@ -138,6 +219,67 @@ Each example application in the Moddable SDK includes at least one of the manife
 
 Several touch, display, and sensor [drivers](../../modules/drivers) and some [networking modules](../../modules/network) also have manifests to make it easier to incorporate them into your projects.
 
+<a id="include-git"></a>
+#### Including Git Repositories
+A manifest may directly include git repositories. The repositories are cloned as part of the build process and stored with the project's temporary build files.
+
+> **Note**: This feature is experimental. While the intent is to keep the manifest JSON as-is for including git repositories, changes may be made based on feedback from experience using the feature.
+
+Each git repository to fetch is specified by an object in the `include` array of a manifest:
+
+- The object must have a `"git"` property, which is the git URL of the repo.
+- The object can have an `"include"` property, which is the path of the manifest to include.
+
+The default value of the `"include"` property is `"manifest.json"`. The `"include"` property can also be an array of paths in order to include several manifests from the same repository.
+
+```json
+{
+	"build": {
+		"URL":"https://github.com/moddable"
+	},
+	"include": [
+		{
+			"git":"$(URL)/test0.git"
+		},
+		{
+			"git":"$(URL)/test1.git",
+			"include":"modules/test1/manifest.json"
+		},
+		{
+			"git":"$(URL)/test23.git",
+			"include": [
+				"test2/module.json",
+				"test3/module.json"
+			]
+		}
+	]
+}
+```
+
+When processing a manifest, **mcconfig** and **mcrun** clone or pull the repositories into the `repos` directory in the project's temporary build files.
+
+Specific branches and tags are accessed using the optional `branch` and `tag` properties:
+
+```json
+    {
+		"git":"$(URL)/test0.git",
+		"branch":"feature-test"
+	},
+    {
+		"git":"$(URL)/test1.git",
+		"tag":"3.5.0"
+	},
+    {
+		"git":"$(URL)/test2.git",
+		"tag":"3.5.0",
+		"branch":"feature-test"
+	},
+```
+
+The hostname, pathname. branch, and tag are included in the path where the cloned repositories are stored to avoid conflicts.
+
+> **Note**: Cloned repositories are deleted when the project is cleaned (`mcconfig -d -m -t clean`). Therefore, the cloned repositories should not be edited.
+
 ***
 
 <a id="creation"></a>
@@ -145,28 +287,54 @@ Several touch, display, and sensor [drivers](../../modules/drivers) and some [ne
 
 The `creation` object defines the creation parameters of the XS machine that will run the application. The values used in `manifest_base.json` work for many applications, including the vast majority of example applications in the Moddable SDK.
 
-```js		
+```json
 "creation": {
 	"static": 32768,
 	"chunk": {
 		"initial": 1536,
-		"incremental": 512,
+		"incremental": 512
 	},
 	"heap": {
 		"initial": 512,
-		"incremental": 64,
+		"incremental": 64
 	},
 	"stack": 256,
 	"keys": {
-		"available": 32,
+		"initial": 32,
+		"incremental": 0,
 		"name": 53,
-		"symbol": 3,
+		"symbol": 3
 	},
-	"main": "main",
+	"main": "main"
 },
 ```
 
-These values correspond to machine allocation values [described](../xs/XS%20in%20C.md#machine-allocation) in the XS in C documentation (the sole exception is the `main` property, which is the module specifier of the module loaded following the [set-up phase](../base/setup.md)). Take care when changing these values as configuring them improperly can result in an unstable or unusable system. Bigger values are not always better, especially on devices with limited resources.
+These values correspond to machine allocation values [described](../xs/XS%20in%20C.md#machine-allocation) in the XS in C documentation (the sole exception is the `main` property, which is the module specifier of the module to load following the [set-up phase](../base/setup.md)). Take care when changing these values as configuring them improperly can result in an unstable or unusable system. Bigger values are not always better, especially on devices with limited resources.
+
+#### `static` memory allocations
+The `static` property is the most important for microcontrollers. It is the total number of bytes that can be used by the JavaScript language runtime, including the stack, objects, byte-code, strings, etc. It is allocated as a single block of memory to minimize bookkeeping overhead and to allow the runtime to dynamically manage areas for fixed size slots and variable sized chunks. The `static` property also imposes a strict limit on the memory allocated by the language runtime to guarantee that scripts cannot exceed their memory budget (if they could, a script could take memory required by the host OS leading to failures and instabilities).
+
+The `static` property is ignored by the simulator. The simulator falls back to on-demand memory allocation. Since computers have nearly infinite memory compared to microcontrollers, this isn't a problem.
+
+There are some situations where the `static` allocation technique of dynamically managing a single block of memory isn't the optimal choice. The first is on microcontrollers where RAM is divided across two or more discontiguous address ranges (the ESP32 is a common example). In this case, using a single block of memory for the virtual machine prevents it from using some of the available RAM. The second is when the application has been carefully tuned to work with specific sized slot and chunk pools. Done correctly, such tuning can improve performance by reducing the frequency of garbage collections, particularly at launch. For these situations, do the following:
+
+- Set the `static` property to `0` to disable the static allocator. (It is not enough to delete the property as the `static` property may be defined in an included manifest)
+- Set the `chunk` `initial` property to the size of the the chunk heap in bytes
+- Set the `heap` `initial` property to the number of slots (on a 32-bit MCU, each slot is 16 bytes)
+- Set the `chunk` `incremental` and `heap` `incremental` properties to `0`. (this prevents the slot and chunk heaps from growing beyond their initial allocations)
+
+Using this approach, the memory allocator on the microcontroller allocates the following:
+
+- one memory block for the stack (the stack must be contiguous)
+- one memory block for chunks (this eliminates memory lost to chunk fragmentation and allows allocating the largest possible blocks from JavaScript)
+- one or more memory blocks for the slot heap
+
+> **Note**: The microcontroller runtime could be enhanced to allocate the chunk heap across multiple memory blocks; to-date this has not been necessary. The chunk heap is allocated before the stack and slot heap, allowing it to allocate the largest possible contiguous free block.
+
+#### `keys`
+the VM allocates space for `keys.initial` runtime keys when the VM is initialized. For embedded projects, this number should be small as most keys are allocated when building, not at runtime. To prevent more keys than this being allocated at runtime, set `keys.incremental` to `0`. To allow additional keys to be allocated, provide a non-zero value for `keys.incremental`.
+
+The `keys` property previously contained an `available` property for the total number of keys that could be allocated at runtime. If `keys.initial` is not provided, the value of `keys.available` is used with `keys.incremental` of `0`.
 
 ***
 
@@ -186,12 +354,12 @@ The `config` object contains values that are accessible to the application's scr
 
 It is commonly used in the manifests of target platforms to specify the screen driver, touch driver, and default rotation. These properties are used by [Commodetto](../commodetto/commodetto.md) and [Piu](../piu/piu.md) setup modules.
 
-```
+```json
 "config": {
 	"screen": "ili9341",
 	"touch": "ft6206",
-	"rotation": 90,
-},
+	"rotation": 90
+}
 ```
 
 It is also used in the [files manifest](../../modules/files/file/manifest.json) to specify the file system root for each platform, some networking examples to specify Wi-Fi credentials, and more.
@@ -222,32 +390,32 @@ The `strip` object in a manifest is a string or array that specifies which built
 
 - `"*"` means anything unused by the application can be stripped. This is the value used by `manifest_base.json`.
 
-	```js
+	```json
 	"strip": "*",
 	```
-	
-- If you only want certain objects or functions to be stripped, pass in an array of JavaScript class and function names. Items in the array will be stripped. Anything not included in the array will not be stripped. 
+
+- If you only want certain objects or functions to be stripped, pass in an array of JavaScript class and function names. Items in the array will be stripped. Anything not included in the array will not be stripped.
 
 	The following strips the `RegExp` class, `eval` function, and the two `Array` reduce functions.
 
-	```js
+	```json
 	"strip": [
-		"RegExp”,
-		"eval",		
-		“Array.prototype.reduce”,
-		“Array.prototype.reduceRight”,
+		"RegExp",
+		"eval",
+		"Array.prototype.reduce",
+		"Array.prototype.reduceRight"
 	]
 	```
 
 - You can also specify that specific items be stripped in addition to anything unused.
 
 	The `"*"` means to strip everything unused. Because the two `Array` reduce functions are explicitly listed, they will also be stripped, whether or not they are used.
-	
-	```js
+
+	```json
 	"strip": [
-		“*”,
-		“Array.prototype.reduce”,
-		“Array.prototype.reduceRight”,
+		"*",
+		"Array.prototype.reduce",
+		"Array.prototype.reduceRight"
 	]
 	```
 
@@ -262,12 +430,12 @@ The `modules` object specifies which modules are included in the build. Every mo
 
 The `*` parameter of the `modules` object is an array of paths.
 
-```js
+```json
 "modules": {
 	"*": [
 		"./main",
 		"./assets"
-	],
+	]
 },
 ```
 
@@ -279,7 +447,7 @@ import ASSETS from "assets"
 
 If you want to use a different name with the `import` statement, you can include additional key/value pairs to the `modules` object where the key is the new name and the value is the path to the file. For example:
 
-```js
+```json
 "modules": {
 	"*": [
 		"./main",
@@ -303,11 +471,11 @@ Preloading of modules is a unique feature of the XS JavaScript engine. Preloadin
 
 The `preload` array in a manifest lists the modules preloaded in the read-only XS virtual machine that will be cloned to run the app. It is an array of module names, not paths to modules.
 
-```js
+```json
 "preload": [
 	"main",
-	"assets",
-],
+	"assets"
+]
 ```
 
 ***
@@ -323,11 +491,11 @@ Image assets may be in the GIF, JPEG, and PNG image file formats.
 
 GIF and JPEG files should be included in the `*` array.
 
-```
+```json
 "resources":{
 	"*": [
-		"$(MODDABLE)/examples/assets/images/screen2",
-	],
+		"$(MODDABLE)/examples/assets/images/screen2"
+	]
 },
 ```
 
@@ -345,11 +513,11 @@ PNG files are converted by `png2bmp`. This converts them into BMP files that Mod
 
 The Moddable SDK uses bitmap fonts. The metrics are provided by binary FNT files, the glyphs are provided by PNG files. The glyph files are converted like all other PNGs (using `png2bmp`) so you can include fonts in the `*`, `*-alpha`, `*-color`, or `*-mask` arrays.
 
-```
+```json
 "resources":{
 	"*-mask": [
-		"$(MODDABLE)/examples/assets/fonts/OpenSans-Semibold-28",
-	],
+		"$(MODDABLE)/examples/assets/fonts/OpenSans-Semibold-28"
+	]
 },
 ```
 
@@ -361,12 +529,12 @@ The [`AudioOut` module](../pins/audioout.md) requires that audio be provided eit
 
 Wave audio files should be included in the `*` array.
 
-```
+```json
 "resources":{
 	"*": [
-		"$(MODDABLE)/examples/assets/sounds/bflatmajor",
-	],
-},
+		"$(MODDABLE)/examples/assets/sounds/bflatmajor"
+	]
+}
 ```
 
 ***
@@ -382,12 +550,12 @@ The `data` object specifies resources to be included in the build. Unlike resour
 
 TLS certificates should be included in the `*` array.
 
-```
+```json
 "data":{
 	"*": [
-		"$(MODULES)/crypt/data/ca170",
-	],
-},
+		"$(MODULES)/crypt/data/ca170"
+	]
+}
 ```
 
 ***
@@ -399,27 +567,27 @@ The `platforms` object allows you to specify properties that should only apply t
 
 This is useful when the implementation of a module varies from platform to platform. For example, the `platforms` object below comes from the digital manifest. The implementation of GPIO requires the use of native code, and is different on each platform. This ensures that the correct modules are used for each target device.
 
-```js
+```json
 "platforms": {
 	"esp": {
 		"modules": {
-			"*": "$(MODULES)/pins/digital/esp/*",
-		},
+			"*": "$(MODULES)/pins/digital/esp/*"
+		}
 	},
 	"esp32": {
 		"modules": {
-			"*": "$(MODULES)/pins/digital/esp32/*",
-		},
+			"*": "$(MODULES)/pins/digital/esp32/*"
+		}
 	},
 	"gecko": {
 		"modules": {
-			"*": "$(MODULES)/pins/digital/gecko/*",
-		},
+			"*": "$(MODULES)/pins/digital/gecko/*"
+		}
 	},
 	"qca4020": {
 		"modules": {
-			"*": "$(MODULES)/pins/digital/qca4020/*",
-		},
+			"*": "$(MODULES)/pins/digital/qca4020/*"
+		}
 	},
 	"...": {
 		"error": "pins/digital module unsupported"
@@ -431,7 +599,7 @@ The "`...`" platform identifier is a fallback for when no matching platform is f
 
 For example, if the `platforms` object of a manifest is as follows, building for the `esp` platform will not generate a warning/error, building for the `esp32` platform will generate a warning, and building for any other platform will generate an error.
 
-```
+```json
 "platforms":{
 	"esp": {
 		/* modules and resources for ESP8266 go here */
@@ -441,7 +609,7 @@ For example, if the `platforms` object of a manifest is as follows, building for
 		/* modules and resources for ESP32 go here */
 	},
 	"..." {
-		"error": "module XYZ unsupported",
+		"error": "module XYZ unsupported"
 	}
 }
 ```
@@ -453,43 +621,45 @@ A subplatform is used to configure an application for the variations in a produc
 
 For example, there are subplatforms for each Gecko device supported by the Moddable SDK. In the segment below, the `timer` module is specified for all `gecko` platforms. The `wakeup` pin is defined differently for the `gecko/giant` and `gecko/mighty` subplatforms.
 
-```
-"platforms":{
+```json
+"platforms": {
     "gecko": {
         "modules": {
             "*": [
                 "$(MODULES)/base/timer/*",
-                "$(MODULES)/base/timer/mc/*",
+                "$(MODULES)/base/timer/mc/*"
             ]
         },
         "preload": [
-            "timer",
-        ],
+            "timer"
+        ]
     },
     "gecko/giant": {
         "defines": {
             "sleep": {
-                "wakeup": { "pin": 2, "port": "gpioPortF", "level": 0, "register": "GPIO_EM4WUEN_EM4WUEN_F2" },
-            },
-	     },
+                "wakeup": { "pin": 2, "port": "gpioPortF", "level": 0, "register": "GPIO_EM4WUEN_EM4WUEN_F2" }
+            }
+	     }
 	 },
     "gecko/mighty": {
         "defines": {
             "sleep": {
-                "wakeup": { "pin": 7, "port": "gpioPortF", "level": 0, "register": "GPIO_EXTILEVEL_EM4WU1" },
-            },
-         },
-      },
+                "wakeup": { "pin": 7, "port": "gpioPortF", "level": 0, "register": "GPIO_EXTILEVEL_EM4WU1" }
+            }
+         }
+    }
 }
-```      
+```
+
 The `SUBPLATFORM` variable is automatically defined by `mcconfig`. A wildcard is a available to match on subplatforms. The `SUBPLATFORM` variable and wildcard match used together simplify inclusion of subplatform manifests:
 
+```json
 	"platforms": {
 		"esp32/*": {
 			"include": "./targets/$(SUBPLATFORM)/manifest.json"
-		},
+		}
 	}
-
+```
 ***
 
 <a id="bundle"></a>
@@ -504,15 +674,15 @@ The `bundle` object is used by the [`mcbundle` command line tool](./tools.md#mcb
 | `custom` | | The path to the `custom` directory for the app's configurable preferences, if any.
 | `icon` | | The path to the custom app icon, if any. The app icon is the image that shows up next to the app name in the Moddable Store. The Moddable Store supplies a default icon based on the Moddable logo.
 
-```
+```json
 "bundle": {
     "id": "tech.moddable.countdown",
     "devices": [
         "esp/moddable_one",
         "com.moddable.two"
     ],
-    “custom”: “./store/custom”,
-    “icon”: “./store/icon.png”
+    "custom": "./store/custom",
+    "icon": "./store/icon.png"
 }
 ```
 
@@ -530,37 +700,37 @@ In the `modules` and `resources` objects, paths can be relative to the manifest 
 
 When combining properties with the same name, the combined value is the concatenation of the two values. For example, consider the following snippet of a manifest for an application. The `include`  object specifies that the properties from `manifest_base.json` should be included. The `modules` object specifies just one module called `main`.
 
-```
+```json
 {
 	"include": [
-		"$(MODDABLE)/examples/manifest_base.json",
+		"$(MODDABLE)/examples/manifest_base.json"
 	],
 	"modules": {
 		"*": "./main"
 	},
-	/* other manifest properties here
+	/* other manifest properties here */
 }
 ```
 
 The `modules` object from `manifest_base.json` includes additional modules from the `$MODDABLE/modules` directory.
 
-```
+```json
 	"modules": {
 		"*": [
 			"$(MODULES)/files/resource/*",
-			"$(MODULES)/base/instrumentation/*",
-		],
+			"$(MODULES)/base/instrumentation/*"
+		]
 	},
 ```
 
-The concatenation of the two `modules` objects includes the `main` module from the application, and the resouce and instrumentation modules specified in `manifest_base.json`.
+The concatenation of the two `modules` objects includes the `main` module from the application, and the resource and instrumentation modules specified in `manifest_base.json`.
 
-```
+```json
 "modules": {
 	"*": [
 		"./main",
 		"$(MODULES)/files/resource/*",
-		"$(MODULES)/base/instrumentation/*",
+		"$(MODULES)/base/instrumentation/*"
 	]
 }
 ```
@@ -573,10 +743,10 @@ The second pass matches files with the properties of the combined `modules` and 
 - The name of each property is the target file, the value of the property is the source file or an array of source files.
 - Targets and sources can use the `*` wildcard to represent all files that match.
 
-There are no extensions:
+These are the supported extensions:
 
-- In the `modules` object, `mcconfig` matches `.c`, `.cc`, `.cpp`, `.h`, `.js` and `.m` files. 
-- In the `resources` object, `mcconfig` matches `.act`, `.bmp`, `.cct`, `.dat`, `.der`, `.fnt`, `.jpg`, `.json`, `.nfnt`, `.pk8`, `.png`, `.rle`, `.ski` and `.ttf`  files. 
+- In the `modules` object, `mcconfig` matches `.c`, `.cc`, `.cpp`, `.h`, `.js` and `.m` files.
+- In the `resources` object, `mcconfig` matches `.act`, `.bmp`, `.cct`, `.dat`, `.der`, `.fnt`, `.jpg`, `.json`, `.nfnt`, `.pk8`, `.png`, `.rle`, `.ski` and `.ttf`  files.
 
 ### Generate
 
@@ -594,12 +764,13 @@ You will find the default make fragments and the make recipes in `$(MODDABLE)/to
 
 The make fragment can be specified in a platform's `build` section.
 
-	"platforms": {
-		"gecko/*": {
-			"build": {
-				"MAKE_FRAGMENT": "$(BUILD)/devices/gecko/targets/$(SUBPLATFORM)/make.$(SUBPLATFORM).mk",
-			}
-			"include": "./targets/$(SUBPLATFORM)/manifest.json"
-		},
+```json
+"platforms": {
+	"gecko/*": {
+		"build": {
+			"MAKE_FRAGMENT": "$(BUILD)/devices/gecko/targets/$(SUBPLATFORM)/make.$(SUBPLATFORM).mk"
+		}
+		"include": "./targets/$(SUBPLATFORM)/manifest.json"
 	}
-
+}
+```

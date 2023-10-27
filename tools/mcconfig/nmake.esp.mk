@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016-2021  Moddable Tech, Inc.
+# Copyright (c) 2016-2023  Moddable Tech, Inc.
 #
 #   This file is part of the Moddable SDK Tools.
 #
@@ -54,8 +54,13 @@ UPLOAD_RESET = nodemcu
 UPLOAD_VERB = -v
 !ENDIF
 
-START_SERIAL2XSBUG= $(BUILD_DIR)\bin\win\release\serial2xsbug $(UPLOAD_PORT) $(DEBUGGER_SPEED) 8N1 -elf $(TMP_DIR)\main.elf
+!IF "$(XSBUG_LOG)"=="1"
+START_SERIAL2XSBUG= echo "Starting serial2xsbug..." && set "XSBUG_PORT=$(XSBUG_PORT)" && set "XSBUG_HOST=$(XSBUG_HOST)" && cd $(MODDABLE)\tools\xsbug-log && node xsbug-log $(BUILD_DIR)\bin\win\release\serial2xsbug $(UPLOAD_PORT) $(DEBUGGER_SPEED) 8N1 -elf $(TMP_DIR)\main.elf
+START_XSBUG=
+!ELSE
+START_SERIAL2XSBUG= echo "Starting serial2xsbug..." && set "XSBUG_PORT=$(XSBUG_PORT)" && set "XSBUG_HOST=$(XSBUG_HOST)" && $(BUILD_DIR)\bin\win\release\serial2xsbug $(UPLOAD_PORT) $(DEBUGGER_SPEED) 8N1 -elf $(TMP_DIR)\main.elf
 START_XSBUG= tasklist /nh /fi "imagename eq xsbug.exe" | find /i "xsbug.exe" > nul || (start $(BUILD_DIR)\bin\win\release\xsbug.exe)
+!ENDIF
 KILL_SERIAL2XSBUG= -tasklist /nh /fi "imagename eq serial2xsbug.exe" | (find /i "serial2xsbug.exe" > nul) && taskkill /f /t /im "serial2xsbug.exe" >nul 2>&1
 
 
@@ -68,14 +73,6 @@ FLASH_LAYOUT = eagle.flash.4m.ld
 # WiFi & Debug settings
 WIFI_SSID =
 WIFI_PSK =
-
-# End user-configurable values. Derived values below.
-!IF "$(WIFI_SSID)"!=""
-NET_CONFIG_FLAGS += -DWIFI_SSID=$(WIFI_SSID)
-!ENDIF
-!IF "$(WIFI_PSK)"!=""
-NET_CONFIG_FLAGS += -DWIFI_PSK=$(WIFI_PSK)
-!ENDIF
 
 CORE_DIR = $(ARDUINO_ROOT)\cores\esp8266
 
@@ -123,7 +120,6 @@ XS_OBJ = \
 	$(LIB_DIR)\xsNumber.o \
 	$(LIB_DIR)\xsObject.o \
 	$(LIB_DIR)\xsPlatforms.o \
-	$(LIB_DIR)\xsProfile.o \
 	$(LIB_DIR)\xsPromise.o \
 	$(LIB_DIR)\xsProperty.o \
 	$(LIB_DIR)\xsProxy.o \
@@ -164,7 +160,6 @@ SDK_SRC = \
 	$(CORE_DIR)\core_esp8266_noniso.c \
 	$(CORE_DIR)\core_esp8266_phy.c \
 	$(CORE_DIR)\core_esp8266_postmortem.c \
-	$(CORE_DIR)\core_esp8266_si2c.c \
 	$(CORE_DIR)\core_esp8266_timer.c \
 	$(CORE_DIR)\core_esp8266_wiring.c \
 	$(CORE_DIR)\core_esp8266_wiring_digital.c \
@@ -183,6 +178,7 @@ SDK_SRC = \
 	$(CORE_DIR)\umm_malloc\umm_malloc.c \
 	$(PLATFORM_DIR)\lib\bsearch\bsearch.c \
 	$(PLATFORM_DIR)\lib\fmod\e_fmod.c \
+	$(PLATFORM_DIR)\lib\i2c\core_esp8266_si2c_patched.c \
 	$(PLATFORM_DIR)\lib\rtc\rtctime.c \
 	$(PLATFORM_DIR)\lib\tinyprintf\tinyprintf.c \
 	$(PLATFORM_DIR)\lib\tinyuart\tinyuart.c \
@@ -196,7 +192,6 @@ SDK_OBJ = \
 	$(LIB_DIR)\core_esp8266_noniso.o \
 	$(LIB_DIR)\core_esp8266_phy.o \
 	$(LIB_DIR)\core_esp8266_postmortem.o \
-	$(LIB_DIR)\core_esp8266_si2c.o \
 	$(LIB_DIR)\core_esp8266_timer.o \
 	$(LIB_DIR)\core_esp8266_wiring.o \
 	$(LIB_DIR)\core_esp8266_wiring_digital.o \
@@ -214,12 +209,12 @@ SDK_OBJ = \
 	$(LIB_DIR)\umm_malloc.o \
 	$(LIB_DIR)\bsearch.o \
 	$(LIB_DIR)\e_fmod.o \
+	$(LIB_DIR)\core_esp8266_si2c_patched.o \
 	$(LIB_DIR)\rtctime.o \
 	$(LIB_DIR)\tinyprintf.o \
 	$(LIB_DIR)\tinyuart.o \
 	$(LIB_DIR)\tinyi2s.o \
-	$(LIB_DIR)\Schedule.o \
-	$(PLATFORM_DIR)\lib\fmod\e_fmod.c
+	$(LIB_DIR)\Schedule.o
 
 CPP_INCLUDES = \
 	-I$(TOOLS_DIR)\xtensa-lx106-elf\include\c++\4.8.5
@@ -234,19 +229,6 @@ AR  = $(TOOLS_BIN)\xtensa-lx106-elf-ar
 ESPTOOL = python $(ESPRESSIF_SDK_ROOT)\components\esptool_py\esptool\esptool.py
 
 AR_OPTIONS = rcs
-
-MODDABLE_TOOLS_DIR = $(BUILD_DIR)\bin\win\release
-BUILDCLUT = $(MODDABLE_TOOLS_DIR)\buildclut
-COMPRESSBMF = $(MODDABLE_TOOLS_DIR)\compressbmf
-RLE4ENCODE = $(MODDABLE_TOOLS_DIR)\rle4encode
-MCLOCAL = $(MODDABLE_TOOLS_DIR)\mclocal
-MCREZ = $(MODDABLE_TOOLS_DIR)\mcrez
-PNG2BMP = $(MODDABLE_TOOLS_DIR)\png2bmp
-IMAGE2CS = $(MODDABLE_TOOLS_DIR)\image2cs
-WAV2MAUD = $(MODDABLE_TOOLS_DIR)\wav2maud
-XSC = $(MODDABLE_TOOLS_DIR)\xsc
-XSID = $(MODDABLE_TOOLS_DIR)\xsid
-XSL = $(MODDABLE_TOOLS_DIR)\xsl
 
 LD_DIRS = \
 	-L$(MODDABLE)\build\devices\esp\sdk\ld\win \
@@ -265,12 +247,12 @@ C_DEFINES = \
 	-DARDUINO_ARCH_ESP8266 \
 	-DWINBUILD=1 \
 	-DESP8266 \
-	$(NET_CONFIG_FLAGS) \
+	-DCONT_STACKSIZE=4608 \
 	-DmxUseDefaultSharedChunks=1 \
 	-DmxRun=1 \
 	-DmxNoConsole=1 \
-	-DkCommodettoBitmapFormat=$(DISPLAY) \
-	-DkPocoRotation=$(ROTATION)
+	-DkCommodettoBitmapFormat=$(COMMODETTOBITMAPFORMAT) \
+	-DkPocoRotation=$(POCOROTATION)
 !IF "$(DEBUG)"=="1"
 C_DEFINES = $(C_DEFINES) -DmxDebug=1 -DDEBUGGER_SPEED=$(DEBUGGER_SPEED)
 !ENDIF
@@ -369,6 +351,7 @@ release: precursor
 build: precursor
 
 deploy:
+	$(KILL_SERIAL2XSBUG)
 	if not exist $(BIN_DIR)\main.bin (echo # Build before deploy) else ( $(UPLOAD_TO_ESP) )
 
 xsbug:
@@ -452,6 +435,11 @@ $(LIB_DIR)\e_fmod.o: $(PLATFORM_DIR)\lib\fmod\e_fmod.c
 	$(CC) $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) $? -o $@
 	$(AR) $(AR_OPTIONS) $(LIB_ARCHIVE) $@
 
+$(LIB_DIR)\core_esp8266_si2c_patched.o: $(PLATFORM_DIR)\lib\i2c\core_esp8266_si2c_patched.c
+	@echo # cc $(@F)
+	$(CC) $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) $? -o $@
+	$(AR) $(AR_OPTIONS) $(LIB_ARCHIVE) $@
+
 $(LIB_DIR)\rtctime.o: $(PLATFORM_DIR)\lib\rtc\rtctime.c
 	@echo # cc $(@F)
 	$(CC) $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) $? -o $@
@@ -497,11 +485,11 @@ $(TMP_DIR)\main.o: $(BUILD_DIR)\devices\esp\main.cpp
 
 $(TMP_DIR)\mc.xs.c: $(MODULES) $(MANIFEST)
 	@echo # xsl modules
-	$(XSL) -b $(MODULES_DIR) -o $(TMP_DIR) $(PRELOADS) $(STRIPS) $(CREATION) -u / $(MODULES)
+	xsl -b $(MODULES_DIR) -o $(TMP_DIR) $(PRELOADS) $(STRIPS) $(CREATION) -u / $(MODULES)
 
 $(TMP_DIR)\mc.resources.c: $(DATA) $(RESOURCES) $(MANIFEST)
 	@echo # mcrez resources
-	$(MCREZ) $(DATA) $(RESOURCES) -o $(TMP_DIR) -p esp -r mc.resources.c
+	mcrez $(DATA) $(RESOURCES) -o $(TMP_DIR) -p esp -r mc.resources.c
 	
 $(TMP_DIR)\mc.resources.o: $(TMP_DIR)\mc.resources.c
 	$(CC) $? $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS_NODATASECTION) -o $@.unmapped

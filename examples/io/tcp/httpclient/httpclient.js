@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022  Moddable Tech, Inc.
+ * Copyright (c) 2021-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -27,17 +27,31 @@ class HTTPClient {
 		constructor(client) {
 			this.#client = client;
 		}
-		read(count) {
+		read(count = this.#client.#readable) {
 			const client = this.#client;
 			if (client.#current.request !== this)
 				throw new Error("bad state");
 			
 			if ("receiveBody" !== client.#state)
 				return undefined;
-						
+
+			let buffer;
+			if ("object" === typeof count) {
+				buffer = count;
+				count = buffer.byteLength;
+			}			
 			const available = Math.min(client.#readable, (undefined === client.#chunk) ? client.#remaining : client.#chunk);
-			if (count > available)
+			if (count > available) {
 				count = available;
+				if (buffer) {
+					if (buffer.BYTES_PER_ELEMENT > 1)		// allows ArrayBuffer, SharedArrayBuffer, Uint8Array, Int8Array, DataView. disallows multi-byte element arrays.
+						throw new Error("invalid buffer");
+					if (ArrayBuffer.isView(buffer))
+						buffer = new Uint8Array(buffer.buffer, buffer.byteOffset, count);
+					else
+						buffer = new Uint8Array(buffer, 0, count);
+				}
+			}
 
 			client.#readable -= count;
 			if (undefined === client.#chunk)
@@ -45,7 +59,7 @@ class HTTPClient {
 			else
 				client.#chunk -= count;
 
-			const result = client.#socket.read(count);
+			const result = client.#socket.read(buffer ?? count);
 
 			if (0 === client.#chunk) {
 				client.#line = "";
@@ -56,8 +70,10 @@ class HTTPClient {
 					});
 				}
 			}
-			else if (0 === client.#remaining)
-				client.#timer = Timer.set(client.#done.bind(client));
+			else if (0 === client.#remaining) {
+				client.#state = "receivedBody"; 
+				client.#timer = Timer.set(() => client.#done());
+			}
 
 			return result;
 		}
@@ -74,9 +90,9 @@ class HTTPClient {
 					throw new Error("bad data");
 
 //@@ this may not be always correct... if last chunk has already flushed and onWritable called, this will never go out
-				client.#pendingWrite = ArrayBuffer.fromString("0000\r\n\r\n");
+				client.#pendingWrite = ArrayBuffer.fromString("0\r\n\r\n");
 				client.#requestBody = false;
-				return (client.#writable > 8) ? (client.#writable - 8) : 0 
+				return 0;		// request done. can't write more. 
 			}
 
 			const byteLength = data.byteLength;
@@ -85,9 +101,11 @@ class HTTPClient {
 					throw new Error("too much");
 
 				client.#writable -= byteLength + 8;
-				client.#socket.write(ArrayBuffer.fromString(byteLength.toString(16).padStart(4, "0") + "\r\n"));
+				client.#socket.write(ArrayBuffer.fromString(byteLength.toString(16) + "\r\n"));
 				client.#socket.write(data);
-				client.#socket.write(ArrayBuffer.fromString("\r\n"));
+				let remain = client.#socket.write(ArrayBuffer.fromString("\r\n"));
+				if (undefined !== remain)
+					client.#writable = remain;
 
 				return (client.#writable > 8) ? (client.#writable - 8) : 0 
 			}
@@ -125,31 +143,39 @@ class HTTPClient {
 	#requestBody;
 	#chunk;
 	#timer;
-	#onClose;
+	#onError;
 	
 	constructor(options) {
-		const {host, address, port, onClose} = options;
+		const {host, port, onError} = options; 
 
 		if (!host) throw new Error("host required");
 		this.#host = host;
-		this.#onClose = onClose;
+		this.#onError = onError;
 
 		const dns = new options.dns.io(options.dns);
 		dns.resolve({
 			host: this.#host, 
 
 			onResolved: (host, address) => {
-				this.#socket = new options.socket.io({
-					...options.socket,
-					address,
-					port: port ?? 80,
-					onReadable: this.#onReadable.bind(this),
-					onWritable: this.#onWritable.bind(this),
-					onError: this.#onError.bind(this)
-				});
+				try {
+					this.#socket = new options.socket.io({
+						...options.socket,
+						address,
+						host,
+						port: port ?? 80,
+						onReadable: count => this.#onReadable(count),
+						onWritable: count => this.#onWritable(count),
+						onError: () => this.#error()
+					});
+				}
+				catch (e) {
+					this.#state = "error";
+					this.#error?.(e);
+				}
 			},
-			onError: () => {
-				this.#onError?.();
+			onError: e => {
+				this.#state = "error";
+				this.#error?.(e);
 			}
 		});
 	}
@@ -158,6 +184,9 @@ class HTTPClient {
 		this.#socket = undefined;
 		Timer.clear(this.#timer);
 		this.#timer = undefined;
+		this.#current = undefined;
+		this.#requests.length = 0;
+		this.#state = "closed";
 	}
 	request(options) {
 		options = {...options};
@@ -219,14 +248,22 @@ class HTTPClient {
 						this.#line = "";
 					}
 					else {					
-						if (undefined !== this.#chunk)
+						if ((204 === this.#status) || (205 === this.#status))
+							this.#remaining = 0;
+						else if (undefined !== this.#chunk)
 							this.#remaining = undefined;		// ignore content-length if chunked
-							
-						this.#current.onHeaders?.call(this.#current.request, this.#status, this.#headers);
-						this.#headers = undefined;
+						else if (undefined === this.#remaining)
+							this.#remaining = Infinity;
 
+						this.#current.onHeaders?.call(this.#current.request, this.#status, this.#headers);
+						if (!this.#current) return;			// closed in callback
+
+						this.#headers = undefined;
 						this.#state = "receiveBody";
 						this.#line = (undefined == this.#chunk) ? undefined : "";
+						
+						if (0 === this.#remaining)
+							return void this.#done();
 					}
 					break;
 
@@ -244,7 +281,9 @@ class HTTPClient {
 								continue;
 							}
 						}
-						this.#current.onReadable?.call(this.#current.request, Math.min(this.#readable, this.#chunk));
+						const min = Math.min(this.#readable, this.#chunk);
+						if (min)
+							this.#current.onReadable?.call(this.#current.request, min);
 					}
 					else
 						this.#current.onReadable?.call(this.#current.request, Math.min(this.#readable, this.#remaining));
@@ -304,12 +343,13 @@ class HTTPClient {
 						this.#headers = undefined;
 					}
 					else {
-						const name = item.value[0];
+						let name = item.value[0];
 						this.#pendingWrite = name + ": " + item.value[1] + "\r\n";
+						name = name.toLowerCase();
 						if ("content-length" === name)
 							this.#requestBody = parseInt(item.value[1]);
 						else if ("transfer-encoding" === name) {
-							if ("chunked" === item.value[1])
+							if ("chunked" === item.value[1].toLowerCase())
 								this.#requestBody = true;
 						}
 					}
@@ -332,20 +372,43 @@ class HTTPClient {
 						this.#line = "";
 					}
 					break;
+				
+				case "closed":
+					return;
 			}
 			
 			if (!this.#pendingWrite || !this.#writable)
 				break;
 		} while (true);
 	}
-	#onError() {
-		this.#onClose?.();
+	#error(e) {
+		if (("receivedBody" === this.#state) && this.#timer) {		// completion not reported yet. report before handling error.
+			Timer.clear(this.#timer);
+			this.#done();
+		}
+
+		this.#state = "error";
+
+		try {
+			const current = this.#current;
+			this.#current = undefined;
+			current?.onDone?.call(current.request, new Error);
+
+			while (this.#requests.length) {
+				const request = this.#requests.shift(); 
+				request.onDone?.call(request.request, new Error);
+			}
+			this.#onError?.(e);
+		}
+		catch {
+		}
+		this.close();
 	}
 	#done() {
 		this.#timer = undefined;
 
 		this.#state = "connected";
-		this.#current.onDone?.call(this.#current.request);
+		this.#current.onDone?.call(this.#current.request, null);
 		this.#next();
 		if (this.#current)
 			this.#onWritable(this.#writable);

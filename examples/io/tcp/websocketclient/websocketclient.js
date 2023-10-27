@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022  Moddable Tech, Inc.
+ * Copyright (c) 2021-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -37,13 +37,25 @@ class WebSocketClient {
 			onControl: options.onControl,
 			onClose: options.onClose,
 			onError: options.onError,
-			host: options.host ?? options.address,
-			path: options.path,
-			port: options.port,
-			protocol: options.protocol
 		};
 
-		if (!this.#options.host) throw new Error("host required");
+		const attach = options.attach;
+		if (attach) {
+			this.#socket = new attach.constructor({
+				from: attach,
+				onReadable: count => this.#onReadable(count),
+				onWritable: count => this.#onWritable(count),
+				onError: () => this.#onError()
+			});
+			this.#state = "connected";
+			return;
+		}
+
+		this.#options.host = options.host; 
+		this.#options.path = options.path; 
+		this.#options.port = options.port ?? 80; 
+		this.#options.protocol = options.protocol; 
+		this.#options.headers = options.headers; 
 
 		const dns = new options.dns.io(options.dns);
 		this.#state = "resolving";
@@ -51,17 +63,23 @@ class WebSocketClient {
 			host: this.#options.host, 
 
 			onResolved: (host, address) => {
-				this.#socket = new options.socket.io({
-					...options.socket,
-					address,
-					port: this.#options.port ?? 80,
-					onReadable: this.#onReadable.bind(this),
-					onWritable: this.#onWritable.bind(this),
-					onError: this.#onError.bind(this)
-				});
-				this.#state = "connecting";
+				try {
+					this.#state = "connecting";
+					this.#socket = new options.socket.io({
+						...options.socket,
+						address,
+						host,
+						port: this.#options.port,
+						onReadable: count => this.#onReadable(count),
+						onWritable: count => this.#onWritable(count),
+						onError: () => this.#onError()
+					});
+				}
+				catch {
+					this.#onError?.();
+				}
 			},
-			onError: (err) => {
+			onError: () => {
 				this.#onError?.();
 			},
 		});
@@ -276,8 +294,10 @@ class WebSocketClient {
 						//@@ it is an error for client to receieve a mask. this code applies to future server. client should fail here.
 						options.mask.push(this.#socket.read());
 						count--;
-						if (4 === options.mask.length)
-							options.mask = Uint8Array.from(options.mask);
+						if (4 !== options.mask.length)
+							continue;
+
+						options.mask = Uint8Array.from(options.mask);
 						if (options.length[0])
 							continue;
 						// 0 length payload. process immediately
@@ -402,13 +422,20 @@ class WebSocketClient {
 					`Sec-WebSocket-Version: 13`,
 					`Sec-WebSocket-Key: ${Base64.encode(key.buffer)}`
 				];
-				if (options.protocol) {
+				if (options.protocol)
 					message.push(`Sec-WebSocket-Protocol: ${options.protocol}`);
-					delete options.protocol;
+
+				if (options.headers) {
+					for (const [header, value] of options.headers)
+						message.push(`${header}: ${value}`);
 				}
-				//@@ add caller headers
+
+				delete options.protocol;
+				delete options.headers;
+
 				message.push("", "");
 
+				//@@ if headers exceed count, send in pieces
 				message = ArrayBuffer.fromString(message.join("\r\n"));
 				this.#socket.write(message); 
 				this.#writable -= message.byteLength;

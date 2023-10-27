@@ -168,8 +168,11 @@ void fxBufferSymbols(txLinker* linker)
 void fxDefaultSymbols(txLinker* linker)
 {
 	int i;
-	for (i = 0; i < XS_ID_COUNT; i++) {
-		fxNewLinkerSymbol(linker, gxIDStrings[i], 0);
+	for (i = 0; i < XS_SYMBOL_ID_COUNT; i++) {
+		fxNewLinkerSymbol(linker, gxIDStrings[i], 0, 0);
+	}
+	for (; i < XS_ID_COUNT; i++) {
+		fxNewLinkerSymbol(linker, gxIDStrings[i], 0, 1);
 	}
 }
 
@@ -211,7 +214,8 @@ void fxInitializeLinker(txLinker* linker)
 	linker->creation.initialHeapCount = 2048;
 	linker->creation.incrementalHeapCount = 64;
 	linker->creation.stackCount = 512;
-	linker->creation.keyCount = 256;
+	linker->creation.initialKeyCount = 256;
+	linker->creation.incrementalKeyCount = 0;
 	linker->creation.nameModulo = 127;
 	linker->creation.symbolModulo = 127;
 	c_strcpy(linker->main, "main");
@@ -272,7 +276,14 @@ void fxMapCode(txLinker* linker, txLinkerScript* script, txID* theIDs)
 		gxCodeUsages[code]++;	
 		offset = (txS1)sizes[code];
 		if (0 < offset) {
-			p += offset;
+			if (linker->profileID && (XS_CODE_PROFILE == code)) {
+				p++;
+				id = linker->profileID;
+				linker->profileID++;
+				mxEncodeID(p, id);
+			}
+			else
+				p += offset;
 		}
 		else if (0 == offset) {
 			p++;
@@ -338,7 +349,7 @@ txID* fxMapSymbols(txLinker* linker, txS1* symbolsBuffer, txFlag flag)
 	symbols = fxNewLinkerChunk(linker, c * sizeof(txID*));
 	symbols[0] = XS_NO_ID;
 	for (i = 1; i < c; i++) {
-		txLinkerSymbol* symbol = fxNewLinkerSymbol(linker, (txString)p, flag);
+		txLinkerSymbol* symbol = fxNewLinkerSymbol(linker, (txString)p, flag, 1);
 		symbols[i] = symbol->ID;
 		p += mxStringLength((char*)p) + 1;
 	}
@@ -498,7 +509,7 @@ txLinkerStrip* fxNewLinkerStrip(txLinker* linker, txString name)
 	return result;
 }
 
-txLinkerSymbol* fxNewLinkerSymbol(txLinker* linker, txString theString, txFlag flag)
+txLinkerSymbol* fxNewLinkerSymbol(txLinker* linker, txString theString, txFlag flag, txBoolean table)
 {
 	txString aString;
 	txSize aLength;
@@ -536,7 +547,8 @@ txLinkerSymbol* fxNewLinkerSymbol(txLinker* linker, txString theString, txFlag f
 		aSymbol->sum = aSum;
 		aSymbol->flag = flag;
 		linker->symbolArray[anID] = aSymbol;
-		linker->symbolTable[aModulo] = aSymbol;
+		if (table)
+			linker->symbolTable[aModulo] = aSymbol;
 		linker->symbolIndex++;
 	}
 	else

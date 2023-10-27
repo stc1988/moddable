@@ -77,7 +77,7 @@ txSlot* fxNextHostAccessorProperty(txMachine* the, txSlot* property, txCallback 
 txSlot* fxNextHostFunctionProperty(txMachine* the, txSlot* property, txCallback call, txInteger length, txID id, txFlag flag)
 {
 	txSlot *function, *home = the->stack, *slot;
-	function = fxNewHostFunction(the, call, length, id);
+	function = fxNewHostFunction(the, call, length, id, XS_NO_ID);
 	slot = mxFunctionInstanceHome(function);
 	slot->value.home.object = home->value.reference;
 	property = property->next = fxNewSlot(the);
@@ -566,11 +566,13 @@ txSlot* fxGetPrivateProperty(txMachine* the, txSlot* instance, txSlot* check, tx
 {
     txSlot* result;
 	mxCheck(the, instance->kind == XS_INSTANCE_KIND);
+#if mxAliasInstance
 	if (instance->ID) {
 		txSlot* alias = the->aliasArray[instance->ID];
 		if (alias)
 			instance = alias;
 	}
+#endif
 	result = instance->next;
 	while (result) {
 		if (result->kind == XS_PRIVATE_KIND) {
@@ -598,6 +600,7 @@ txSlot* fxSetPrivateProperty(txMachine* the, txSlot* instance, txSlot* check, tx
 {
     txSlot* result;
 	mxCheck(the, instance->kind == XS_INSTANCE_KIND);
+#if mxAliasInstance
 	if (instance->ID) {
 		txSlot* alias = the->aliasArray[instance->ID];
 		if (alias)
@@ -605,6 +608,7 @@ txSlot* fxSetPrivateProperty(txMachine* the, txSlot* instance, txSlot* check, tx
 		else
 			instance = fxAliasInstance(the, instance);
 	}
+#endif
 	result = instance->next;
 	while (result) {
 		if (result->kind == XS_PRIVATE_KIND) {

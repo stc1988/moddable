@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022  Moddable Tech, Inc.
+ * Copyright (c) 2022-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -20,6 +20,7 @@
  
 #include "xsmc.h"
 #include "mc.xs.h"			// for xsID_* values
+#include "modInstrumentation.h"
 
 #include "builtinCommon.h"
 
@@ -103,6 +104,8 @@ void xs_tcp_constructor(xsMachine *the)
 	if (!tcp)
 		xsRangeError("no memory");
 	tcp->skt = -1;
+
+	modInstrumentationAdjust(NetworkSockets, +1);
 
 	xsmcSetHostData(xsThis, tcp);
 
@@ -206,11 +209,7 @@ void xs_tcp_constructor(xsMachine *the)
 			cfHost = CFHostCreateWithName(kCFAllocatorDefault, host);
 			CFRelease(host);
 
-			CFHostClientContext context;
-			context.version = 0;
-			context.retain = nil;
-			context.release = nil;
-			context.copyDescription = nil;
+			CFHostClientContext context = {0};
 			context.info = tcp;
 
 			CFHostSetClient(cfHost, resolved, &context);
@@ -282,6 +281,8 @@ void xs_tcp_destructor(void *data)
 	}
 	
 	free(tcp);
+
+	modInstrumentationAdjust(NetworkSockets, -1);
 }
 
 void doClose(xsMachine *the, xsSlot *instance)
@@ -292,7 +293,8 @@ void doClose(xsMachine *the, xsSlot *instance)
 		tcp->triggerable = 0;
 		tcp->triggered = 0;
 
-		CFSocketDisableCallBacks(tcp->cfSkt, kCFSocketReadCallBack | kCFSocketWriteCallBack | kCFSocketConnectCallBack);
+		if (tcp->cfSkt)
+			CFSocketDisableCallBacks(tcp->cfSkt, kCFSocketReadCallBack | kCFSocketWriteCallBack | kCFSocketConnectCallBack);
 
 		xsmcSetHostData(*instance, NULL);
 		xsForget(tcp->obj);
@@ -368,9 +370,8 @@ void xs_tcp_write(xsMachine *the)
 		return;
 	}
 
-	if (kIOFormatBuffer == tcp->format) {
+	if (kIOFormatBuffer == tcp->format)
 		xsmcGetBufferReadable(xsArg(0), &buffer, &needed);
-	}
 	else {
 		needed = 1;
 		value = (uint8_t)xsmcToInteger(xsArg(0));
@@ -384,8 +385,13 @@ void xs_tcp_write(xsMachine *the)
 
 	CFSocketEnableCallBacks(tcp->cfSkt, kCFSocketReadCallBack | kCFSocketWriteCallBack);
 	int ret = write(tcp->skt, buffer, needed);
-	if (ret < 0)
-		xsUnknownError("write failed");
+	if (ret < 0) {
+		xsTrace("write failed");
+		tcpTrigger(tcp, kTCPError);
+		return;
+	}
+
+	modInstrumentationAdjust(NetworkBytesWritten, needed);
 }
 
 void xs_tcp_get_remoteAddress(xsMachine *the)
@@ -488,7 +494,7 @@ void socketCallback(CFSocketRef s, CFSocketCallBackType cbType, CFDataRef addr, 
 		if (data) {
 			// connection failed
 			tcpTrigger(tcp, kTCPError);
-			return;
+			goto done;
 		}
 		cbType |= kCFSocketWriteCallBack;
 	}
@@ -500,15 +506,17 @@ void socketCallback(CFSocketRef s, CFSocketCallBackType cbType, CFDataRef addr, 
 			tcp->readPosition = 0;
 		}
 		int bytesRead = read(tcp->skt, tcp->readBuf + tcp->bytesReadable, kBufferSize - tcp->bytesReadable);
-		if (bytesRead > 0)
+		if (bytesRead > 0) {
 			tcp->bytesReadable += bytesRead;
-		else {
+			tcpTrigger(tcp, kTCPReadable);
+		}
+		else {		// bytes read 0 indicates connection closed
 			tcp->error = 1;
 			if (0 == tcp->bytesReadable)
 				tcpTrigger(tcp, kTCPError);
 			goto done;
 		}
-		tcpTrigger(tcp, kTCPReadable);
+		modInstrumentationAdjust(NetworkBytesRead, bytesRead);
 
 		if (tcp->bytesReadable == kBufferSize)
 			CFSocketDisableCallBacks(tcp->cfSkt, kCFSocketReadCallBack);
@@ -584,4 +592,212 @@ void tcpTrigger(TCP tcp, uint8_t trigger)
 	tcp->cfTriggeredTimer = CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent(),
 					0, 0, 0, reportTrigger, &context);
 	CFRunLoopAddTimer(CFRunLoopGetCurrent(), tcp->cfTriggeredTimer, kCFRunLoopCommonModes);
+}
+
+/*
+	Listener
+ */
+
+struct ListenerPendingRecord {
+	struct ListenerPendingRecord	*next;
+    CFSocketRef						cfSkt;
+    TCP								*handle;
+};
+typedef struct ListenerPendingRecord ListenerPendingRecord;
+typedef struct ListenerPendingRecord *ListenerPending;
+
+struct ListenerRecord {
+
+	xsSlot				obj;
+	ListenerPending		pending;
+
+	xsMachine			*the;
+	xsSlot				*onReadable;
+//	xsSlot				*onError;
+
+	CFSocketRef			cfSkt;
+	CFRunLoopSourceRef	cfRunLoopSource;
+};
+typedef struct ListenerRecord ListenerRecord;
+typedef struct ListenerRecord *Listener;
+
+static void listenerCallback(CFSocketRef socketRef, CFSocketCallBackType cbType, CFDataRef addr, const void* data, void* context);
+
+static void xs_listener_mark(xsMachine* the, void* it, xsMarkRoot markRoot);
+static const xsHostHooks xsListenerHooks = {
+	xs_listener_destructor_,
+	xs_listener_mark,
+	NULL
+};
+
+void xs_listener_constructor(xsMachine *the)
+{
+	Listener listener;
+	uint16_t port = 0;
+	xsSlot *onReadable;
+
+	xsmcVars(1);
+
+	if (xsmcHas(xsArg(0), xsID_port)) {
+		xsmcGet(xsVar(0), xsArg(0), xsID_port);
+		port = (uint16_t)xsmcToInteger(xsVar(0));
+	}
+
+	onReadable = builtinGetCallback(the, xsID_onReadable);
+	// hasOnError
+
+	if (kIOFormatSocketTCP != builtinInitializeFormat(the, kIOFormatSocketTCP))
+		xsRangeError("unimplemented");
+
+	xsTry {
+		CFSocketContext context;
+		struct sockaddr_in address;
+		CFSocketError cfsErr;
+
+		listener = c_calloc(sizeof(ListenerRecord), 1);
+		listener->the = the;
+		listener->obj = xsThis;
+		xsmcSetHostData(xsThis, listener);
+		xsRemember(listener->obj);
+
+		c_memset(&context, 0, sizeof(CFSocketContext));
+		context.info = (void*)listener;
+		listener->cfSkt = CFSocketCreate(kCFAllocatorDefault, PF_INET, SOCK_STREAM, IPPROTO_TCP, kCFSocketAcceptCallBack, listenerCallback, &context);
+		if (NULL == listener->cfSkt)
+			xsUnknownError("can't create socket");
+
+		int yes = 1;
+		setsockopt(CFSocketGetNative(listener->cfSkt), SOL_SOCKET, SO_NOSIGPIPE, (void *)&yes, sizeof(yes));
+		setsockopt(CFSocketGetNative(listener->cfSkt), SOL_SOCKET, SO_REUSEADDR, (void *)&yes, sizeof(yes));
+
+		c_memset(&address, 0, sizeof(address));
+		address.sin_len = sizeof(address);
+		address.sin_family = AF_INET;
+		address.sin_port = htons(port);
+		address.sin_addr.s_addr = INADDR_ANY;
+		CFDataRef data = CFDataCreate(kCFAllocatorDefault, (UInt8 *)&address, sizeof(address));
+		cfsErr = CFSocketSetAddress(listener->cfSkt, data);
+		CFRelease(data);
+
+		if (kCFSocketSuccess != cfsErr)
+			xsUnknownError("bind failed");
+
+		listener->cfRunLoopSource = CFSocketCreateRunLoopSource(kCFAllocatorDefault, listener->cfSkt, 0);
+		CFRunLoopAddSource(CFRunLoopGetCurrent(), listener->cfRunLoopSource, kCFRunLoopCommonModes);
+
+		builtinInitializeTarget(the);
+
+		listener->onReadable = onReadable;
+		xsSetHostHooks(xsThis, (xsHostHooks *)&xsListenerHooks);
+	}
+	xsCatch {
+		xsmcSetHostData(xsThis, NULL);
+		xs_listener_destructor_(listener);
+		xsThrow(xsException);
+	}
+}
+
+void xs_listener_destructor_(void *data)
+{
+	Listener listener = data;
+	if (!data) return;
+
+	if (listener->cfRunLoopSource) {
+		CFRunLoopRemoveSource(CFRunLoopGetCurrent(), listener->cfRunLoopSource, kCFRunLoopCommonModes);
+		CFRelease(listener->cfRunLoopSource);
+		listener->cfRunLoopSource = NULL;
+	}
+
+	if (listener->cfSkt) {
+		CFSocketInvalidate(listener->cfSkt);
+		CFRelease(listener->cfSkt);
+		listener->cfSkt = NULL;
+	}
+
+	while (listener->pending) {
+		ListenerPending pending = listener->pending;
+		listener->pending = pending->next;
+		CFSocketInvalidate(pending->cfSkt);
+		CFRelease(pending->cfSkt);
+		c_free(pending->handle);
+		c_free(pending);
+	}
+
+	c_free(listener);
+}
+
+void xs_listener_close_(xsMachine *the)
+{
+	Listener listener = xsmcGetHostData(xsThis);
+	if (listener && xsmcGetHostDataValidate(xsThis, (void *)&xsListenerHooks)) {
+		xsForget(listener->obj);
+		xs_listener_destructor_(listener);
+		xsmcSetHostData(xsThis, NULL);
+	}
+}
+
+void xs_listener_read(xsMachine *the)
+{
+	Listener listener = xsmcGetHostDataValidate(xsThis, (void *)&xsListenerHooks);
+	ListenerPending pending;
+	TCP tcp;
+
+	pending = listener->pending;
+	if (!pending)
+		return;
+
+	listener->pending = pending->next;
+
+	xsResult = xsArg(0);
+	tcp = xsmcGetHostDataValidate(xsResult, (void *)&xsTCPHooks);
+
+	tcp->cfSkt = pending->cfSkt;
+	tcp->skt = CFSocketGetNative(tcp->cfSkt);
+	tcp->handle = pending->handle;
+	*(tcp->handle) = tcp;
+	c_free(pending);
+
+	tcp->cfRunLoopSource = CFSocketCreateRunLoopSource(NULL, tcp->cfSkt, 0);
+	CFRunLoopAddSource(CFRunLoopGetCurrent(), tcp->cfRunLoopSource, kCFRunLoopCommonModes);
+}
+
+void xs_listener_mark(xsMachine* the, void* it, xsMarkRoot markRoot)
+{
+	Listener listener = it;
+
+	if (listener->onReadable)
+		(*markRoot)(the, listener->onReadable);
+}
+
+static void listenerCallback(CFSocketRef socketRef, CFSocketCallBackType cbType, CFDataRef addr, const void* data, void* context)
+{
+	Listener listener = context;
+
+	if (kCFSocketAcceptCallBack == cbType) {
+		xsMachine *the = listener->the;
+		int sockets = 1;
+		ListenerPending lp = c_calloc(sizeof(ListenerPendingRecord), 1);
+		lp->handle = calloc(1, sizeof(TCP));
+		CFSocketContext socketCtxt = {0, lp->handle, NULL, NULL, NULL};
+		lp->cfSkt = CFSocketCreateWithNative(kCFAllocatorDefault, *(int *)data, kCFSocketConnectCallBack | kCFSocketReadCallBack | kCFSocketWriteCallBack, socketCallback, &socketCtxt);
+
+		if (NULL == listener->pending)
+			listener->pending = lp;
+		else {
+			ListenerPending walker = listener->pending;
+			while (walker->next) {
+				walker = walker->next;
+				sockets += 1;
+			}
+			walker->next = lp;
+		}
+
+		if (!listener->onReadable)
+			return;
+
+		xsBeginHost(the);
+			xsmcSetInteger(xsResult, sockets);
+			xsCallFunction1(xsReference(listener->onReadable), listener->obj, xsResult);
+		xsEndHost(the);
+	}
 }

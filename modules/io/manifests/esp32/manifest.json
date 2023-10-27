@@ -4,7 +4,6 @@
 	},
 	"include": [
 		"$(MODDABLE)/examples/manifest_net.json",
-		"$(MODULES)/pins/digital/manifest.json",
 		"$(MODULES)/pins/spi/manifest.json"
 	],
 	"modules": {
@@ -12,20 +11,21 @@
 			"$(IO)/common/builtinCommon",
 			"$(IO)/digital/$(PLATFORM)/*",
 			"$(IO)/i2c/$(PLATFORM)/*",
-			"$(IO)/spi/$(PLATFORM)/*"
+			"$(IO)/spi/$(PLATFORM)/*",
+			"$(MODULES)/pins/digital/esp32/modGPIO"
 		],
 		"commodetto/Bitmap": "$(COMMODETTO)/commodettoBitmap",
 
 		"embedded:io/analog": "$(IO)/analog/$(PLATFORM)/*",
 		"embedded:io/digital": "$(IO)/digital/digital",
 		"embedded:io/digitalbank": "$(IO)/digital/digitalbank",
-		"embedded:io/i2c": "$(IO)/i2c/_i2c",
-		"embedded:io/smbus": "$(IO)/i2c/smbus",
+		"embedded:io/i2c": "$(IO)/i2c/i2c_async",
+		"embedded:implementation/i2csync": "$(IO)/i2c/_i2c",
+		"embedded:io/smbus": "$(IO)/i2c/smbus_async",
+		"embedded:implementation/smbussync": "$(IO)/i2c/smbus",
 		"embedded:io/pwm": "$(IO)/pwm/$(PLATFORM)/*",
 		"embedded:io/serial": "$(IO)/serial/$(PLATFORM)/*",
 		"embedded:io/spi": "$(IO)/spi/spi",
-
-		"embedded:io/provider/MCP23017": "$(IO)/expander/*",
 
 		"embedded:io/socket/tcp": "$(IO)/socket/lwip/tcp",
 		"embedded:io/socket/udp": "$(IO)/socket/lwip/udp",
@@ -38,16 +38,23 @@
 		"system"
 	],
 	"platforms": {
+		"esp32/esp32c3": {
+			"modules": {
+				"embedded:provider/builtin": "$(BUILD)/devices/$(PLATFORM)/targets/$(SUBPLATFORM)/host/provider"
+			}
+		},
 		"esp32/*": {
 			"modules": {
 				"embedded:provider/builtin": "$(BUILD)/devices/$(PLATFORM)/targets/$(SUBPLATFORM)/host/provider",
-				"embedded:io/pulsecount": "$(IO)/pulsecount/$(PLATFORM)/*"
+				"embedded:io/pulsecount": "$(IO)/pulsecount/$(PLATFORM)/*",
+				"embedded:io/pulsewidth": "$(IO)/pulsewidth/$(PLATFORM)/*"
 			}
 		},
 		"esp32": {
 			"modules": {
 				"embedded:provider/builtin": "$(IO)/host/$(PLATFORM)/provider",
-				"embedded:io/pulsecount": "$(IO)/pulsecount/$(PLATFORM)/*"
+				"embedded:io/pulsecount": "$(IO)/pulsecount/$(PLATFORM)/*",
+				"embedded:io/pulsewidth": "$(IO)/pulsewidth/$(PLATFORM)/*"
 			}
 		},
 		"...": {

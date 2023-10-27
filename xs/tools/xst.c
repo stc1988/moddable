@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2022  Moddable Tech, Inc.
+ * Copyright (c) 2016-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Tools.
  * 
@@ -154,7 +154,7 @@ static int main262(int argc, char* argv[]);
 static int fuzz(int argc, char* argv[]);
 #endif
 #if OSSFUZZ
-static int fuzz_oss(const uint8_t *Data, size_t Size);
+static int fuzz_oss(const uint8_t *Data, size_t script_size);
 #endif
 static void fxBuildAgent(xsMachine* the);
 static void fxCountResult(txPool* pool, txContext* context, int success, int pending);
@@ -178,8 +178,6 @@ static void fxRunContext(txPool* pool, txContext* context);
 static int fxRunTestCase(txPool* pool, txContext* context, char* path, txUnsigned flags, int async, char* message);
 static int fxStringEndsWith(const char *string, const char *suffix);
 
-static void fx_agent_get_safeBroadcast(xsMachine* the);
-static void fx_agent_set_safeBroadcast(xsMachine* the);
 static void fx_agent_broadcast(xsMachine* the);
 static void fx_agent_getReport(xsMachine* the);
 static void fx_agent_leaving(xsMachine* the);
@@ -200,6 +198,8 @@ static void fx_done(xsMachine* the);
 static void fx_evalScript(xsMachine* the);
 #if FUZZING || FUZZILLI
 static void fx_fillBuffer(txMachine *the);
+void fx_nop(xsMachine *the);
+void fx_assert_throws(xsMachine *the);
 #endif
 static void fx_gc(xsMachine* the);
 static void fx_print(xsMachine* the);
@@ -234,6 +234,13 @@ static char *gxAbortStrings[] = {
 
 static txAgentCluster gxAgentCluster;
 
+#ifdef mxMetering
+static xsBooleanValue xsAlwaysWithinComputeLimit(xsMachine* machine, xsUnsignedValue index)
+{
+	return 1;
+}
+#endif
+
 #if OSSFUZZ
 int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
     fuzz_oss(Data, Size);
@@ -248,6 +255,7 @@ int main(int argc, char* argv[])
 	txAgentCluster* agentCluster = &gxAgentCluster;
 	int argi;
 	int option = 0;
+	int profiling = 0;
 	char path[C_PATH_MAX];
 	char* dot;
 #if mxWindows
@@ -278,6 +286,8 @@ int main(int argc, char* argv[])
 			option = 1;
 		else if (!strcmp(argv[argi], "-m"))
 			option = 2;
+		else if (!strcmp(argv[argi], "-p"))
+			profiling = 1;
 		else if (!strcmp(argv[argi], "-s"))
 			option = 3;
 		else if (!strcmp(argv[argi], "-t"))
@@ -286,6 +296,8 @@ int main(int argc, char* argv[])
 		else if (!strcmp(argv[argi], "-f"))
 			option = 5;
 #endif
+		else if (!strcmp(argv[argi], "-j"))
+			option = 6;
 		else if (!strcmp(argv[argi], "-v"))
 			printf("XS %d.%d.%d %zu %zu\n", XS_MAJOR_VERSION, XS_MINOR_VERSION, XS_PATCH_VERSION, sizeof(txSlot), sizeof(txID));
 		else {
@@ -312,7 +324,8 @@ int main(int argc, char* argv[])
 			1 * 1024 * 1024, 	/* initialHeapCount */
 			1 * 1024 * 1024, 	/* incrementalHeapCount */
 			256 * 1024, 		/* stackCount */
-			256 * 1024, 		/* keyCount */
+			1024, 				/* initialKeyCount */
+			1024,				/* incrementalKeyCount */
 			1993, 				/* nameModulo */
 			127, 				/* symbolModulo */
 			64 * 1024,			/* parserBufferSize */
@@ -322,11 +335,16 @@ int main(int argc, char* argv[])
 		xsMachine* machine;
 		fxInitializeSharedCluster();
         machine = xsCreateMachine(creation, "xst", NULL);
- 		fxBuildAgent(machine);
+ 		if (profiling)
+			fxStartProfiling(machine);
+		xsBeginMetering(machine, xsAlwaysWithinComputeLimit, 0x7FFFFFFF);
+		{
+
 		xsBeginHost(machine);
 		{
 			xsVars(2);
 			xsTry {
+ 				fxBuildAgent(machine);
 #if FUZZING
 				xsResult = xsNewHostFunction(fx_gc, 0);
 				xsSet(xsGlobal, xsID("gc"), xsResult);
@@ -353,10 +371,44 @@ int main(int argc, char* argv[])
 						xsResult = xsString(argv[argi]);
 						xsCall1(xsVar(1), xsID("evalScript"), xsResult);
 					}
-					else {	
+					else {
 						if (!c_realpath(argv[argi], path))
 							xsURIError("file not found: %s", argv[argi]);
 						dot = strrchr(path, '.');
+						if (option == 6) {
+							FILE* file = C_NULL;
+							char *buffer = C_NULL;
+							xsTry {
+								file = fopen(path, "r");
+								if (!file)
+									xsUnknownError("can't open file");
+								fseek(file, 0, SEEK_END);
+								size_t size = ftell(file);
+								fseek(file, 0, SEEK_SET);
+								buffer = malloc(size + 1);
+								if (!buffer)
+									xsUnknownError("not enough memory");
+								if (size != fread(buffer, 1, size, file))	
+									xsUnknownError("can't read file");
+								buffer[size] = 0;
+								fclose(file);
+								file = C_NULL;
+								xsResult = xsArrayBuffer(buffer, (txInteger)size);
+								c_free(buffer);
+								buffer = C_NULL;
+								xsVar(1) = xsNew0(xsGlobal, xsID("TextDecoder"));
+								xsResult = xsCall1(xsVar(1), xsID("decode"), xsResult);
+								xsVar(1) = xsGet(xsGlobal, xsID("JSON"));
+								xsResult = xsCall1(xsVar(1), xsID("parse"), xsResult);
+							}
+							xsCatch {
+								if (buffer)
+									c_free(buffer);
+								if (file)
+									fclose(file);
+							}
+						}
+						else
 						if (((option == 0) && dot && !c_strcmp(dot, ".mjs")) || (option == 2))
 							fxRunModuleFile(the, path);
 						else
@@ -374,6 +426,10 @@ int main(int argc, char* argv[])
 		}
 		fxCheckUnhandledRejections(machine, 1);
 		xsEndHost(machine);
+		}
+		xsEndMetering(machine);
+ 		if (profiling)
+			fxStopProfiling(machine, C_NULL);
 		if (machine->abortStatus) {
 			char *why = (machine->abortStatus <= XS_UNHANDLED_REJECTION_EXIT) ? gxAbortStrings[machine->abortStatus] : "unknown";
 			fprintf(stderr, "Error: %s\n", why);
@@ -401,20 +457,20 @@ int main262(int argc, char* argv[])
 	fxCreateMutex(&(pool.countMutex));
 	fxCreateMutex(&(pool.resultMutex));
 	{
-// 	#if mxWindows
-// 	#elif mxMacOSX
-// 		pthread_attr_t attr; 
-// 		pthread_t self = pthread_self();
-//    		size_t size = pthread_get_stacksize_np(self);
-//    		pthread_attr_init(&attr);
-//    		pthread_attr_setstacksize(&attr, size);
-// 	#elif mxLinux
-// 	#endif	
+	#if mxWindows
+	#elif mxMacOSX
+		pthread_attr_t attr; 
+		pthread_t self = pthread_self();
+   		size_t size = pthread_get_stacksize_np(self);
+   		pthread_attr_init(&attr);
+   		pthread_attr_setstacksize(&attr, size);
+	#elif mxLinux
+	#endif	
 		for (argi = 0; argi < mxPoolSize; argi++) {
 		#if mxWindows
 			pool.threads[argi] = (HANDLE)_beginthreadex(NULL, 0, fxRunFileThread, &pool, 0, NULL);
-// 		#elif mxMacOSX
-// 			pthread_create(&(pool.threads[argi]), &attr, &fxRunFileThread, &pool);
+		#elif mxMacOSX
+			pthread_create(&(pool.threads[argi]), &attr, &fxRunFileThread, &pool);
 		#else
 			pthread_create(&(pool.threads[argi]), NULL, &fxRunFileThread, &pool);
 		#endif
@@ -528,7 +584,6 @@ void fxBuildAgent(xsMachine* the)
 	txSlot* global;
 
 	slot = fxLastProperty(the, fxNewHostObject(the, NULL));
-	slot = fxNextHostAccessorProperty(the, slot, mxCallback(fx_agent_get_safeBroadcast), mxCallback(fx_agent_set_safeBroadcast), xsID("safeBroadcast"), XS_DONT_ENUM_FLAG);
 	slot = fxNextHostFunctionProperty(the, slot, fx_agent_broadcast, 2, xsID("broadcast"), XS_DONT_ENUM_FLAG); 
 	slot = fxNextHostFunctionProperty(the, slot, fx_agent_getReport, 0, xsID("getReport"), XS_DONT_ENUM_FLAG); 
 	slot = fxNextHostFunctionProperty(the, slot, fx_agent_sleep, 1, xsID("sleep"), XS_DONT_ENUM_FLAG); 
@@ -631,15 +686,16 @@ void fxPrintResult(txPool* pool, txResult* result, int c)
 
 void fxPrintUsage()
 {
-	printf("xst [-h] [-e] [-m] [-s] [-t] [-u] [-v] strings...\n");
+	printf("xst [-h] [-e] [-j] [-m] [-s] [-t] [-u] [-v] strings...\n");
 	printf("\t-h: print this help message\n");
 	printf("\t-e: eval strings\n");
+	printf("\t-j: strings are paths to JSON\n");
 	printf("\t-m: strings are paths to modules\n");
 	printf("\t-s: strings are paths to scripts\n");
 	printf("\t-t: strings are paths to test262 cases or directories\n");
 	printf("\t-u: print unhandled exceptions and rejections\n");
 	printf("\t-v: print XS version\n");
-	printf("without -e, -m, -s, or -t:\n");
+	printf("without -e, -j, -m, -s, or -t:\n");
 	printf("\tif ../harness exists, strings are paths to test262 cases or directories\n");
 	printf("\telse if the extension is .mjs, strings are paths to modules\n");
 	printf("\telse strings are paths to scripts\n");
@@ -924,7 +980,7 @@ void fxRunContext(txPool* pool, txContext* context)
 				strict = 0;
 				module = 0;
 			}
-			else if (!strcmp((char*)node->data.scalar.value, "CanBlockIsTrue")) {
+			else if (!strcmp((char*)node->data.scalar.value, "CanBlockIsFalse")) {
 				sloppy = 0;
 				strict = 0;
 				module = 0;
@@ -940,18 +996,24 @@ void fxRunContext(txPool* pool, txContext* context)
 		while (item < value->data.sequence.items.top) {
 			yaml_node_t* node = yaml_document_get_node(document, *item);
 			if (0
+ 			||	!strcmp((char*)node->data.scalar.value, "Array.fromAsync")
  			||	!strcmp((char*)node->data.scalar.value, "Atomics.waitAsync")
+ 			||	!strcmp((char*)node->data.scalar.value, "FinalizationRegistry.prototype.cleanupSome")
   			||	!strcmp((char*)node->data.scalar.value, "ShadowRealm")
+  			||	!strcmp((char*)node->data.scalar.value, "String.prototype.isWellFormed")
+  			||	!strcmp((char*)node->data.scalar.value, "String.prototype.toWellFormed")
  			||	!strcmp((char*)node->data.scalar.value, "Temporal")
  			||	!strcmp((char*)node->data.scalar.value, "arbitrary-module-namespace-names")
  			||	!strcmp((char*)node->data.scalar.value, "array-grouping")
  			||	!strcmp((char*)node->data.scalar.value, "decorators")
  			||	!strcmp((char*)node->data.scalar.value, "import-assertions")
  			||	!strcmp((char*)node->data.scalar.value, "json-modules")
+ 			||	!strcmp((char*)node->data.scalar.value, "regexp-duplicate-named-groups")
 #ifndef mxRegExpUnicodePropertyEscapes
  			||	!strcmp((char*)node->data.scalar.value, "regexp-unicode-property-escapes")
 #endif
 			||	!strcmp((char*)node->data.scalar.value, "regexp-v-flag")
+// 			||	!strcmp((char*)node->data.scalar.value, "symbols-as-weakmap-keys")
 			) {
 				sloppy = 0;
 				strict = 0;
@@ -1044,7 +1106,8 @@ int fxRunTestCase(txPool* pool, txContext* context, char* path, txUnsigned flags
 		1 * 1024 * 1024, 	/* initialHeapCount */
 		1 * 1024 * 1024, 	/* incrementalHeapCount */
 		256 * 1024, 		/* stackCount */
-		256 * 1024, 		/* keyCount */
+		1024, 				/* initialKeyCount */
+		1024,				/* incrementalKeyCount */
 		1993, 				/* nameModulo */
 		127,				/* symbolModulo */
 		64 * 1024,			/* parserBufferSize */
@@ -1054,7 +1117,7 @@ int fxRunTestCase(txPool* pool, txContext* context, char* path, txUnsigned flags
 	xsMachine* machine;
 	char buffer[C_PATH_MAX];
 	int success = 0;	
-	machine = xsCreateMachine(creation, "xst", NULL);
+	machine = xsCreateMachine(creation, "xst262", NULL);
 	xsBeginHost(machine);
 	{
 		xsVars(1);
@@ -1152,15 +1215,6 @@ int fxStringEndsWith(const char *string, const char *suffix)
 }
 
 /* $262 */
-
-void fx_agent_get_safeBroadcast(xsMachine* the)
-{
-	xsResult = xsGet(xsThis, xsID("broadcast"));
-}
-
-void fx_agent_set_safeBroadcast(xsMachine* the)
-{
-}
 
 void fx_agent_broadcast(xsMachine* the)
 {
@@ -1277,6 +1331,13 @@ void fx_agent_start(xsMachine* the)
 	c_memcpy(&(agent->script[0]), script, scriptLength + 1);
 #if mxWindows
 	agent->thread = (HANDLE)_beginthreadex(NULL, 0, fx_agent_start_aux, agent, 0, NULL);
+#elif mxMacOSX
+	pthread_attr_t attr; 
+	pthread_t self = pthread_self();
+	size_t size = pthread_get_stacksize_np(self);
+	pthread_attr_init(&attr);
+	pthread_attr_setstacksize(&attr, size);
+    pthread_create(&(agent->thread), &attr, &fx_agent_start_aux, agent);
 #else	
     pthread_create(&(agent->thread), NULL, &fx_agent_start_aux, agent);
 #endif
@@ -1294,7 +1355,8 @@ void* fx_agent_start_aux(void* it)
 		1 * 1024 * 1024, 	/* initialHeapCount */
 		1 * 1024 * 1024, 	/* incrementalHeapCount */
 		4096, 				/* stackCount */
-		4096*3, 			/* keyCount */
+		1024, 				/* initialKeyCount */
+		1024,				/* incrementalKeyCount */
 		1993, 				/* nameModulo */
 		127, 				/* symbolModulo */
 		64 * 1024,			/* parserBufferSize */
@@ -1701,19 +1763,23 @@ int fuzz(int argc, char* argv[])
 		c_exit(-1);
 	}
 	xsCreation _creation = {
-		16 * 1024 * 1024, 	/* initialChunkSize */
-		16 * 1024 * 1024, 	/* incrementalChunkSize */
-		1 * 1024 * 1024, 	/* initialHeapCount */
-		1 * 1024 * 1024, 	/* incrementalHeapCount */
-		256 * 1024, 		/* stackCount */
-		256 * 1024, 		/* keyCount */
+		1 * 1024 * 1024, 	/* initialChunkSize */
+		1 * 1024 * 1024, 	/* incrementalChunkSize */
+		32768, 				/* initialHeapCount */
+		32768,			 	/* incrementalHeapCount */
+		64 * 1024,	 		/* stackCount */
+		1024,				/* initialKeyCount */
+		1024,				/* incrementalKeyCount */
 		1993, 				/* nameModulo */
 		127, 				/* symbolModulo */
 		64 * 1024,			/* parserBufferSize */
 		1993,				/* parserTableModulo */
 	};
 
+	fxInitializeSharedCluster();
+
 	while (1) {
+		int error = 0;
 		char action[4];
 		ssize_t nread = read(REPRL_CRFD, action, 4);
 		fflush(0);		//@@
@@ -1734,10 +1800,9 @@ int fuzz(int argc, char* argv[])
 		}
 		buffer[script_size] = 0;	// required when debugger active
 
-		xsCreation* creation = &_creation;
-		xsMachine* machine;
-		fxInitializeSharedCluster();
-		machine = xsCreateMachine(creation, "xst", NULL);
+		xsMachine* machine = xsCreateMachine(&_creation, "xst_fuzz", NULL);
+		xsBeginMetering(machine, xsAlwaysWithinComputeLimit, 0x7FFFFFFF);
+		{
 		xsBeginHost(machine);
 		{
 			xsTry {
@@ -1768,121 +1833,168 @@ int fuzz(int argc, char* argv[])
 				aStream.buffer = buffer;
 				aStream.offset = 0;
 				aStream.size = script_size;
-				fxRunScript(the, fxParseScript(the, &aStream, fxStringCGetter, mxProgramFlag | mxDebugFlag), mxRealmGlobal(realm), C_NULL, mxRealmClosures(realm)->value.reference, C_NULL, mxProgram.value.reference);
+				the->script = fxParseScript(the, &aStream, fxStringCGetter, mxProgramFlag | mxDebugFlag);
+				fxRunScript(the, the->script, mxRealmGlobal(realm), C_NULL, mxRealmClosures(realm)->value.reference, C_NULL, mxProgram.value.reference);
+				the->script = NULL;
 				mxPullSlot(mxResult);
 
 				fxRunLoop(the);
 			}
 			xsCatch {
-				fprintf(stderr, "%s\n", xsToString(xsException));
-				exit(-1);
+				the->script = NULL;
+				error = 1;
 			}
 		}
 		fxCheckUnhandledRejections(machine, 1);
 		xsEndHost(machine);
-		if (machine->abortStatus) {
-			char *why = (machine->abortStatus <= XS_UNHANDLED_REJECTION_EXIT) ? gxAbortStrings[machine->abortStatus] : "unknown";
-			fprintf(stderr, "Error: %s\n", why);
 		}
-		if (machine->abortStatus != 0) {
-			fprintf(stderr, "Failed to eval_buf reprl\n");
-		}
-		fflush(stdout);		//@@
-		fflush(stderr);		//@@
+		xsEndMetering(machine);
+		fxDeleteScript(machine->script);
 		int status = (machine->abortStatus & 0xff) << 8;
+		if (!status && error)
+			status = XS_UNHANDLED_EXCEPTION_EXIT << 8;
 		if (write(REPRL_CWFD, &status, 4) != 4) {
 			fprintf(stderr, "Erroring writing return value over REPRL_CWFD\n");
+			exit(-1);
 		}
 
 		xsDeleteMachine(machine);
-		fxTerminateSharedCluster();
 
 		free(buffer);
 
 		__sanitizer_cov_reset_edgeguards();
 	}
 
+	fxTerminateSharedCluster();
+
 	return 0;
 }
 #endif 
 #if OSSFUZZ
-int fuzz_oss(const uint8_t *Data, size_t Size)
+
+#if mxMetering
+#ifndef mxFuzzMeter
+	// highest rate for test262 corpus was 2147483800
+	#define mxFuzzMeter (214748380)
+#endif
+
+static int lsan_disabled;
+
+// allow toggling ASAN leak-checking
+__attribute__((used)) int __lsan_is_turned_off()
 {
+	return lsan_disabled;
+}
+
+static xsBooleanValue xsWithinComputeLimit(xsMachine* machine, xsUnsignedValue index)
+{
+	// may be useful to print current index for debugging
+//	fprintf(stderr, "Current index: %u\n", index);
+	if (index > mxFuzzMeter) {
+//		fprintf(stderr, "Computation limits reached (index %u). Exiting...\n", index);
+		return 0;
+	}
+	return 1;
+}
+#endif
+
+int fuzz_oss(const uint8_t *Data, size_t script_size)
+{
+	lsan_disabled = 0;
+
 	xsCreation _creation = {
-		16 * 1024 * 1024, 	/* initialChunkSize */
-		16 * 1024 * 1024, 	/* incrementalChunkSize */
-		1 * 1024 * 1024, 	/* initialHeapCount */
-		1 * 1024 * 1024, 	/* incrementalHeapCount */
-		256 * 1024, 		/* stackCount */
-		256 * 1024, 		/* keyCount */
+		1 * 1024 * 1024, 	/* initialChunkSize */
+		1 * 1024 * 1024, 	/* incrementalChunkSize */
+		32768, 				/* initialHeapCount */
+		32768,			 	/* incrementalHeapCount */
+		64 * 1024,	 		/* stackCount */
+		1024,				/* initialKeyCount */
+		1024,				/* incrementalKeyCount */
 		1993, 				/* nameModulo */
 		127, 				/* symbolModulo */
 		64 * 1024,			/* parserBufferSize */
 		1993,				/* parserTableModulo */
 	};
-	size_t script_size = 0;
-
-	char* buffer = (char *)malloc(Size + 1);
-	memcpy(buffer, Data, Size);
-	script_size = Size;
+	size_t buffer_size = script_size + script_size + script_size + 1;			// (massively) over-allocate to have space if UTF-8 encoding expands (1 byte invalid byte becomes a 3-byte UTF-8 sequence)
+	char* buffer = (char *)malloc(buffer_size);
+	memcpy(buffer, Data, script_size);
 
 	buffer[script_size] = 0;	// required when debugger active
 
 	xsCreation* creation = &_creation;
 	xsMachine* machine;
 	fxInitializeSharedCluster();
-	machine = xsCreateMachine(creation, "xst", NULL);
+	machine = xsCreateMachine(creation, "xst_fuzz_oss", NULL);
 
-	xsBeginHost(machine);
+	xsBeginMetering(machine, xsWithinComputeLimit, 1);
 	{
-		xsTry {
-			xsVars(1);
+		xsBeginHost(machine);
+		{
+			xsTry {
+				xsVars(2);
+				modInstallTextDecoder(the);
+				xsResult = xsArrayBuffer(buffer, script_size);
+				xsVar(0) = xsNew0(xsGlobal, xsID("TextDecoder"));
+				xsResult = xsCall1(xsVar(0), xsID("decode"), xsResult);
+	#ifdef OSSFUZZ_JSONPARSE
+				xsVar(0) = xsGet(xsGlobal, xsID("JSON"));
+				xsResult = xsCall1(xsVar(0), xsID("parse"), xsResult);
+	#else
+				xsToStringBuffer(xsResult, buffer, buffer_size);
 
-			// hardened javascript
-			xsResult = xsNewHostFunction(fx_harden, 1);
-			xsDefine(xsGlobal, xsID("harden"), xsResult, xsDontEnum);
-			xsResult = xsNewHostFunction(fx_lockdown, 0);
-			xsDefine(xsGlobal, xsID("lockdown"), xsResult, xsDontEnum);
-			xsResult = xsNewHostFunction(fx_petrify, 1);
-			xsDefine(xsGlobal, xsID("petrify"), xsResult, xsDontEnum);
-			xsResult = xsNewHostFunction(fx_mutabilities, 1);
-			xsDefine(xsGlobal, xsID("mutabilities"), xsResult, xsDontEnum);
+				// hardened javascript
+				xsResult = xsNewHostFunction(fx_harden, 1);
+				xsDefine(xsGlobal, xsID("harden"), xsResult, xsDontEnum);
+				xsResult = xsNewHostFunction(fx_lockdown, 0);
+				xsDefine(xsGlobal, xsID("lockdown"), xsResult, xsDontEnum);
+				xsResult = xsNewHostFunction(fx_petrify, 1);
+				xsDefine(xsGlobal, xsID("petrify"), xsResult, xsDontEnum);
+				xsResult = xsNewHostFunction(fx_mutabilities, 1);
+				xsDefine(xsGlobal, xsID("mutabilities"), xsResult, xsDontEnum);
 
-			xsResult = xsNewHostFunction(fx_gc, 0);
-			xsSet(xsGlobal, xsID("gc"), xsResult);
-			xsResult = xsNewHostFunction(fx_print, 1);
-			xsSet(xsGlobal, xsID("print"), xsResult);
+				xsResult = xsNewHostFunction(fx_gc, 0);
+				xsSet(xsGlobal, xsID("gc"), xsResult);
+				xsResult = xsNewHostFunction(fx_print, 1);
+				xsSet(xsGlobal, xsID("print"), xsResult);
 
-			txStringCStream aStream;
-			aStream.buffer = buffer;
-			aStream.offset = 0;
-			aStream.size = script_size;
-#ifdef OSSFUZZ_JSONPARSE
-			// json parse
-			xsResult = xsGet(xsGlobal, xsID("JSON"));
-			xsResult = xsCall1(xsResult, xsID("parse"), xsString(buffer));
-#else
-			// run script
-			txSlot* realm = mxProgram.value.reference->next->value.module.realm;
-			fxRunScript(the, fxParseScript(the, &aStream, fxStringCGetter, mxProgramFlag | mxDebugFlag), mxRealmGlobal(realm), C_NULL, mxRealmClosures(realm)->value.reference, C_NULL, mxProgram.value.reference);
-			mxPullSlot(mxResult);
-#endif
-			fxRunLoop(the);
+				// test262 stubs
+				xsVar(0) = xsNewHostFunction(fx_nop, 1);
+				xsDefine(xsGlobal, xsID("assert"), xsVar(0), xsDontEnum);
+				xsDefine(xsVar(0), xsID("sameValue"), xsVar(0), xsDontEnum);
+				xsDefine(xsVar(0), xsID("notSameValue"), xsVar(0), xsDontEnum);
+				xsVar(1) = xsNewHostFunction(fx_assert_throws, 1);
+				xsDefine(xsVar(0), xsID("throws"), xsVar(1), xsDontEnum);
+				
+				txStringCStream aStream;
+				aStream.buffer = buffer;
+				aStream.offset = 0;
+				aStream.size = strlen(buffer);
+				// run script
+				txSlot* realm = mxProgram.value.reference->next->value.module.realm;
+				the->script = fxParseScript(the, &aStream, fxStringCGetter, mxProgramFlag | mxDebugFlag);
+				fxRunScript(the, the->script, mxRealmGlobal(realm), C_NULL, mxRealmClosures(realm)->value.reference, C_NULL, mxProgram.value.reference);
+				the->script = NULL;
+				mxPullSlot(mxResult);
+				fxRunLoop(the);
+	#endif
+			}
+			xsCatch {
+				the->script = NULL;
+			}
 		}
-		xsCatch {
-		}
+		xsEndHost(machine);
 	}
-	xsEndHost(machine);
-	fflush(stdout);	
-	fflush(stderr);	
+	xsEndMetering(machine);
+	fxDeleteScript(machine->script);
 	xsDeleteMachine(machine);
 	fxTerminateSharedCluster();
 	free(buffer);
 	return 0;
 }
+
 #endif 
 
-#if FUZZING || FUZZILLI
+#if 1 || FUZZING || FUZZILLI
 
 void fx_fillBuffer(txMachine *the)
 {
@@ -1895,6 +2007,21 @@ void fx_fillBuffer(txMachine *the)
 		*buffer++ = (uint8_t)seed;
 	}
 }
+
+void fx_nop(xsMachine *the)
+{
+}
+
+void fx_assert_throws(xsMachine *the)
+{
+	mxTry(the) {
+		if (xsToInteger(xsArgc) >= 2)
+			xsCallFunction0(xsArg(1), xsGlobal);
+	}
+	mxCatch(the) {
+	}
+}
+
 #endif
 
 /* PLATFORM */
@@ -1922,8 +2049,8 @@ void fxRunLoop(txMachine* the)
 	txJob* job;
 	txJob** address;
 	
-	fxEndJob(the);
 	for (;;) {
+		fxEndJob(the);
 		while (the->promiseJobs) {
 			while (the->promiseJobs) {
 				the->promiseJobs = 0;
@@ -1999,8 +2126,8 @@ void fxRunModuleFile(txMachine* the, txString path)
 	mxDub();
 	fxGetID(the, mxID(_then));
 	mxCall();
-	fxNewHostFunction(the, fxFulfillModuleFile, 1, XS_NO_ID);
-	fxNewHostFunction(the, fxRejectModuleFile, 1, XS_NO_ID);
+	fxNewHostFunction(the, fxFulfillModuleFile, 1, XS_NO_ID, XS_NO_ID);
+	fxNewHostFunction(the, fxRejectModuleFile, 1, XS_NO_ID, XS_NO_ID);
 	mxRunCount(2);
 	mxPop();
 }
@@ -2016,14 +2143,17 @@ void fxRunProgramFile(txMachine* the, txString path, txUnsigned flags)
 
 void fxAbort(txMachine* the, int status)
 {
+	if (XS_DEBUGGER_EXIT == status)
+		c_exit(1);
 	if (the->abortStatus) // xsEndHost calls fxAbort!
 		return;
-	if (status) {
-		the->abortStatus = status;
-		fxExitToHost(the);
-	}
-	else
-		c_exit(1);
+		
+	the->abortStatus = status;
+ #if OSSFUZZ
+	lsan_disabled = 1;		// disable leak checking
+ #endif
+
+	fxExitToHost(the);
 }
 
 txID fxFindModule(txMachine* the, txSlot* realm, txID moduleID, txSlot* slot)
@@ -2044,7 +2174,8 @@ txID fxFindModule(txMachine* the, txSlot* realm, txID moduleID, txSlot* slot)
 	if (dot) {
 		if (moduleID == XS_NO_ID)
 			return XS_NO_ID;
-		c_strcpy(path, fxGetKeyName(the, moduleID));
+		c_strncpy(path, fxGetKeyName(the, moduleID), C_PATH_MAX - 1);
+		path[C_PATH_MAX - 1] = 0;
 		slash = c_strrchr(path, mxSeparator);
 		if (!slash)
 			return XS_NO_ID;
@@ -2069,6 +2200,8 @@ txID fxFindModule(txMachine* the, txSlot* realm, txID moduleID, txSlot* slot)
 	else
 		slash = path;
 	*slash = 0;
+	if ((c_strlen(path) + c_strlen(name + dot)) >= sizeof(path))
+		xsRangeError("path too long");
 	c_strcat(path, name + dot);
 	return fxNewNameC(the, path);
 }
@@ -2083,7 +2216,8 @@ void fxLoadModule(txMachine* the, txSlot* module, txID moduleID)
 #else
 	txUnsigned flags = 0;
 #endif
-	c_strcpy(path, fxGetKeyName(the, moduleID));
+	c_strncpy(path, fxGetKeyName(the, moduleID), C_PATH_MAX - 1);
+	path[C_PATH_MAX - 1] = 0;
 	if (c_realpath(path, real)) {
 		script = fxLoadScript(the, real, flags);
 		if (script)
@@ -2146,11 +2280,14 @@ void fxConnect(txMachine* the)
 	return;
 #endif
 #ifdef mxMultipleThreads
-#else
+	if (!c_strcmp(the->name, "xst262"))
+		return;
+	if (!c_strcmp(the->name, "xst-agent"))
+		return;
+#endif		
 	char name[256];
 	char* colon;
 	int port;
-	struct sockaddr_in address;
 #if mxWindows
 	if (GetEnvironmentVariable("XSBUG_HOST", name, sizeof(name))) {
 #else
@@ -2171,22 +2308,21 @@ void fxConnect(txMachine* the)
 		strcpy(name, "localhost");
 		port = 5002;
 	}
-	memset(&address, 0, sizeof(address));
-  	address.sin_family = AF_INET;
-	address.sin_addr.s_addr = inet_addr(name);
-	if (address.sin_addr.s_addr == INADDR_NONE) {
-		struct hostent *host = gethostbyname(name);
-		if (!host)
-			return;
-		memcpy(&(address.sin_addr), host->h_addr, host->h_length);
-	}
-  	address.sin_port = htons(port);
 #if mxWindows
 {  	
 	WSADATA wsaData;
+	struct hostent *host;
+	struct sockaddr_in address;
 	unsigned long flag;
 	if (WSAStartup(0x202, &wsaData) == SOCKET_ERROR)
 		return;
+	host = gethostbyname(name);
+	if (!host)
+		goto bail;
+	memset(&address, 0, sizeof(address));
+	address.sin_family = AF_INET;
+	memcpy(&(address.sin_addr), host->h_addr, host->h_length);
+  	address.sin_port = htons(port);
 	the->connection = socket(AF_INET, SOCK_STREAM, 0);
 	if (the->connection == INVALID_SOCKET)
 		return;
@@ -2211,7 +2347,18 @@ void fxConnect(txMachine* the)
 }
 #else
 {  	
+	struct sockaddr_in address;
 	int	flag;
+	memset(&address, 0, sizeof(address));
+  	address.sin_family = AF_INET;
+	address.sin_addr.s_addr = inet_addr(name);
+	if (address.sin_addr.s_addr == INADDR_NONE) {
+		struct hostent *host = gethostbyname(name);
+		if (!host)
+			return;
+		memcpy(&(address.sin_addr), host->h_addr, host->h_length);
+	}
+  	address.sin_port = htons(port);
 	the->connection = socket(AF_INET, SOCK_STREAM, 0);
 	if (the->connection <= 0)
 		goto bail;
@@ -2251,7 +2398,6 @@ void fxConnect(txMachine* the)
 	return;
 bail:
 	fxDisconnect(the);
-#endif		
 }
 
 void fxDisconnect(txMachine* the)

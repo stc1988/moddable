@@ -110,45 +110,33 @@ void fxBuildJSON(txMachine* the)
 
 void fx_JSON_parse(txMachine* the)
 {
-	volatile txJSONParser* aParser = C_NULL;
-	mxTry(the) {
-		if (mxArgc < 1)
-			mxSyntaxError("no buffer");
-		aParser = c_malloc(sizeof(txJSONParser));
-		if (NULL == aParser)
-			fxAbort(the, XS_NOT_ENOUGH_MEMORY_EXIT);
-		c_memset((txJSONParser*)aParser, 0, sizeof(txJSONParser));
-		if ((mxArgc > 1) && mxIsReference(mxArgv(1)) && fxIsArray(the, mxArgv(1)->value.reference))
-			aParser->keys = fxToJSONKeys(the, mxArgv(1));
-		fxToString(the, mxArgv(0));
-		aParser->slot = mxArgv(0);
-		aParser->offset = 0;
-		fxParseJSON(the, (txJSONParser*)aParser);
+	volatile txJSONParser aParser = {0};
+
+	if (mxArgc < 1)
+		mxSyntaxError("no buffer");
+	if ((mxArgc > 1) && mxIsReference(mxArgv(1)) && fxIsArray(the, mxArgv(1)->value.reference))
+		aParser.keys = fxToJSONKeys(the, mxArgv(1));
+	fxToString(the, mxArgv(0));
+	aParser.slot = mxArgv(0);
+	aParser.offset = 0;
+	fxParseJSON(the, (txJSONParser*)&aParser);
+	mxPullSlot(mxResult);
+	if (aParser.keys)
+		mxPop();
+	if ((mxArgc > 1) && mxIsReference(mxArgv(1)) && mxIsCallable(mxArgv(1)->value.reference)) {
+		txSlot* instance;
+		txID id;
+		mxPush(mxObjectPrototype);
+		instance = fxNewObjectInstance(the);
+		id = fxID(the, "");
+		mxBehaviorDefineOwnProperty(the, instance, id, 0, mxResult, XS_GET_ONLY);
+		mxPushSlot(mxArgv(1));
+		mxCall();
+		mxPushUndefined();
+		fxKeyAt(the, id, 0, the->stack);
+		mxPushSlot(mxResult);
+		fxReviveJSON(the, mxArgv(1));
 		mxPullSlot(mxResult);
-		if (aParser->keys)
-			mxPop();
-		c_free((txJSONParser*)aParser);
-        aParser = C_NULL;
-		if ((mxArgc > 1) && mxIsReference(mxArgv(1)) && mxIsCallable(mxArgv(1)->value.reference)) {
-			txSlot* instance;
-			txID id;
-			mxPush(mxObjectPrototype);
-			instance = fxNewObjectInstance(the);
-			id = fxID(the, "");
-			mxBehaviorDefineOwnProperty(the, instance, id, 0, mxResult, XS_GET_ONLY);
-			mxPushSlot(mxArgv(1));
-			mxCall();
-			mxPushUndefined();
-			fxKeyAt(the, id, 0, the->stack);
-			mxPushSlot(mxResult);
-			fxReviveJSON(the, mxArgv(1));
-			mxPullSlot(mxResult);
-		}
-	}
-	mxCatch(the) {
-		if (aParser)
-			c_free((txJSONParser*)aParser);
-		fxJump(the);
 	}
 }
 
@@ -571,6 +559,7 @@ void fxParseJSONValue(txMachine* the, txJSONParser* theParser)
 void fxReviveJSON(txMachine* the, txSlot* reviver)
 {
 	txSlot* reference = the->stack;
+	mxCheckCStack();
 	if (mxIsReference(reference)) {
 		txSlot* instance = reference->value.reference;
 		if (fxIsArray(the, instance)) {
@@ -587,7 +576,7 @@ void fxReviveJSON(txMachine* the, txSlot* reviver)
 				mxPushUndefined();
 				fxKeyAt(the, 0, index, the->stack);
 				mxPushSlot(reference);
-				mxGetAll(0, index);
+				mxGetIndex(index);
 				fxReviveJSON(the, reviver);
 				if (mxIsUndefined(the->stack)) {
 					mxBehaviorDeleteProperty(the, reference->value.reference, 0, index);
@@ -627,9 +616,8 @@ void fxReviveJSON(txMachine* the, txSlot* reviver)
 
 void fx_JSON_stringify(txMachine* the)
 {
-	volatile txJSONStringifier aStringifier;
+	volatile txJSONStringifier aStringifier = {0};
 	mxTry(the) {
-		c_memset((txJSONStringifier*)&aStringifier, 0, sizeof(aStringifier));
 		fxStringifyJSON(the, (txJSONStringifier*)&aStringifier);
 		if (aStringifier.offset) {
 			fxStringifyJSONChars(the, (txJSONStringifier*)&aStringifier, "\0", 1);
@@ -935,13 +923,8 @@ void fxStringifyJSONProperty(txMachine* the, txJSONStringifier* theStringifier, 
 						if (mxBehaviorGetOwnProperty(the, anInstance, at->value.at.id, at->value.at.index, property) && !(property->flag & XS_DONT_ENUM_FLAG)) {
 							mxPushReference(anInstance);
 							mxGetAll(at->value.at.id, at->value.at.index);
-							if (at->value.at.id) {
-								txSlot* key = fxGetKey(the, at->value.at.id);
-								if (mxGetKeySlotKind(key) == XS_KEY_KIND)
-									mxPushString(key->value.key.string);
-								else
-									mxPushStringX(key->value.key.string);
-							}
+							if (at->value.at.id)
+								fxPushKeyString(the, at->value.at.id, C_NULL);
 							else
 								mxPushInteger((txInteger)at->value.at.index);
 							fxStringifyJSONProperty(the, theStringifier, &aFlag);

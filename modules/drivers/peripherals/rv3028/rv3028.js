@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021  Moddable Tech, Inc.
+ * Copyright (c) 2021-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -35,15 +35,15 @@ class RV3028 {
 	#blockBuffer = new Uint8Array(4);
 
 	constructor(options) {
-		const { rtc } = options;
-		const io = this.#io = new rtc.io({
+		const { clock } = options;
+		const io = this.#io = new clock.io({
 			hz: 400_000,
 			address: 0x52,
-			...rtc
+			...clock
 		});
 
 		try {
-			io.readByte(0);
+			io.readUint8(0);
 		}
 		catch (e) {
 			io.close();
@@ -56,16 +56,16 @@ class RV3028 {
 	}
 	configure(options) {
 	}
-	get enabled() {
-		return (this.#io.readByte(Register.STATUS) & Register.POWER_ON_RESET) ? false : true;
+	get configuration() {
+		return {};
 	}
 	get time() {
 		const reg = this.#blockBuffer;
 
-		if (!this.enabled)
+		if (this.#io.readUint8(Register.STATUS) & Register.POWER_ON_RESET)
 			return undefined;
 
-		this.#io.readBlock(Register.UNIXTIME, reg);
+		this.#io.readBuffer(Register.UNIXTIME, reg);
 
 		// UNIXTIME
 		return new Date( ((reg[3] << 24) | (reg[2] << 16) | (reg[1] << 8) | reg[0]) * 1000 );
@@ -81,11 +81,10 @@ class RV3028 {
 		b[2] = (v & 0xff0000) >> 16;
 		b[3] = (v & 0xff000000) >> 24;
 
-		io.writeBlock(Register.UNIXTIME, b);
+		io.writeBuffer(Register.UNIXTIME, b);
 
-		io.writeByte(Register.STATUS, 0);		// enable
+		io.writeUint8(Register.STATUS, 0);		// enable
 	}
 }
 
-Object.freeze(RV3028.prototype);
 export default RV3028;

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016-2017  Moddable Tech, Inc.
+# Copyright (c) 2016-2023 Moddable Tech, Inc.
 #
 #   This file is part of the Moddable SDK Tools.
 # 
@@ -47,7 +47,8 @@ C_OPTIONS = \
 	/I$(SRC_DIR) \
 	/I$(TLS_DIR) \
 	/I$(TMP_DIR) \
-	/nologo
+	/nologo \
+	/MP
 	
 !IF "$(GOAL)"=="debug"
 C_OPTIONS = $(C_OPTIONS) \
@@ -73,10 +74,10 @@ LINK_OPTIONS = $(LINK_OPTIONS) /debug
 !ENDIF
 
 OBJECTS = \
-	$(TMP_DIR)\xsdtoa.o \
-	$(TMP_DIR)\xsre.o \
-	$(TMP_DIR)\xsCommon.o \
-	$(TMP_DIR)\xsid.o
+	$(TMP_DIR)\xsdtoa.obj \
+	$(TMP_DIR)\xsre.obj \
+	$(TMP_DIR)\xsCommon.obj \
+	$(TMP_DIR)\xsid.obj
 
 build : $(TMP_DIR) $(BIN_DIR) $(BIN_DIR)\$(NAME).exe
 
@@ -97,10 +98,12 @@ $(BIN_DIR)\$(NAME).exe : $(OBJECTS)
 $(OBJECTS) : $(PLT_DIR)\xsPlatform.h
 $(OBJECTS) : $(SRC_DIR)\xsCommon.h
 
-{$(SRC_DIR)\}.c{$(TMP_DIR)\}.o:
-	cl $< $(C_OPTIONS) /Fo$@
-{$(TLS_DIR)\}.c{$(TMP_DIR)\}.o:
-	cl $< $(C_OPTIONS) /Fo$@
+{$(SRC_DIR)\}.c{$(TMP_DIR)\}.obj::
+	cd $(TMP_DIR)
+	cl $< $(C_OPTIONS)
+{$(TLS_DIR)\}.c{$(TMP_DIR)\}.obj::
+	cd $(TMP_DIR)
+	cl $< $(C_OPTIONS)
 
 clean :
 	del /Q $(BUILD_DIR)\bin\win\debug\$(NAME).exe

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2022  Moddable Tech, Inc.
+ * Copyright (c) 2016-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -29,7 +29,6 @@
 #include "freertos/task.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
-// #include "esp_event_loop.h"
 #include "esp_task_wdt.h"
 #include "lwip/inet.h"
 #include "lwip/ip4_addr.h"
@@ -42,7 +41,16 @@
 	#include "esp_bt.h"
 #endif
 
-#include "driver/uart.h"
+
+#if USE_USB
+	#if USE_USB == 2
+		#include "driver/usb_serial_jtag.h"
+	#else
+		#error esp32c3 doesnt support TinyUSB
+	#endif
+#else
+	#include "driver/uart.h"
+#endif
 
 #include "modInstrumentation.h"
 #include "esp_system.h"		// to get system_get_free_heap_size, etc.
@@ -51,9 +59,7 @@
 #include "xsHost.h"
 #include "xsHosts.h"
 
-#ifndef MODDEF_XS_TEST
-	#define MODDEF_XS_TEST	1
-#endif
+#include "mc.defines.h"
 
 #ifndef DEBUGGER_SPEED
 	#define DEBUGGER_SPEED 921600
@@ -63,9 +69,9 @@ extern void fx_putc(void *refcon, char c);		//@@
 extern void mc_setup(xsMachine *the);
 
 #if 0 == CONFIG_LOG_DEFAULT_LEVEL
-	#define kStack ((8 * 1024) / sizeof(StackType_t))
+	#define kStack (((8 * 1024) + XT_STACK_EXTRA_CLIB) / sizeof(StackType_t))
 #else
-	#define kStack ((10 * 1024) / sizeof(StackType_t))
+	#define kStack (((10 * 1024) + XT_STACK_EXTRA_CLIB) / sizeof(StackType_t))
 #endif
 
 #if !MODDEF_XS_TEST
@@ -92,16 +98,30 @@ static
 	unsigned char gXSBUG[4] = {DEBUG_IP};
 #endif
 
-#define USE_UART	UART_NUM_0
-#define USE_UART_TX	21
-#define USE_UART_RX	20
+#if USE_USB
+#else
+	#define USE_UART	UART_NUM_0
+	#define USE_UART_TX	21
+	#define USE_UART_RX	20
+#endif
 
 #ifdef mxDebug
 
+#if USE_USB
 static void debug_task(void *pvParameter)
 {
-	extern uint8_t fxIsConnected(xsMachine* the);
+	const usb_serial_jtag_driver_config_t cfg = { .rx_buffer_size = 4096, .tx_buffer_size = 2048 };
+	usb_serial_jtag_driver_install(&cfg);
 
+	while (true) {
+		fxReceiveLoop();
+		modDelayMilliseconds(5);
+	}
+}
+
+#else
+static void debug_task(void *pvParameter)
+{
 	while (true) {
 		uart_event_t event;
 
@@ -113,15 +133,16 @@ static void debug_task(void *pvParameter)
 	}
 }
 #endif
+#endif
 
 void loop_task(void *pvParameter)
 {
-#if CONFIG_TASK_WDT
+#if CONFIG_ESP_TASK_WDT
 	esp_task_wdt_add(NULL);
 #endif
 
 	while (true) {
-		gThe = modCloneMachine(0, 0, 0, 0, NULL);
+		gThe = modCloneMachine(NULL, NULL);
 
 		modRunMachineSetup(gThe);
 
@@ -129,7 +150,9 @@ void loop_task(void *pvParameter)
 		xsMachine *the = gThe;
 		while (gThe) {
 			modTimersExecute();
-			modMessageService(gThe, modTimersNext());
+			if (gThe)
+				modMessageService(gThe, modTimersNext());
+			modInstrumentationAdjust(Turns, +1);
 		}
 
 		xsDeleteMachine(the);
@@ -137,6 +160,7 @@ void loop_task(void *pvParameter)
 		while (true) {
 			modTimersExecute();
 			modMessageService(gThe, modTimersNext());
+			modInstrumentationAdjust(Turns, +1);
 		}
 #endif
 	}
@@ -151,7 +175,7 @@ void modLog_transmit(const char *msg)
 {
 	uint8_t c;
 
-#if mxDebug
+#ifdef mxDebug
 	if (gThe) {
 		while (0 != (c = c_read8(msg++)))
 			fx_putc(gThe, c);
@@ -168,29 +192,56 @@ void modLog_transmit(const char *msg)
 }
 
 void ESP_put(uint8_t *c, int count) {
+#if USE_USB
+    int sent = 0;
+    while (count > 0) {
+        sent = usb_serial_jtag_write_bytes(c, count, 10);
+        c += sent;
+        count -= sent;
+    }
+#else
 	uart_write_bytes(USE_UART, (char *)c, count);
+#endif
 }
 
 void ESP_putc(int c) {
 	char cx = c;
+#if USE_USB
+	usb_serial_jtag_write_bytes(&cx, 1, 1);
+#else
 	uart_write_bytes(USE_UART, &cx, 1);
+#endif
 }
 
 int ESP_getc(void) {
+	int amt;
 	uint8_t c;
-	int err = uart_read_bytes(USE_UART, &c, 1, 0);
-	return (1 == err) ? c : -1;
+#if USE_USB
+	amt = usb_serial_jtag_read_bytes(&c, 1, 1);
+#else
+	amt = uart_read_bytes(USE_UART, &c, 1, 0);
+#endif
+	return (1 == amt) ? c : -1;
 }
 
 uint8_t ESP_isReadable() {
+#if USE_USB
+//	if (cdcacm_data_in_buffer())
+		return true;
+#else
 	size_t s;
 	uart_get_buffered_data_len(USE_UART, &s);
 	return s > 0;
+#endif
 }
 
 uint8_t ESP_setBaud(int baud) {
+#if USE_USB
+	return 1;
+#else
 	uart_wait_tx_done(USE_UART, 5 * 1000);
 	return ESP_OK == uart_set_baudrate(USE_UART, baud);
+#endif
 }
 
 void app_main() {
@@ -207,8 +258,15 @@ void app_main() {
     ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
 #endif
 
+#if USE_USB
+#ifdef mxDebug
+	xTaskCreate(debug_task, "debug", (768 + XT_STACK_EXTRA) / sizeof(StackType_t), 0, 8, NULL);
+	printf("START USB CONSOLE!!!\n");
+#endif
+#else
 	esp_err_t err;
-	uart_config_t uartConfig;
+	uart_config_t uartConfig = {0};
+
 #ifdef mxDebug
 	uartConfig.baud_rate = DEBUGGER_SPEED;
 #else
@@ -220,6 +278,7 @@ void app_main() {
 	uartConfig.flow_ctrl = UART_HW_FLOWCTRL_DISABLE;
 	uartConfig.rx_flow_ctrl_thresh = 120;		// unused. no hardware flow control.
 //	uartConfig.use_ref_tick = 0;	 // deprecated in 4.x
+	uartConfig.source_clk = UART_SCLK_APB;
 
 	err = uart_param_config(USE_UART, &uartConfig);
 	if (err)
@@ -235,6 +294,8 @@ void app_main() {
 #else
 	uart_driver_install(USE_UART, UART_FIFO_LEN * 2, 0, 0, NULL, 0);
 #endif
+
+#endif	// !USE_USB
 
     xTaskCreate(loop_task, "main", kStack, NULL, 4, NULL);
 }

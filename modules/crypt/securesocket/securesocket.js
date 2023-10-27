@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2022  Moddable Tech, Inc.
+ * Copyright (c) 2016-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -58,7 +58,7 @@ class SecureSocket {
 			try {
 				switch (message) {
 					case Socket.connected:
-						this.ssl.initiateHandshake(this.sock);
+						this.ssl.initiateHandshake();
 						this.messageHandler(0);
 						break;
 					case Socket.readable:
@@ -74,7 +74,7 @@ class SecureSocket {
 						if (this.handshaking)
 							this.messageHandler(0);
 						else {
-							if (value > 128)			//@@ 128 is guess at TLS overhead
+							if (value > 128)			//@@ 128 is an estimate of TLS overhead
 								this.callback(3, value - 128)
 						}
 						break;

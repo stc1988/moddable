@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016-2021  Moddable Tech, Inc.
+# Copyright (c) 2016-2023  Moddable Tech, Inc.
 #
 #   This file is part of the Moddable SDK Tools.
 # 
@@ -29,13 +29,29 @@ ARDUINO_ESP8266 = $(ARDUINO_ROOT)/cores/esp8266
 TOOLS_ROOT ?= $(ESP_BASE)/toolchain/$(HOST_OS)
 PLATFORM_DIR = $(MODDABLE)/build/devices/esp
 
+# spot-check installation
+ifeq ($(wildcard $(ESP_BASE)),)
+$(error ESP8266 tools directory not found at $$ESP_BASE: $(ESP_BASE). Set-up instructions at https://github.com/Moddable-OpenSource/moddable/blob/public/documentation/devices/esp8266.md)
+endif
+ifeq ($(wildcard $(ARDUINO_ROOT)),)
+$(error ESP8266 code Arduino $(ESP_SDK_RELEASE) not found at $$ARDUINO_ROOT: $(ARDUINO_ROOT). Set-up instructions at https://github.com/Moddable-OpenSource/moddable/blob/public/documentation/devices/esp8266.md)
+endif
+ifeq ($(wildcard $(ESPRESSIF_SDK_ROOT)),)
+$(error ESP8266 RTOS SDK not found at $$ESPRESSIF_SDK_ROOT: $(ESPRESSIF_SDK_ROOT). Set-up instructions at https://github.com/Moddable-OpenSource/moddable/blob/public/documentation/devices/esp8266.md)
+endif
+ifeq ($(wildcard $(TOOLS_ROOT)),)
+$(error Xtensa lx106 architecture GCC toolchain directory not found at $$TOOLS_ROOT: $(TOOLS_ROOT). Set-up instructions at https://github.com/Moddable-OpenSource/moddable/blob/public/documentation/devices/esp8266.md)
+endif
+ifeq ($(shell which python),)
+$(error Python not found. Set-up instructions at https://github.com/Moddable-OpenSource/moddable/blob/public/documentation/devices/esp8266.md)
+endif
+
 # serial port configuration
 UPLOAD_SPEED ?= 921600
 DEBUGGER_SPEED ?= 921600
 ifeq ($(HOST_OS),Darwin)
-	ifeq ($(findstring _12.,_$(shell sw_vers -productVersion)),_12.)
-		UPLOAD_PORT ?= /dev/cu.usbserial-0001
-	else ifeq ($(findstring _11.,_$(shell sw_vers -productVersion)),_11.)
+	VERS = $(shell sw_vers -productVersion | cut -f1 -d.)
+	ifeq ($(shell test $(VERS) -gt 10; echo $$?), 0)
 		UPLOAD_PORT ?= /dev/cu.usbserial-0001
 	else
 		UPLOAD_PORT ?= /dev/cu.SLAB_USBtoUART
@@ -64,19 +80,6 @@ DEBUG_IP ?=
 XSBUG_HOST ?= localhost
 XSBUG_PORT ?= 5002
 
-# End user-configurable values. Derived values below.
-NET_CONFIG_FLAGS := 
-ifneq ($(WIFI_SSID),)
-NET_CONFIG_FLAGS += -DWIFI_SSID=$(WIFI_SSID)
-endif
-ifneq ($(WIFI_PSK),)
-NET_CONFIG_FLAGS += -DWIFI_PSK=$(WIFI_PSK)
-endif
-ifneq ($(DEBUG_IP),)
-comma := ,
-NET_CONFIG_FLAGS += -DDEBUG_IP=$(subst .,$(comma),$(DEBUG_IP))
-endif
-
 NEWLIBC_PATH = $(ESPRESSIF_SDK_ROOT)/components/newlib/newlib/lib/libc.a
 
 CORE_DIR = $(ARDUINO_ROOT)/cores/esp8266
@@ -95,7 +98,6 @@ SDK_SRC = \
 	$(ARDUINO_ESP8266)/core_esp8266_noniso.c \
 	$(ARDUINO_ESP8266)/core_esp8266_phy.c \
 	$(ARDUINO_ESP8266)/core_esp8266_postmortem.c \
-	$(ARDUINO_ESP8266)/core_esp8266_si2c.c \
 	$(ARDUINO_ESP8266)/core_esp8266_timer.c \
 	$(ARDUINO_ESP8266)/core_esp8266_wiring.c \
 	$(ARDUINO_ESP8266)/core_esp8266_wiring_digital.c \
@@ -113,6 +115,7 @@ SDK_SRC = \
 	$(ARDUINO_ESP8266)/Schedule.cpp \
 	$(PLATFORM_DIR)/lib/bsearch/bsearch.c \
 	$(PLATFORM_DIR)/lib/fmod/e_fmod.c \
+	$(PLATFORM_DIR)/lib/i2c/core_esp8266_si2c_patched.c \
 	$(PLATFORM_DIR)/lib/rtc/rtctime.c \
 	$(PLATFORM_DIR)/lib/tinyi2s/tinyi2s.c \
 	$(PLATFORM_DIR)/lib/tinyprintf/tinyprintf.c \
@@ -124,6 +127,7 @@ SDK_SRC_SKIPPED = \
 	$(ARDUINO_ESP8266)/core_esp8266_eboot_command.c \
 	$(ARDUINO_ESP8266)/core_esp8266_i2s.c \
 	$(ARDUINO_ESP8266)/core_esp8266_flash_utils.c \
+	$(ARDUINO_ESP8266)/core_esp8266_si2c.c \
 	$(ARDUINO_ESP8266)/core_esp8266_wiring_analog.c \
 	$(ARDUINO_ESP8266)/core_esp8266_wiring_pulse.c \
 	$(ARDUINO_ESP8266)/core_esp8266_wiring_shift.c \
@@ -175,7 +179,6 @@ XS_OBJ = \
 	$(LIB_DIR)/xsNumber.c.o \
 	$(LIB_DIR)/xsObject.c.o \
 	$(LIB_DIR)/xsPlatforms.c.o \
-	$(LIB_DIR)/xsProfile.c.o \
 	$(LIB_DIR)/xsPromise.c.o \
 	$(LIB_DIR)/xsProperty.c.o \
 	$(LIB_DIR)/xsProxy.c.o \
@@ -219,23 +222,6 @@ AR  = $(TOOLS_BIN)/xtensa-lx106-elf-ar
 OTA_TOOL = $(TOOLS_ROOT)/espota.py
 ESPTOOL = $(ESPRESSIF_SDK_ROOT)/components/esptool_py/esptool/esptool.py
 
-ifeq ($(HOST_OS),Darwin)
-MODDABLE_TOOLS_DIR = $(BUILD_DIR)/bin/mac/release
-else
-MODDABLE_TOOLS_DIR = $(BUILD_DIR)/bin/lin/release
-endif
-BUILDCLUT = $(MODDABLE_TOOLS_DIR)/buildclut
-COMPRESSBMF = $(MODDABLE_TOOLS_DIR)/compressbmf
-RLE4ENCODE = $(MODDABLE_TOOLS_DIR)/rle4encode
-MCLOCAL = $(MODDABLE_TOOLS_DIR)/mclocal
-MCREZ = $(MODDABLE_TOOLS_DIR)/mcrez
-PNG2BMP = $(MODDABLE_TOOLS_DIR)/png2bmp
-IMAGE2CS = $(MODDABLE_TOOLS_DIR)/image2cs
-WAV2MAUD = $(MODDABLE_TOOLS_DIR)/wav2maud
-XSC = $(MODDABLE_TOOLS_DIR)/xsc
-XSID = $(MODDABLE_TOOLS_DIR)/xsid
-XSL = $(MODDABLE_TOOLS_DIR)/xsl
-
 C_DEFINES = \
 	-D__ets__ \
 	-DICACHE_FLASH \
@@ -245,12 +231,12 @@ C_DEFINES = \
 	-DARDUINO_ESP8266_ESP01 \
 	-DARDUINO_ARCH_ESP8266 \
 	-DESP8266 \
-	$(NET_CONFIG_FLAGS) \
+	-DCONT_STACKSIZE=4608 \
 	-DmxUseDefaultSharedChunks=1 \
 	-DmxRun=1 \
 	-DmxNoConsole=1 \
-	-DkCommodettoBitmapFormat=$(DISPLAY) \
-	-DkPocoRotation=$(ROTATION)
+	-DkCommodettoBitmapFormat=$(COMMODETTOBITMAPFORMAT) \
+	-DkPocoRotation=$(POCOROTATION)
 ifeq ($(DEBUG),1)
 	C_DEFINES += -DmxDebug=1 -DDEBUGGER_SPEED=$(DEBUGGER_SPEED)
 endif
@@ -296,14 +282,26 @@ MEM_USAGE = \
 VPATH += $(SDK_DIRS) $(XS_DIRS)
 
 ifeq ($(DEBUG),1)
+	LAUNCH = debug
+	START_XSBUG =
 	ifeq ($(HOST_OS),Darwin)
-		LAUNCH = debug
-		START_XSBUG = open -a $(BUILD_DIR)/bin/mac/release/xsbug.app -g
-		START_SERIAL2XSBUG = export XSBUG_PORT=$(XSBUG_PORT) && export XSBUG_HOST=$(XSBUG_HOST) && $(BUILD_DIR)/bin/mac/release/serial2xsbug $(UPLOAD_PORT) $(DEBUGGER_SPEED) 8N1 -elf $(TMP_DIR)/main.elf -bin $(TOOLS_BIN)
+		ifeq ("$(XSBUG_LAUNCH)","log")
+			CONNECT_XSBUG = export XSBUG_PORT=$(XSBUG_PORT) && export XSBUG_HOST=$(XSBUG_HOST) && cd $(MODDABLE)/tools/xsbug-log && node xsbug-log $(LOG_LAUNCH) serial2xsbug $(UPLOAD_PORT) $(DEBUGGER_SPEED) 8N1 -elf $(TMP_DIR)/main.elf -bin $(TOOLS_BIN)
+		else
+			CONNECT_XSBUG = export XSBUG_PORT=$(XSBUG_PORT) && export XSBUG_HOST=$(XSBUG_HOST) && serial2xsbug $(UPLOAD_PORT) $(DEBUGGER_SPEED) 8N1 -elf $(TMP_DIR)/main.elf -bin $(TOOLS_BIN)
+			ifeq ("$(XSBUG_LAUNCH)","app")
+				START_XSBUG = open -a $(BUILD_DIR)/bin/mac/release/xsbug.app -g
+			endif
+		endif
 	else
-		LAUNCH = debug
-		START_XSBUG = $(shell nohup $(BUILD_DIR)/bin/lin/release/xsbug > /dev/null 2>&1 &)
-		START_SERIAL2XSBUG = export XSBUG_PORT=$(XSBUG_PORT) && export XSBUG_HOST=$(XSBUG_HOST) && $(BUILD_DIR)/bin/lin/debug/serial2xsbug $(UPLOAD_PORT) $(DEBUGGER_SPEED) 8N1
+		ifeq ("$(XSBUG_LAUNCH)","log")
+			CONNECT_XSBUG = export XSBUG_PORT=$(XSBUG_PORT) && export XSBUG_HOST=$(XSBUG_HOST) && cd $(MODDABLE)/tools/xsbug-log && node xsbug-log $(LOG_LAUNCH) serial2xsbug $(UPLOAD_PORT) $(DEBUGGER_SPEED) 8N1
+		else
+			CONNECT_XSBUG = export XSBUG_PORT=$(XSBUG_PORT) && export XSBUG_HOST=$(XSBUG_HOST) && serial2xsbug $(UPLOAD_PORT) $(DEBUGGER_SPEED) 8N1
+			ifeq ("$(XSBUG_LAUNCH)","app")
+				START_XSBUG = $(shell nohup $(BUILD_DIR)/bin/lin/release/xsbug > /dev/null 2>&1 &)
+			endif
+		endif
 	endif
 else
 	LAUNCH = release
@@ -330,7 +328,8 @@ ESPTOOL_FLASH_OPT = \
 	0x1000 $(BIN_DIR)/main.bin \
 	$(ESP_INIT_DATA_DEFAULT_BIN_OFFSET) $(ESP_DATA_DEFAULT_BIN)
 
-UPLOAD_TO_ESP = $(ESPTOOL) -b $(UPLOAD_SPEED) -p $(UPLOAD_PORT) write_flash $(ESPTOOL_FLASH_OPT)
+SET_PROGRAMMING_MODE =
+DO_PROGRAM = $(ESPTOOL) -b $(UPLOAD_SPEED) -p $(UPLOAD_PORT) write_flash $(ESPTOOL_FLASH_OPT)
 
 .PHONY: all
 
@@ -340,23 +339,27 @@ build: $(LIB_DIR) $(BIN_DIR)/main.bin
 
 deploy:
 	@echo "# uploading to esp"
-	$(UPLOAD_TO_ESP)
-
+	$(KILL_SERIAL2XSBUG)
+	$(SET_PROGRAMMING_MODE)
+	$(DO_PROGRAM)
 
 xsbug:
 	@echo "# starting xsbug"
 	$(KILL_SERIAL2XSBUG)
 	$(START_XSBUG)
-	$(START_SERIAL2XSBUG)
+	$(CONNECT_XSBUG)
 
 debug: build
 	$(KILL_SERIAL2XSBUG)
 	$(START_XSBUG)
-	$(UPLOAD_TO_ESP)
-	$(START_SERIAL2XSBUG)
+	$(SET_PROGRAMMING_MODE)
+	$(DO_PROGRAM)
+	$(CONNECT_XSBUG)
 
 release: $(LIB_DIR) $(BIN_DIR)/main.bin
-	$(UPLOAD_TO_ESP)
+	$(KILL_SERIAL2XSBUG)
+	$(SET_PROGRAMMING_MODE)
+	$(DO_PROGRAM)
 
 clean:
 	echo "# Clean project"
@@ -421,11 +424,11 @@ $(TMP_DIR)/mc.%.c.o: $(TMP_DIR)/mc.%.c
 
 $(TMP_DIR)/mc.xs.c: $(MODULES) $(MANIFEST)
 	@echo "# xsl modules"
-	$(XSL) -b $(MODULES_DIR) -o $(TMP_DIR) $(PRELOADS) $(STRIPS) $(CREATION) $(MODULES)
+	xsl -b $(MODULES_DIR) -o $(TMP_DIR) $(PRELOADS) $(STRIPS) $(CREATION) $(MODULES)
 
 $(TMP_DIR)/mc.resources.c: $(DATA) $(RESOURCES) $(MANIFEST)
 	@echo "# mcrez resources"
-	$(MCREZ) $(DATA) $(RESOURCES) -o $(TMP_DIR) -p esp -r mc.resources.c
+	mcrez $(DATA) $(RESOURCES) -o $(TMP_DIR) -p esp -r mc.resources.c
 
 MAKEFLAGS += --jobs
 ifneq ($(VERBOSE),1)

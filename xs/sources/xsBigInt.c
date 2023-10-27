@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2018  Moddable Tech, Inc.
+ * Copyright (c) 2016-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -162,6 +162,7 @@ void fx_BigInt_asIntN(txMachine* the)
 			result = fxBigInt_usub(the, C_NULL, bits, result);
 		if (index && fxBigInt_comp(result, fxBigInt_ulsl1(the, C_NULL, (txBigInt *)&gxBigIntOne, index - 1)) >= 0)
 			result = fxBigInt_sub(the, C_NULL, result, bits);
+		result = fxBigInt_fit(the, result);
 	}
 	mxResult->value.bigint = *result;
 	mxResult->kind = XS_BIGINT_KIND;
@@ -187,6 +188,7 @@ void fx_BigInt_asUintN(txMachine* the)
 		result = fxBigInt_uand(the, C_NULL, arg, mask);
 		if ((arg->sign) && !fxBigInt_iszero(result))
 			result = fxBigInt_usub(the, C_NULL, bits, result);
+		result = fxBigInt_fit(the, result);
 	}
 	mxResult->value.bigint = *result;
 	mxResult->kind = XS_BIGINT_KIND;
@@ -747,6 +749,9 @@ txBigInt* fxStringToBigInt(txMachine* the, txSlot* slot, txFlag whole)
 		sign = 1;
 		p++;
 	}
+	else if (c == '+') {
+		p++;
+	}
 	offset = mxPtrDiff(p - s);
 	while (((c = *p)) && ('0' <= c) && (c <= '9'))
 		p++;
@@ -1189,7 +1194,7 @@ txBigInt *fxBigInt_lsl(txMachine* the, txBigInt *r, txBigInt *a, txBigInt *b)
 		if (a->sign) {
 			r = fxBigInt_ulsr1(the, r, a, b->data[0]);
             if (b->data[0])
-                r = fxBigInt_uadd(the, r, r, (txBigInt *)&gxBigIntOne);
+                r = fxBigInt_uadd(the, C_NULL, r, (txBigInt *)&gxBigIntOne);
 			r->sign = 1;
 		}
 		else
@@ -1241,7 +1246,7 @@ txBigInt *fxBigInt_lsr(txMachine* the, txBigInt *r, txBigInt *a, txBigInt *b)
 		if (a->sign) {
 			r = fxBigInt_ulsr1(the, r, a, b->data[0]);
             if (b->data[0])
-                r = fxBigInt_uadd(the, r, r, (txBigInt *)&gxBigIntOne);
+                r = fxBigInt_uadd(the, C_NULL, r, (txBigInt *)&gxBigIntOne);
 			r->sign = 1;
 		}
 		else
@@ -1346,7 +1351,7 @@ txBigInt *fxBigInt_sub(txMachine* the, txBigInt *rr, txBigInt *aa, txBigInt *bb)
 	return(rr);
 }
 
-#if __has_builtin(__builtin_uadd_overflow)
+#if __has_builtin(__builtin_add_overflow)
 static int fxBigInt_uadd_prim(txU4 *rp, txU4 *ap, txU4 *bp, int an, int bn)
 {
 	txU4 c = 0;

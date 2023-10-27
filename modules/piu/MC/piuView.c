@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2018  Moddable Tech, Inc.
+ * Copyright (c) 2016-2022  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -24,7 +24,6 @@
 #else
 enum {
 	piuDrawContentCommand,
-	piuDrawFrameCommand,
 	piuDrawStringCommand,
 	piuDrawTextureCommand,
 	piuFillColorCommand,
@@ -45,16 +44,6 @@ typedef struct {
 	PocoDimension sw;
 	PocoDimension sh;
 } PiuDrawContentCommand;
-
-typedef struct {
-	PiuCommandID id;
-	uint8_t *data;
-	uint32_t dataSize;
-	PocoCoordinate x;
-	PocoCoordinate y;
-	PocoDimension sw;
-	PocoDimension sh;
-} PiuDrawFrameCommand;
 
 typedef struct {
 	PiuCommandID id;
@@ -193,6 +182,7 @@ void PiuViewBegin(PiuView* self)
 	h = poco->height;
 	rotateCoordinatesAndDimensions(poco->width, poco->height, x, y, w, h);
 	
+	poco->next = (PocoCommand)poco->displayList;
 	poco->flags &= ~(kPocoFlagErrorDisplayListOverflow | kPocoFlagErrorStackProblem | kPocoFlagGCDisabled);
 	poco->stackDepth = 0;
 	poco->xOrigin = poco->yOrigin = 0;
@@ -381,26 +371,6 @@ void PiuViewDrawContent(PiuView* self, PiuViewDrawContentProc proc, void* it, Pi
 		PIUQueueCommand(DrawContentCommand);
 		command->proc = proc;
 		command->content = it;
-		command->x = x;
-		command->y = y;
-		command->sw = sw;
-		command->sh = sh;
-	}
-#endif
-}
-
-void PiuViewDrawFrame(PiuView* self, uint8_t *data, uint32_t dataSize, PiuCoordinate x, PiuCoordinate y, PiuDimension sw, PiuDimension sh)
-{
-	Poco poco = (*self)->poco;
-	x += poco->xOrigin;
-	y += poco->yOrigin;
-#ifdef piuGPU
-	PocoDrawFrame(poco, data, dataSize, x, y, sw, sh);
-#else
-	{
-		PIUQueueCommand(DrawFrameCommand);
-		command->data = data;
-		command->dataSize = dataSize;
 		command->x = x;
 		command->y = y;
 		command->sw = sw;
@@ -740,23 +710,23 @@ void PiuViewFillTextureAux(PiuView* self, PiuTexture* texture, PocoColor color, 
 				xx = x;
 				ww = w;
 				while (ww >= sw) {
-					PocoGrayBitmapDraw(poco, mask, color, kPocoOpaque, xx, y, sx, sy, sw, sh);
+					PocoGrayBitmapDraw(poco, mask, color, blend, xx, y, sx, sy, sw, sh);
 					xx += sw;
 					ww -= sw;
 				}
 				if (ww)
-					PocoGrayBitmapDraw(poco, mask, color, kPocoOpaque, xx, y, sx, sy, ww, sh);
+					PocoGrayBitmapDraw(poco, mask, color, blend, xx, y, sx, sy, ww, sh);
 				y += sh;
 				h -= sh;
 			}
 			if (h) {
 				while (w >= sw) {
-					PocoGrayBitmapDraw(poco, mask, color, kPocoOpaque, x, y, sx, sy, sw, h);
+					PocoGrayBitmapDraw(poco, mask, color, blend, x, y, sx, sy, sw, h);
 					x += sw;
 					w -= sw;
 				}
 				if (w)
-					PocoGrayBitmapDraw(poco, mask, color, kPocoOpaque, x, y, sx, sy, w, h);
+					PocoGrayBitmapDraw(poco, mask, color, blend, x, y, sx, sy, w, h);
 			}
 		}
 	}
@@ -775,6 +745,9 @@ void PiuViewGetSize(PiuView* self, PiuDimension *width, PiuDimension *height)
 void PiuViewIdleCheck(PiuView* self, PiuInterval idle)
 {
 	xsMachine *the = (*self)->the;
+	if (idle == (*self)->idle)
+		return;
+	(*self)->idle = idle;
 	if (idle) {
 		xsCall1(xsReference((*self)->screen), xsID_start, xsNumber(idle));
 	}
@@ -825,9 +798,6 @@ void PiuViewMark(xsMachine* the, void* it, xsMarkRoot markRoot)
 		case piuDrawContentCommand:
 			PiuMarkHandle(the, ((PiuDrawContentCommand*)command)->content);
 			current += sizeof(PiuDrawContentCommand);
-			break;
-		case piuDrawFrameCommand:
-			current += sizeof(PiuDrawFrameCommand);
 			break;
 		case piuDrawStringCommand:
 			PiuMarkString(the, ((PiuDrawStringCommand*)command)->string);
@@ -979,7 +949,6 @@ void PiuViewUpdateStep(PiuView* self, PocoCoordinate x, PocoCoordinate y, PocoDi
 #if (defined(__GNUC__) && defined(__OPTIMIZE__)) || defined(__llvm__)
 	static void *const gxDispatches[] ICACHE_XS6RO_ATTR = {
 		&&PIUDrawContentCommand,
-		&&PIUDrawFrameCommand,
 		&&PIUDrawStringCommand,
 		&&PIUDrawTextureCommand,
 		&&PIUFillColorCommand,
@@ -994,7 +963,7 @@ void PiuViewUpdateStep(PiuView* self, PocoCoordinate x, PocoCoordinate y, PocoDi
 	Poco poco = (*self)->poco;
 	PixelsOutDispatch pixelsOutDispatch = poco->outputRefcon ? *(PixelsOutDispatch *)poco->outputRefcon : NULL;
 	uint32_t current = sizeof(PiuViewRecord);
-	int result;
+	int result = 0;
 
 #if kPocoFrameBuffer
 	if (!(poco->flags & kPocoFlagFrameBuffer))
@@ -1038,9 +1007,6 @@ void PiuViewUpdateStep(PiuView* self, PocoCoordinate x, PocoCoordinate y, PocoDi
 		PIUCase(DrawContentCommand)
 			(*command->proc)(command->content, self, command->x, command->y, command->sw, command->sh);
 			PIUBreak;
-		PIUCase(DrawFrameCommand)
-			PocoDrawFrame(poco, command->data, command->dataSize, command->x, command->y, command->sw, command->sh);
-			PIUBreak;
 		PIUCase(DrawStringCommand)
 			PiuViewDrawStringAux(self, command->string, command->offset, command->length, command->font, command->color, command->blend, command->x, command->y, command->w, command->sw);
 			PIUBreak;
@@ -1066,7 +1032,6 @@ void PiuViewUpdateStep(PiuView* self, PocoCoordinate x, PocoCoordinate y, PocoDi
 				do {
 					switch (*((PiuCommandID*)(((uint8_t*)(*self)) + current))) {
 						case piuDrawContentCommand:		current += sizeof(PiuDrawContentCommand); break;
-						case piuDrawFrameCommand:		current += sizeof(PiuDrawFrameCommand); break;
 						case piuDrawStringCommand:		current += sizeof(PiuDrawStringCommand); break;
 						case piuDrawTextureCommand:		current += sizeof(PiuDrawTextureCommand); break;
 						case piuFillColorCommand:		current += sizeof(PiuFillColorCommand); break;
@@ -1100,15 +1065,8 @@ done:
 			xsCallFunction4((*self)->_begin, xsReference((*self)->screen), xsInteger(poco->x), xsInteger(poco->y), xsInteger(poco->w), xsInteger(poco->h));
 			result = PocoDrawingEnd(poco, poco->pixels, poco->pixelsLength, PiuViewReceiver, self);
 		}
-		if (result) {
-			if (1 == result)
-				xsErrorPrintf("display list overflowed");
-			if (2 == result)
-				xsErrorPrintf("clip/origin stack not cleared");
-			if (3 == result)
-				xsErrorPrintf("clip/origin stack under/overflow");
-			xsErrorPrintf("unknown error");
-		}
+		if (result) goto fail;
+
 		if (flag) {
 			if (pixelsOutDispatch)
 				(pixelsOutDispatch->doContinue)(poco->outputRefcon);
@@ -1129,7 +1087,8 @@ done:
 endStepFrameBuffer:
 		PocoClipPop(poco);
 		if (!flag) {
-			PocoDrawingEndFrameBuffer(poco);
+			result = PocoDrawingEndFrameBuffer(poco);
+			if (result) goto fail;
 
 			if (pixelsOutDispatch)
 				(pixelsOutDispatch->doEnd)(poco->outputRefcon);
@@ -1140,6 +1099,19 @@ endStepFrameBuffer:
 		}
 	}
 #endif
+
+	return;
+
+fail:
+	if (1 == result)
+		xsErrorPrintf("display list overflowed");
+	if (2 == result)
+		xsErrorPrintf("clip/origin stack not cleared");
+	if (3 == result)
+		xsErrorPrintf("clip/origin stack under/overflow");
+	if (5 == result)
+		xsErrorPrintf("drawFrame unavailable");
+	xsErrorPrintf("unknown error");
 }
 #endif
 

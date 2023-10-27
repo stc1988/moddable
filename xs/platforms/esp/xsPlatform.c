@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2021  Moddable Tech, Inc.
+ * Copyright (c) 2016-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -43,12 +43,15 @@
 #include "mc.defines.h"
 
 #if ESP32
-#if ESP32 != 3
+#if ESP32 < 2
 	#include "esp32/rom/ets_sys.h"
 #endif
 	#include "nvs_flash/include/nvs_flash.h"
 	#include "esp_partition.h"
 	#include "esp_wifi.h"
+	#if MODDEF_XS_MODS
+		#include "spi_flash/include/spi_flash_mmap.h"
+	#endif
 #else
 	#include "tinyprintf.h"
 	#include "spi_flash.h"
@@ -227,30 +230,61 @@ void fxAbort(txMachine* the, int status)
 	}
 #endif
 
-#if defined(mxDebug) || defined(mxInstrument)
+#ifdef mxDebug
+	if ((XS_DEAD_STRIP_EXIT == status) && the->debugEval)
+		mxUnknownError("dead strip");
+#endif
+
+#if defined(mxDebug) || defined(mxInstrument) || defined(MODDEF_XS_ABORTHOOK)
 	const char *msg = (status <= XS_UNHANDLED_REJECTION_EXIT) ? gXSAbortStrings[status] : "unknown";
 
+	#ifdef MODDEF_XS_RESTARTON
+		#error RestartOn deprecated. Use abortHook instead.
+	#endif
+
+	#if MODDEF_XS_ABORTHOOK
+		if ((XS_STACK_OVERFLOW_EXIT != status) && (XS_DEBUGGER_EXIT != status)) {
+			xsBooleanValue ignore = false;
+			
+			fxBeginHost(the);
+			{
+				mxPush(mxException);
+				txSlot *exception = the->stack;
+				mxException = xsUndefined;
+				mxTry(the) {
+					txID abortID = fxFindName(the, "abort");
+					mxOverflow(-8);
+					mxPush(mxGlobal);
+					if (fxHasID(the, abortID)) {
+						mxPush(mxGlobal);
+						fxCallID(the, abortID);
+						mxPushStringC((char *)msg);
+						mxPushSlot(exception);
+						fxRunCount(the, 2);
+						ignore = (XS_BOOLEAN_KIND == the->stack->kind) && !the->stack->value.boolean;
+						mxPop();
+					}
+				}
+				mxCatch(the) {
+				}
+			}
+			fxEndHost(the);
+			if (ignore)
+				return;
+		}
+	#endif
+
 	fxReport(the, "XS abort: %s\n", msg);
-	#if defined(mxDebug) && !MODDEF_XS_TEST
-		fxDebugger(the, (char *)__FILE__, __LINE__);
+	#if !defined(MODDEF_XS_DEBUGABORT) || MODDEF_XS_DEBUGABORT
+		#if defined(mxDebug) && !MODDEF_XS_TEST
+			if ((char *)&the <= the->stackLimit)
+				the->stackLimit = NULL;
+			fxDebugger(the, (char *)__FILE__, __LINE__);
+		#endif
 	#endif
 #endif
 
-#ifdef MODDEF_XS_RESTARTON
-	static const int restart[] = {
-		#if defined(mxDebug)
-			XS_DEBUGGER_EXIT,
-			XS_FATAL_CHECK_EXIT,
-		#endif
-			MODDEF_XS_RESTARTON };
-	int i;
-	for (i = 0; i < sizeof(restart) / sizeof(int); i++) {
-		if (restart[i] == status)
-			c_exit(status);
-	}
-#else
 	c_exit(status);
-#endif
 }
 
 #ifdef mxDebug
@@ -752,6 +786,8 @@ void fxReceiveLoop(void)
 
 	mxDebugMutexTake();
 
+	modWatchDogReset();
+
 	while (true) {
 		int c = ESP_getc();
 		if (-1 == c)
@@ -1023,11 +1059,11 @@ void doRemoteCommand(txMachine *the, uint8_t *cmd, uint32_t cmdLen)
 #if ESP32
 			const esp_partition_t *partition = esp_partition_find_first(0x40, 1,  NULL);
 			if (!partition || (ESP_OK != esp_partition_write(partition, 0, erase, sizeof(erase))))
-				resultCode = -1;
+				resultCode = -2;
 #else
 			uint32_t offset = (uintptr_t)kModulesStart - (uintptr_t)kFlashStart;
 			if (!modSPIWrite(offset, sizeof(erase), erase))
-				resultCode = -1;
+				resultCode = -2;
 #endif
 			} break;
 
@@ -1036,7 +1072,7 @@ void doRemoteCommand(txMachine *the, uint8_t *cmd, uint32_t cmdLen)
 			cmd += 4, cmdLen -= 4;
 #if ESP32
 			const esp_partition_t *partition = esp_partition_find_first(0x40, 1,  NULL);
-			resultCode = -1;
+			resultCode = -3;
 			if (partition) {
 				int firstSector = offset / SPI_FLASH_SEC_SIZE, lastSector = (offset + cmdLen) / SPI_FLASH_SEC_SIZE;
 				if (!(offset % SPI_FLASH_SEC_SIZE))			// starts on sector boundary
@@ -1049,7 +1085,7 @@ void doRemoteCommand(txMachine *the, uint8_t *cmd, uint32_t cmdLen)
 			}
 #else
 			if ((offset + cmdLen) > (kModulesEnd - kModulesStart)) {
-				resultCode = -1;
+				resultCode = -3;
 				break;
 			}
 
@@ -1062,7 +1098,7 @@ void doRemoteCommand(txMachine *the, uint8_t *cmd, uint32_t cmdLen)
 				modSPIErase((firstSector + 1) * SPI_FLASH_SEC_SIZE, SPI_FLASH_SEC_SIZE * (lastSector - firstSector));	// crosses into a new sector
 
 			if (!modSPIWrite(offset, cmdLen, cmd))
-				resultCode = -1;
+				resultCode = -3;
 #endif
 			}
 			break;
@@ -1085,7 +1121,7 @@ void doRemoteCommand(txMachine *the, uint8_t *cmd, uint32_t cmdLen)
 				cmdLen -= 1;
 
 				if (!modPreferenceSet(domain, key, prefType, value, cmdLen))
-					resultCode = -1;
+					resultCode = -5;
 			}
 			}
 			break;
@@ -1111,7 +1147,7 @@ void doRemoteCommand(txMachine *the, uint8_t *cmd, uint32_t cmdLen)
 				uint8_t *buffer = the->echoBuffer + the->echoOffset;
 				uint16_t byteCountOut;
 				if (!modPreferenceGet(domain, key, buffer, buffer + 1, sizeof(the->echoBuffer) - (the->echoOffset + 1), &byteCountOut))
-					resultCode = -1;
+					resultCode = -6;
 				else
 					the->echoOffset += byteCountOut + 1;
 			}
@@ -1214,7 +1250,11 @@ void doRemoteCommand(txMachine *the, uint8_t *cmd, uint32_t cmdLen)
 			break;
 
 		default:
-			resultCode = -1;
+#if MODDEF_XS_MODS
+			resultCode = -7;
+#else
+			resultCode = -8;
+#endif
 			break;
 	}
 

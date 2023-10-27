@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2022  Moddable Tech, Inc.
+ * Copyright (c) 2016-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -52,14 +52,22 @@
 
 	#define INSTRUMENT_CPULOAD 1
 	#if INSTRUMENT_CPULOAD
-		#include "driver/timer.h"
+		#include "driver/gptimer.h"
 
 		static uint16_t gCPUCounts[kTargetCPUCount * 2];
 		static TaskHandle_t gIdles[kTargetCPUCount];
-		static void IRAM_ATTR timer_group0_isr(void *para);
+		static bool timer_group0_isr(gptimer_handle_t timer, const gptimer_alarm_event_data_t *event, void *ctx);
+
+		volatile uint32_t gCPUTime;
 	#endif
 
 	#include "freertos/task.h"
+	#if MODDEF_XS_MODS
+		#include "spi_flash/include/spi_flash_mmap.h"
+
+		const esp_partition_t *gPartition;
+		const uint8_t *gPartitionAddress;
+	#endif
 #else
 	#include "Arduino.h"
 	#include "rtctime.h"
@@ -89,6 +97,7 @@
 	#if ESP32
 		(char *)"SPI flash erases",
 	#endif
+		(char *)"Turns",
 		(char *)"System bytes free",
 	#if ESP32
 		#if kTargetCPUCount == 1
@@ -113,6 +122,7 @@
 	#if ESP32
 		(char *)" sectors",
 	#endif
+		(char *)" turns",
 		(char *)" bytes",
 	#if ESP32
 		(char *)" percent",
@@ -363,10 +373,10 @@ size_t espStrcspn(const char *str, const char *strCharSet)
 
 	while (c_read8(str)) {
 		const char *cs = strCharSet;
-		char c;
+		char c, sc = c_read8(str);
 
 		while (c = c_read8(cs++)) {
-			if (c_read8(str) == c)
+			if (sc == c)
 				return str - s;
 		}
 
@@ -382,10 +392,10 @@ size_t espStrspn(const char *str, const char *strCharSet)
 
 	while (c_read8(str)) {
 		const char *cs = strCharSet;
-		char c;
+		char c, sc = c_read8(str);
 
 		while (c = c_read8(cs++)) {
-			if (c_read8(str) == c)
+			if (sc == c)
 				break;
 		}
 
@@ -802,6 +812,8 @@ static int32_t modInstrumentationSystemFreeMemory(void *theIn)
 }
 
 #if INSTRUMENT_CPULOAD
+static gptimer_handle_t gLoadTimer = NULL;
+
 static int32_t modInstrumentationCPU0(void *theIn)
 {
 	int32_t result, total = (gCPUCounts[0] + gCPUCounts[1]);
@@ -844,13 +856,14 @@ void espInitInstrumentation(txMachine *the)
 	modInstrumentationSetCallback(GarbageCollectionCount, (ModInstrumentationGetter)modInstrumentationGarbageCollectionCount);
 	modInstrumentationSetCallback(ModulesLoaded, (ModInstrumentationGetter)modInstrumentationModulesLoaded);
 	modInstrumentationSetCallback(StackRemain, (ModInstrumentationGetter)modInstrumentationStackRemain);
+	modInstrumentationSetCallback(PromisesSettledCount, (ModInstrumentationGetter)modInstrumentationPromisesSettledCount);
 
 #if INSTRUMENT_CPULOAD
 	modInstrumentationSetCallback(CPU0, modInstrumentationCPU0);
 #if kTargetCPUCount > 1
 	modInstrumentationSetCallback(CPU1, modInstrumentationCPU1);
 #endif
-	
+/*
 	timer_config_t config = {
 		.divider = 16,
 		.counter_dir = TIMER_COUNT_UP,
@@ -858,21 +871,32 @@ void espInitInstrumentation(txMachine *the)
 		.alarm_en = TIMER_ALARM_EN,
 		.auto_reload = 1,
 	};
+*/
+	gptimer_config_t config = {
+		.clk_src = GPTIMER_CLK_SRC_DEFAULT,
+		.direction = GPTIMER_COUNT_UP,
+		.resolution_hz = 1000 * 1000,		// 1 tick = 1 us
+	};
+	gptimer_alarm_config_t alarm = {
+		.reload_count = 0,
+		.alarm_count = 800,
+		.flags.auto_reload_on_alarm = true,
+	};
+	gptimer_event_callbacks_t callbacks = {
+		.on_alarm = timer_group0_isr
+	};
 
 	gIdles[0] = xTaskGetIdleTaskHandleForCPU(0);
 #if kTargetCPUCount > 1
 	gIdles[1] = xTaskGetIdleTaskHandleForCPU(1);
 #endif
 
-	timer_init(TIMER_GROUP_0, TIMER_0, &config);
+	gptimer_new_timer(&config, &gLoadTimer);
+	gptimer_set_alarm_action(gLoadTimer, &alarm);
+	gptimer_register_event_callbacks(gLoadTimer, &callbacks, NULL);
+	gptimer_enable(gLoadTimer);
+	gptimer_start(gLoadTimer);
 
-	timer_set_counter_value(TIMER_GROUP_0, TIMER_0, 0);
-
-	timer_set_alarm_value(TIMER_GROUP_0, TIMER_0, TIMER_BASE_CLK / (config.divider * 1000));
-	timer_enable_intr(TIMER_GROUP_0, TIMER_0);
-	timer_isr_register(TIMER_GROUP_0, TIMER_0, timer_group0_isr, (void *)TIMER_0, ESP_INTR_FLAG_LEVEL1 | ESP_INTR_FLAG_IRAM, NULL);
-
-	timer_start(TIMER_GROUP_0, TIMER_0);
 #endif
 
 #if ESP32
@@ -893,6 +917,9 @@ void espSampleInstrumentation(modTimer timer, void *refcon, int refconSize)
 	for (what = kModInstrumentationPixelsDrawn; what <= (kModInstrumentationSlotHeapSize - 1); what++)
 		values[what - kModInstrumentationPixelsDrawn] = modInstrumentationGet_(the, what);
 
+	if (values[kModInstrumentationTurns - kModInstrumentationPixelsDrawn])
+        values[kModInstrumentationTurns - kModInstrumentationPixelsDrawn] -= 1;     // ignore the turn that generates instrumentation
+
 	fxSampleInstrumentation(the, espInstrumentCount, values);
 
 	modInstrumentationSet(PixelsDrawn, 0);
@@ -901,6 +928,7 @@ void espSampleInstrumentation(modTimer timer, void *refcon, int refconSize)
 	modInstrumentationSet(PiuCommandListUsed, 0);
 	modInstrumentationSet(NetworkBytesRead, 0);
 	modInstrumentationSet(NetworkBytesWritten, 0);
+	modInstrumentationSet(Turns, 0);
 #if ESP32
 	modInstrumentationSet(SPIFlashErases, 0);
 #endif
@@ -912,141 +940,34 @@ void espSampleInstrumentation(modTimer timer, void *refcon, int refconSize)
 }
 
 #if INSTRUMENT_CPULOAD
-void IRAM_ATTR timer_group0_isr(void *para)
+bool IRAM_ATTR timer_group0_isr(gptimer_handle_t timer, const gptimer_alarm_event_data_t *event, void *ctx)
 {
-    timer_group_clr_intr_status_in_isr(TIMER_GROUP_0, TIMER_0);
-    timer_group_enable_alarm_in_isr(TIMER_GROUP_0, TIMER_0);
+//    timer_group_clr_intr_status_in_isr(TIMER_GROUP_0, TIMER_0);
+//    timer_group_enable_alarm_in_isr(TIMER_GROUP_0, TIMER_0);
 
 	gCPUCounts[0 + (xTaskGetCurrentTaskHandleForCPU(0) == gIdles[0])] += 1;
 #if kTargetCPUCount > 1
 	gCPUCounts[2 + (xTaskGetCurrentTaskHandleForCPU(1) == gIdles[1])] += 1;
 #endif
+
+	gCPUTime += 1250;
 }
 #endif
 #endif
-
-/*
-	64-bit atomics
-*/
-
-#if kTargetCPUCount == 2
-bool __atomic_compare_exchange_8(txU8 *ptr, txU8 *expected, txU8 desired, bool weak, int success_memorder, int failure_memorder)
-{
-	modCriticalSectionBegin();
-
-	bool result;
-	if (*ptr == *expected) {
-		*ptr = desired;
-		result = true;
-	}
-	else {
-		*expected = *ptr;
-		result = false;
-	}
-
-	modCriticalSectionEnd();
-
-	return result;
-}
-
-txU8 __atomic_load_8(txU8 *ptr, int memorder)
-{
-	modCriticalSectionBegin();
-
-	txU8 result = *ptr;
-
-	modCriticalSectionEnd();
-
-	return result;
-}
-
-txU8 __atomic_fetch_add_8(txU8 *ptr, txU8 val, int memorder)
-{
-	modCriticalSectionBegin();
-
-	txU8 result = *ptr;
-	*ptr = result + val;
-
-	modCriticalSectionEnd();
-
-	return result;
-}
-
-txU8 __atomic_fetch_and_8(txU8 *ptr, txU8 val, int memorder)
-{
-	modCriticalSectionBegin();
-
-	txU8 result = *ptr;
-	*ptr = result & val;
-
-	modCriticalSectionEnd();
-
-	return result;
-}
-
-txU8 __atomic_exchange_8(txU8 *ptr, txU8 val, int memorder)
-{
-	modCriticalSectionBegin();
-
-	txU8 result = *ptr;
-	*ptr = val;
-
-	modCriticalSectionEnd();
-
-	return result;
-}
-
-txU8 __atomic_fetch_or_8(txU8 *ptr, txU8 val, int memorder)
-{
-	modCriticalSectionBegin();
-
-	txU8 result = *ptr;
-	*ptr = result | val;
-
-	modCriticalSectionEnd();
-
-	return result;
-}
-
-void __atomic_store_8(txU8 *ptr, txU8 val, int memorder)
-{
-	modCriticalSectionBegin();
-
-	*ptr = val;
-
-	modCriticalSectionEnd();
-}
-
-txU8 __atomic_fetch_sub_8(txU8 *ptr, txU8 val, int memorder)
-{
-	modCriticalSectionBegin();
-
-	txU8 result = *ptr;
-	*ptr = result - val;
-
-	modCriticalSectionEnd();
-
-	return result;
-}
-
-txU8 __atomic_fetch_xor_8(txU8 *ptr, txU8 val, int memorder)
-{
-	modCriticalSectionBegin();
-
-	txU8 result = *ptr;
-	*ptr = result ^ val;
-
-	modCriticalSectionEnd();
-
-	return result;
-}
-#endif // kTargetCPUCount == 2
 
 /*
 	messages
 */
 
 #if ESP32
+
+#ifndef MODDEF_TASK_QUEUEWAIT
+	#ifdef mxDebug
+		#define MODDEF_TASK_QUEUEWAIT (1000)
+	#else
+		#define MODDEF_TASK_QUEUEWAIT (portMAX_DELAY)
+	#endif
+#endif
 
 typedef struct modMessageRecord modMessageRecord;
 typedef modMessageRecord *modMessage;
@@ -1068,7 +989,7 @@ int modMessagePostToMachine(xsMachine *the, uint8_t *message, uint16_t messageLe
 		msg.callback = callback;
 		msg.refcon = refcon;
 		msg.length = 0;
-		xQueueSendToFront(the->msgQueue, &msg, portMAX_DELAY);
+		xQueueSendToBack(the->dbgQueue, &msg, portMAX_DELAY);
 		return 0;
 	}
 #endif
@@ -1084,19 +1005,14 @@ int modMessagePostToMachine(xsMachine *the, uint8_t *message, uint16_t messageLe
 	msg.length = messageLength;
 	msg.callback = callback;
 	msg.refcon = refcon;
-#ifdef mxDebug
-	do {
-		if (uxQueueSpacesAvailable(the->msgQueue) > 1) {		// keep one entry free for debugger
-			xQueueSendToBack(the->msgQueue, &msg, portMAX_DELAY);
-			break;
-		}
-		vTaskDelay(5);
-	} while (1);
-#else
-	xQueueSendToBack(the->msgQueue, &msg, portMAX_DELAY);
-#endif
 
-	return 0;
+	if (pdTRUE == xQueueSendToBack(the->msgQueue, &msg, MODDEF_TASK_QUEUEWAIT))
+		return 0;
+
+	if (msg.message)
+		c_free(msg.message);
+
+	return -2;
 }
 
 int modMessagePostToMachineFromISR(xsMachine *the, modMessageDeliver callback, void *refcon)
@@ -1116,60 +1032,108 @@ int modMessagePostToMachineFromISR(xsMachine *the, modMessageDeliver callback, v
 
 void modMessageService(xsMachine *the, int maxDelayMS)
 {
-	unsigned portBASE_TYPE count = uxQueueMessagesWaiting(the->msgQueue);
+	modMessageRecord msg;
 
-#if CONFIG_TASK_WDT
+#if CONFIG_ESP_TASK_WDT
 	modWatchDogReset();
-	if (maxDelayMS >= (CONFIG_TASK_WDT_TIMEOUT_S * 1000)) {
-		#if CONFIG_TASK_WDT_TIMEOUT_S <= 1
+	if (maxDelayMS >= (CONFIG_ESP_TASK_WDT_TIMEOUT_S * 1000)) {
+		#if CONFIG_ESP_TASK_WDT_TIMEOUT_S <= 1
 			maxDelayMS = 500;
 		#else
-			maxDelayMS = (CONFIG_TASK_WDT_TIMEOUT_S - 1) * 1000;
+			maxDelayMS = (CONFIG_ESP_TASK_WDT_TIMEOUT_S - 1) * 1000;
 		#endif
 	}
 #endif
 
+#ifdef mxDebug
 	while (true) {
-		modMessageRecord msg;
+		QueueSetMemberHandle_t queue = xQueueSelectFromSet(the->queues, maxDelayMS);
+		if (!queue)
+			break;
 
-		if (!xQueueReceive(the->msgQueue, &msg, maxDelayMS)) {
-			modWatchDogReset();
-			return;
-		}
+		if (!xQueueReceive(queue, &msg, 0))
+			break;
 
 		(msg.callback)(the, msg.refcon, msg.message, msg.length);
 		if (msg.message)
 			c_free(msg.message);
 
 		maxDelayMS = 0;
-		if (count <= 1)
-			break;
-		count -= 1;
 	}
+#else
+	while (xQueueReceive(the->msgQueue, &msg, maxDelayMS)) {
+		(msg.callback)(the, msg.refcon, msg.message, msg.length);
+		if (msg.message)
+			c_free(msg.message);
+
+		maxDelayMS = 0;
+	}
+#endif
+
+	modWatchDogReset();
 }
 
 #ifndef modTaskGetCurrent
 	#error make sure MOD_TASKS and modTaskGetCurrent are defined
 #endif
 
+#ifndef MODDEF_TASK_QUEUELENGTH
+	#define MODDEF_TASK_QUEUELENGTH (10)
+#endif
+
+#define kDebugQueueLength (4)
+
 void modMachineTaskInit(xsMachine *the)
 {
 	the->task = (void *)modTaskGetCurrent();
-	the->msgQueue = xQueueCreate(10, sizeof(modMessageRecord));
+	the->msgQueue = xQueueCreate(MODDEF_TASK_QUEUELENGTH, sizeof(modMessageRecord));
+#ifdef mxDebug
+	the->dbgQueue = xQueueCreate(kDebugQueueLength, sizeof(modMessageRecord));
+
+	the->queues = xQueueCreateSet(MODDEF_TASK_QUEUELENGTH + kDebugQueueLength);
+	xQueueAddToSet(the->msgQueue, the->queues);
+	xQueueAddToSet(the->dbgQueue, the->queues);
+#endif
+
+#if MODDEF_XS_MODS
+	#if ESP32
+		spi_flash_mmap_handle_t handle;
+
+		gPartition = esp_partition_find_first(0x40, 1,  NULL);
+		if (gPartition) {
+			esp_partition_mmap(gPartition, 0, gPartition->size, SPI_FLASH_MMAP_DATA, (const void **)&gPartitionAddress, &handle);
+		}
+	#endif
+#endif
+
 }
 
 void modMachineTaskUninit(xsMachine *the)
 {
-	if (the->msgQueue) {
-		modMessageRecord msg;
+	modMessageRecord msg;
 
+	if (the->msgQueue) {
 		while (xQueueReceive(the->msgQueue, &msg, 0)) {
 			if (msg.message)
 				c_free(msg.message);
 		}
 
+#ifdef mxDebug
+		xQueueRemoveFromSet(the->msgQueue, the->queues);
+#endif
 		vQueueDelete(the->msgQueue);
 	}
+
+#ifdef mxDebug
+	if (the->dbgQueue) {
+		while (xQueueReceive(the->dbgQueue, &msg, 0))
+			;
+		xQueueRemoveFromSet(the->dbgQueue, the->queues);
+		vQueueDelete(the->dbgQueue);
+	}
+	if (the->queues)
+		vQueueDelete(the->queues);
+#endif
 }
 
 void modMachineTaskWait(xsMachine *the)
@@ -1190,12 +1154,11 @@ typedef modMessageRecord *modMessage;
 struct modMessageRecord {
 	modMessage			next;
 	xsMachine			*the;
+	uint16_t			length;
+	uint8_t				isStatic;		// this doubles as a flag to indicate entry is use gMessagePool
 	modMessageDeliver	callback;
 	void				*refcon;
-	uint16_t			length;
-	uint8_t				marked;
-	uint8_t				isStatic;		// this doubles as a flag to indicate entry is use gMessagePool
-	char				message[1];
+	char				message[];
 };
 
 static modMessage gMessageQueue;
@@ -1205,7 +1168,6 @@ extern void esp_schedule();
 static void appendMessage(modMessage msg)
 {
 	msg->next = NULL;
-	msg->marked = 0;
 
 	modCriticalSectionBegin();
 	if (NULL == gMessageQueue) {
@@ -1282,23 +1244,17 @@ int modMessagePostToMachineFromPool(xsMachine *the, modMessageDeliver callback, 
 
 int modMessageService(void)
 {
-	modMessage msg = gMessageQueue;
-	while (msg) {
-		msg->marked = 1;
-		msg = msg->next;
-	}
-
+	modMessage msg;
+	modCriticalSectionBegin();
 	msg = gMessageQueue;
-	while (msg && msg->marked) {
-		modMessage next;
+	gMessageQueue = NULL;
+	modCriticalSectionEnd();
+
+	while (msg) {
+		modMessage next = msg->next;
 
 		if (msg->callback)
 			(msg->callback)(msg->the, msg->refcon, msg->message, msg->length);
-
-		modCriticalSectionBegin();
-		next = msg->next;
-		gMessageQueue = next;
-		modCriticalSectionEnd();
 
 		if (msg->isStatic)
 			msg->isStatic = 0;		// return to pool
@@ -1366,9 +1322,6 @@ void fxQueuePromiseJobs(txMachine* the)
 
 #if ESP32
 
-const esp_partition_t *gPartition;
-const uint8_t *gPartitionAddress;
-
 static txBoolean spiRead(void *src, size_t offset, void *buffer, size_t size)
 {
 	const esp_partition_t *partition = src;
@@ -1392,18 +1345,17 @@ static txBoolean spiWrite(void *dst, size_t offset, void *buffer, size_t size)
 	return 1;
 }
 
-void *modInstallMods(void *preparationIn, uint8_t *status)
+void *modInstallMods(xsMachine *the, void *preparationIn, uint8_t *status)
 {
 	txPreparation *preparation = preparationIn; 
-	spi_flash_mmap_handle_t handle;
 	void *result = NULL;
 
-	gPartition = esp_partition_find_first(0x40, 1,  NULL);
-	if (gPartition) {
-		if (ESP_OK == esp_partition_mmap(gPartition, 0, gPartition->size, SPI_FLASH_MMAP_DATA, (const void **)&gPartitionAddress, &handle)) {
-			if (fxMapArchive(C_NULL, preparation, (void *)gPartition, kFlashSectorSize, spiRead, spiWrite))
-				result = (void *)gPartitionAddress;
-		}
+	if (!gPartitionAddress)
+		return NULL;
+
+	if (fxMapArchive(the, preparation, (void *)gPartition, kFlashSectorSize, spiRead, spiWrite)) {
+		result = (void *)gPartitionAddress;
+		fxSetArchive(the, result);
 	}
 
 	if (XS_ATOM_ERROR == c_read32be(4 + kModulesStart)) {
@@ -1438,12 +1390,14 @@ static txBoolean spiWrite(void *dst, size_t offset, void *buffer, size_t size)
 	return modSPIWrite(offset - (uintptr_t)kFlashStart, size, buffer);
 }
 
-void *modInstallMods(void *preparationIn, uint8_t *status)
+void *modInstallMods(xsMachine *the, void *preparationIn, uint8_t *status)
 {
 	txPreparation *preparation = preparationIn; 
 
-	if (fxMapArchive(C_NULL, preparation, (void *)kModulesStart, kFlashSectorSize, spiRead, spiWrite))
+	if (fxMapArchive(the, preparation, (void *)kModulesStart, kFlashSectorSize, spiRead, spiWrite)) {
+		fxSetArchive(the, kModulesStart);
 		return kModulesStart;
+	}
 
 	return NULL;
 }
@@ -1500,7 +1454,7 @@ uint8_t *espFindUnusedFlashStart(void)
 	}
 
 	pos += (uint32_t)kFlashStart;
-	return (uint8 *)(((SPI_FLASH_SEC_SIZE - 1) + pos) & ~(SPI_FLASH_SEC_SIZE - 1));
+	return (uint8 *)(((kFlashSectorSize - 1) + pos) & ~(kFlashSectorSize - 1));
 }
 
 uint8_t modSPIRead(uint32_t offset, uint32_t size, uint8_t *dst)
@@ -1581,7 +1535,7 @@ uint8_t modSPIWrite(uint32_t offset, uint32_t size, const uint8_t *src)
 	toAlign = size & ~3;
 	if (toAlign) {
 		size -= toAlign;
-		if (((uintptr_t)src) & ~3) {	// src is not long aligned, copy through stack
+		if (3 & (uintptr_t)src) {	// src is not long aligned, copy through stack
 			while (toAlign) {
 				uint32_t use = (toAlign > sizeof(temp)) ? sizeof(temp) : toAlign;
 				c_memcpy(temp, src, use);
@@ -1619,11 +1573,11 @@ fail:
 
 uint8_t modSPIErase(uint32_t offset, uint32_t size)
 {
-	if ((offset & (SPI_FLASH_SEC_SIZE - 1)) || (size & (SPI_FLASH_SEC_SIZE - 1)))
+	if ((offset & (kFlashSectorSize - 1)) || (size & (kFlashSectorSize - 1)))
 		return 0;
 
-	offset /= SPI_FLASH_SEC_SIZE;
-	size /= SPI_FLASH_SEC_SIZE;
+	offset /= kFlashSectorSize;
+	size /= kFlashSectorSize;
 	while (size--) {
 		int err;
 

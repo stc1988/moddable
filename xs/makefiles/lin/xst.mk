@@ -49,10 +49,15 @@ C_OPTIONS = \
 	-fno-common \
 	-DINCLUDE_XSPLATFORM \
 	-DXSPLATFORM=\"xst.h\" \
+	-DmxAliasInstance=0 \
+	-DmxCanonicalNaN=1 \
 	-DmxDebug=1 \
+	-DmxExplicitResourceManagement=1 \
+	-DmxKeysGarbageCollection=1 \
 	-DmxLockdown=1 \
 	-DmxNoConsole=1 \
 	-DmxParse=1 \
+	-DmxProfile=1 \
 	-DmxRun=1 \
 	-DmxSloppy=1 \
 	-DmxSnapshot=1 \
@@ -69,22 +74,27 @@ C_OPTIONS += \
 	-Wno-misleading-indentation \
 	-Wno-implicit-fallthrough
 ifeq ($(GOAL),debug)
-	C_OPTIONS += -g -O0 -Wall -Wextra -Wno-missing-field-initializers -Wno-unused-parameter 
-	LINK_OPTIONS += -fsanitize=address -fno-omit-frame-pointer
-	C_OPTIONS += -DmxASANStackMargin=131072 -fsanitize=address -fno-omit-frame-pointer
-
+	C_OPTIONS += -DmxASANStackMargin=131072
 	ifneq ($(FUZZING),0)
 		C_OPTIONS += -DmxStress=1
 		C_OPTIONS += -DFUZZING=1
 	endif
 	ifneq ($(OSSFUZZ),0)
-		C_OPTIONS += -DOSSFUZZ=1
+		C_OPTIONS += -DOSSFUZZ=1 -DmxMetering=1
+		ifneq ($(FUZZ_METER),0)
+			C_OPTIONS += -DmxFuzzMeter=$(FUZZ_METER)
+		endif
 		C_OPTIONS += $(CFLAGS)
 		LINK_OPTIONS += $(CXXFLAGS)
 		ifneq ($(OSSFUZZ_JSONPARSE),0)
 			C_OPTIONS += -DOSSFUZZ_JSONPARSE=1
 		endif
+	else
+		C_OPTIONS += -g -O0 -Wall -Wextra -Wno-missing-field-initializers -Wno-unused-parameter 
+		LINK_OPTIONS += -fsanitize=address -fno-omit-frame-pointer
+		C_OPTIONS += -fsanitize=address -fno-omit-frame-pointer
 	endif
+
 	ifneq ($(FUZZILLI),0)
 		C_OPTIONS += -DFUZZILLI=1 -fsanitize-coverage=trace-pc-guard
 	endif
@@ -173,7 +183,7 @@ $(BIN_DIR)/$(NAME): $(OBJECTS)
 	@echo "#" $(NAME) $(GOAL) ": cc" $(@F)
 ifneq ($(OSSFUZZ),0)
 	@echo $(CXX) $(LIB_FUZZING_ENGINE) $(LINK_OPTIONS) $(OBJECTS) $(LIBRARIES) -o $@
-	$(CC) $(LIB_FUZZING_ENGINE) $(LINK_OPTIONS) $(OBJECTS) $(LIBRARIES) -o $@
+	$(CXX) $(LIB_FUZZING_ENGINE) $(LINK_OPTIONS) $(OBJECTS) $(LIBRARIES) -o $@
 else
 		$(CC) $(LINK_OPTIONS) $(OBJECTS) $(LIBRARIES) -o $@
 endif

@@ -680,9 +680,9 @@ void PiuCodeSearch(PiuCode* self, uint32_t size)
 	PiuTextBufferClear(the, results);
 	if ((*self)->code) {
         int32_t offset = 0;
-		int32_t itemCount = 0;
+//		int32_t itemCount = 0;
 		int32_t itemSize = 0;
-		itemCount = 0;
+//		itemCount = 0;
 		itemSize = sizeof(PiuCodeResultRecord);
 		for (;;) {
 			former = (*results)->current;
@@ -703,7 +703,7 @@ void PiuCodeSearch(PiuCode* self, uint32_t size)
 			PiuCodeOffsetToColumnLine(self, result->to, &result->toColumn, &result->toLine);
 			result->from = fxUTF8ToUnicodeOffset(string, result->from);
 			result->to = fxUTF8ToUnicodeOffset(string, result->to);
-			itemCount++;
+//			itemCount++;
 		}
 		(*self)->resultsSize = itemSize;
 	}
@@ -987,18 +987,21 @@ void PiuCode_set_type(xsMachine *the)
 void PiuCode_colorize(xsMachine *the)
 {
 	PiuCode* self = PIU(Code, xsThis);
+	xsStringValue string = PiuToString((*self)->string);
 	PiuTextBuffer* runs = (*self)->runs;
 	PiuCodeRun run = (PiuCodeRun)((uint8_t*)(*runs) + sizeof(PiuTextBufferRecord));
 	PiuCodeRun limit = (PiuCodeRun)((uint8_t*)(*runs) + (*runs)->current);
-	int32_t start = 0, offset;
+	int32_t start = 0, offset, unicodeOffset = 0, utf8Offset = 0;
 	int16_t color;
 	xsIntegerValue c = xsToInteger(xsGet(xsArg(0), xsID_length)), i;
 	for (i = 0; i < c; i++) {
 		xsResult = xsGetAt(xsArg(0), xsInteger(i));
 		offset = xsToInteger(xsGet(xsResult, xsID_offset));
+		utf8Offset += fxUnicodeToUTF8Offset(string + utf8Offset, offset - unicodeOffset);
+		unicodeOffset = offset;
 		color = (int16_t)xsToInteger(xsGet(xsResult, xsID_color));
 		while (run < limit) {
-			if ((start == offset) && (run->kind == piuCodeColorKind)) {
+			if ((start == utf8Offset) && (run->kind == piuCodeColorKind)) {
 				run->color = color;
 				break;
 			}

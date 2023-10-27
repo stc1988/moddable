@@ -25,12 +25,34 @@
 
 #include "tusb.h"
 
+#if DEBUG_RESET_SIGNALING
+	#define DTR_PIN	18
+	#define RTS_PIN 19
+#endif
+
 void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
 {
 	static int8_t lastRTS = -1;
+
+#if DEBUG_RESET_SIGNALING
+	gpio_put(RTS_PIN, rts);
+	gpio_put(DTR_PIN, dtr);
+	modDelayMilliseconds(250);
+#endif
+
 	if (-1 != lastRTS) {
-		if (lastRTS && !rts)
+		if (lastRTS && !rts) {
+#if DEBUG_RESET_SIGNALING
+			int i;
+			for (i=0;i<10;i++) {
+				gpio_put(RTS_PIN, 0);
+				modDelayMilliseconds(100);
+				gpio_put(RTS_PIN, 1);
+				modDelayMilliseconds(100);
+			}
+#endif
 			pico_reboot(dtr);
+		}
 	}
 	lastRTS = rts;
 }
@@ -39,7 +61,8 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
 
 void tud_cdc_rx_cb(uint8_t itf)
 {
-	modMessagePostToMachineFromISR(NULL, (modMessageDeliver)fxReceiveLoop, NULL);
+//	modMessagePostToMachineFromISR(NULL, (modMessageDeliver)fxReceiveLoop, NULL);
+	modMessagePostToMachine(NULL, NULL, 0xffff, (modMessageDeliver)fxReceiveLoop, NULL);
 }
 
 #endif
@@ -49,9 +72,18 @@ void setupDebugger()
 {
 	int i;
 
+#if DEBUG_RESET_SIGNALING
+	gpio_set_function(RTS_PIN, GPIO_FUNC_SIO);
+	gpio_set_dir(RTS_PIN, GPIO_OUT);
+	gpio_set_function(DTR_PIN, GPIO_FUNC_SIO);
+	gpio_set_dir(DTR_PIN, GPIO_OUT);
+	gpio_put(RTS_PIN, 0);
+	gpio_put(DTR_PIN, 0);
+#endif
+
 	for (i=0; i<=19; i++) {
 		if (tud_cdc_connected()) {
-			printf("pico-usb-connected.\r\n");
+			// printf("pico-usb-connected.\r\n");
 			break;
 		}
 

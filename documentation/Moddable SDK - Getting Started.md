@@ -1,7 +1,7 @@
 # Moddable SDK – Getting Started
 ### A guide to installing the Moddable SDK and building its tools
-Copyright 2016-2022 Moddable Tech, Inc.<BR>
-Revised: May 4, 2022
+Copyright 2016-2023 Moddable Tech, Inc.<BR>
+Revised: October 12, 2023
 
 This document provides instructions to install the Moddable SDK and build its tools on the computer you use for development.
 
@@ -96,9 +96,9 @@ The Moddable SDK requires macOS Sierra (Version 10.12) or newer and a full insta
 	open ~/.zshrc
 	```
 
-	> Note: If executing the above command gives you an error saying that your shell startup/initializaiton file does not exist, you can create the appropriate file using the `touch` command. For example, `touch ~/.zshrc`.
+	> Note: If executing the above command gives you an error saying that your shell startup/initialization file does not exist, you can create the appropriate file using the `touch` command. For example, `touch ~/.zshrc`.
 
-5. Add the following lines to the file you just opened and save. This sets up the `MODDABLE` environment variable to point at your local Moddable SDK repository directory and edits the `PATH` environment variable to include the build directory.
+5. Add the following lines to the file you just opened and save. This sets up the `MODDABLE` environment variable to point at your local Moddable SDK repository directory and edits the `PATH` environment variable to include the Moddable built tools directory.
 
 	```text
 	export MODDABLE="/Users/<user>/Projects/moddable"
@@ -216,6 +216,8 @@ The Moddable SDK requires Windows 8.1 or newer and Microsoft Visual Studio Commu
 	- Variable Value (add to the existing list): `%USERPROFILE%\Projects\moddable\build\bin\win\release`
 
 	> Note: The `%USERPROFILE%\Projects\moddable\build\bin\win\release` directory will be created in the next step. It is safe to set the environment variable now or to come back after Step 6 to add it to the `Path`.
+
+	> Note: Make sure you open a new Command Prompt after setting the environment variables. The new environment settings will not take effect in existing Command Prompt instances.
 	
 6. Launch the "x86 Native Tools Command Prompt for VS 2022" command line console. Build the Moddable command line tools, simulator, and debugger from the command line:
 
@@ -224,7 +226,8 @@ The Moddable SDK requires Windows 8.1 or newer and Microsoft Visual Studio Commu
 	build
 	```
 	
-	> Note: Make sure you open a new Command Prompt after setting the environment variables above. The new environment settings will not take effect in existing Command Prompt instances.
+	> Note: There is an alternative build batch file called `parallel_build.bat` that can be used on multi-core systems to significantly speed up the Moddable SDK build. It is, however, more difficult to see diagnostic error messages when using this batch file. If `build.bat` works correctly on your system, consider using `parallel_build.bat` for future Moddable SDK builds.
+	
 
 7. Launch the `xsbug` debugger from the command line:
 
@@ -289,6 +292,8 @@ The Moddable SDK tools are frequently updated with improvements and added functi
 	cd %MODDABLE%\build\makefiles\win
 	build
 	```
+
+	> Note: There is an alternative build batch file called `parallel_build.bat` that can be used on multi-core systems to significantly speed up the Moddable SDK build. It is, however, more difficult to see diagnostic error messages when using this batch file. If `build.bat` works correctly on your system, consider using `parallel_build.bat` for future Moddable SDK builds.
 		
 4. Verify the host environment setup by building the starter `helloworld` application for the desktop simulator target:
 
@@ -303,7 +308,7 @@ The Moddable SDK tools are frequently updated with improvements and added functi
 <a id="lin-requirements"></a>
 ### System Requirements
 
-The Moddable SDK has been tested on the Ubuntu 16.04 LTS (64-bit) and Raspberry Pi Desktop (32-bit) operating systems. These instructions assume that a GCC toolchain has already been installed.
+The Moddable SDK has been tested on the Ubuntu 16.04-22.04 LTS (64-bit) and Raspberry Pi Desktop (32-bit) operating systems. These instructions assume that a GCC toolchain has already been installed.
 
 <a id="lin-instructions"></a>
 ### Installing
@@ -331,11 +336,11 @@ The Moddable SDK has been tested on the Ubuntu 16.04 LTS (64-bit) and Raspberry 
 	git clone https://github.com/Moddable-OpenSource/moddable
 	```
 
-5. Setup the `MODDABLE` environment variable in your `~/.bashrc` file to point at your local Moddable SDK repository directory:
+5. Setup the `MODDABLE` environment variable in your `~/.bashrc` file to point at your local Moddable SDK repository directory. Add the Moddable built tools directory to your `PATH`:
 
 	```text
-	MODDABLE=~/Projects/moddable
-	export MODDABLE
+	export MODDABLE=~/Projects/moddable
+	export PATH=$PATH:$MODDABLE/build/bin/lin/release
 	```
 
 	> Note: You must open a new shell instance or manually run the export statements in your shell before proceeding. Adding the export statements to your `~/.profile` does not update the environment variables in active shell instances.
@@ -347,15 +352,7 @@ The Moddable SDK has been tested on the Ubuntu 16.04 LTS (64-bit) and Raspberry 
 	make
 	```
 	
-7. Update the `PATH` environment variable in your `~/.bashrc` to include the tools directory:
-
-	```text
-	export PATH=$PATH:$MODDABLE/build/bin/lin/release
-	```
-
-	> Note: You must open a new shell instance or manually run the export statements in your shell before proceeding. Adding the export statements to your `~/.profile` does not update the environment variables in active shell instances.
-
-8. Install the desktop simulator and `xsbug` debugger applications:
+7. Install the desktop simulator and `xsbug` debugger applications:
 
 	```text
 	cd $MODDABLE/build/makefiles/lin
@@ -364,20 +361,22 @@ The Moddable SDK has been tested on the Ubuntu 16.04 LTS (64-bit) and Raspberry 
 
 	When prompted, enter your `sudo` password to copy the application's desktop, executable and icon files into the standard `/usr/share/applications`, `/usr/bin`, and `/usr/share/icon/hicolor` directories.
 	
-9. Launch the `xsbug` debugger from the command line:
+8. Launch the `xsbug` debugger from the command line:
 
 	```text
 	xsbug
 	```
 	
-10. Verify the host environment setup by building the starter `helloworld` application for the desktop simulator target:
+9. Verify the host environment setup by building the starter `helloworld` application for the desktop simulator target:
 
 	```text
 	cd $MODDABLE/examples/helloworld
 	mcconfig -d -m -p lin
 	```
 
-11. **IMPORTANT:** You can now build and run applications for the desktop simulator. To build and run applications on a development board or MCU, you need to install additional SDKs, drivers, and development tools for your target platform. See the [What's Next](#dev-boards-and-mcus) (Building and Running Apps on Development Boards and MCUs) section of this document for more details and links to instructions.
+	> [See this discussion](https://github.com/Moddable-OpenSource/moddable/discussions/1097) for a description of what you should expect to see.
+
+10. **IMPORTANT:** You can now build and run applications for the desktop simulator. To build and run applications on a development board or MCU, you need to install additional SDKs, drivers, and development tools for your target platform. See the [What's Next](#dev-boards-and-mcus) (Building and Running Apps on Development Boards and MCUs) section of this document for more details and links to instructions.
 
 <!--<a id="lin-troubleshooting"></a>
 ### Troubleshooting
@@ -457,3 +456,4 @@ The table below links to some of the documents in the `devices` folder to help y
 | Giant Gecko, Mighty Gecko,<BR>Thunderboard Sense 2, or Blue Gecko | [Using the Moddable SDK with Gecko](https://github.com/Moddable-OpenSource/moddable/blob/public/documentation/devices/gecko/GeckoBuild.md)
 | QCA4020 | [Using the Moddable SDK with QCA4020](./devices/qca4020/README.md)
 | Raspberry Pi Pico | [Using the Moddable SDK with Pico](./devices/pico.md) |
+| Nordic nRF52 | [Using the Moddable SDK with nRF52](./devices/nrf52.md) |

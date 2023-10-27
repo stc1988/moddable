@@ -95,11 +95,16 @@ static void resolved(CFHostRef cfHost, CFHostInfoType typeInfo, const CFStreamEr
 
 static void socketDownUseCount(xsMachine *the, xsSocket xss)
 {
+	if (xss->done)
+		return;
+
 	xss->useCount -= 1;
-	if ((xss->useCount <= 0) && !xss->done) {
+	if (xss->useCount <= 0) {
 		xsDestructor destructor = xsGetHostDestructor(xss->obj);
-		xsmcSetHostData(xss->obj, NULL);
-		(*destructor)(xss);
+		if (destructor) {
+			xsmcSetHostData(xss->obj, NULL);
+			(*destructor)(xss);
+		}
 	}
 }
 
@@ -253,11 +258,7 @@ void xs_socket(xsMachine *the)
 	else
 		xsUnknownError("host required in dictionary");
 
-	CFHostClientContext context;
-	context.version = 0;
-	context.retain = nil;
-	context.release = nil;
-	context.copyDescription = nil;
+	CFHostClientContext context = {0};
 	context.info = xss;
 
 	CFHostSetClient(cfHost, resolved, &context);
@@ -267,17 +268,25 @@ void xs_socket(xsMachine *the)
 	CFStreamError streamErr;
 	if (!CFHostStartInfoResolution(cfHost, kCFHostAddresses, &streamErr))
 		xsUnknownError("cannot resolve host address");
+
+	xss->useCount += 1;	// resolve in progress
 }
 
 void resolved(CFHostRef cfHost, CFHostInfoType typeInfo, const CFStreamError *error, void *info)
 {
 	xsSocket xss = info;
 
+	if (xss->done) {
+		socketDownUseCount(xss->the, xss);
+		return;
+	}
+
 	CFArrayRef cfArray = CFHostGetAddressing(cfHost, NULL);
 	if (NULL == cfArray) {	// failed to resolve
 		xsBeginHost(xss->the);
 			xsCall1(xss->obj, xsID_callback, xsInteger(kSocketMsgError));
 		xsEndHost(xss->the);
+		socketDownUseCount(xss->the, xss);
 		return;
 	}
 	NSData *address = CFArrayGetValueAtIndex(cfArray, CFArrayGetCount(cfArray) - 1);
@@ -296,6 +305,7 @@ void resolved(CFHostRef cfHost, CFHostInfoType typeInfo, const CFStreamError *er
 			xsCall1(xss->obj, xsID_callback, xsInteger(kSocketMsgError));
 		xsEndHost(xss->the);
 	}
+	socketDownUseCount(xss->the, xss);		// resolve complete
 }
 
 static void doDestructor(xsSocket xss)

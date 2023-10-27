@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2018  Moddable Tech, Inc.
+ * Copyright (c) 2016-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -25,28 +25,29 @@ import Net from "net";
 import SNTP from "sntp";
 
 export default function (done) {
-	WiFi.mode = 1;
 
 	if (!config.ssid) {
 		trace("No Wi-Fi SSID\n");
 		return done();
 	}
 
-	let monitor = new WiFi({ssid: config.ssid, password: config.password}, function(msg, code) {
+	WiFi.mode = 1;
+
+	new WiFi({ssid: config.ssid, password: config.password}, function(msg, code) {
 	   switch (msg) {
-		   case "gotIP":
+		   case WiFi.gotIP:
 				trace(`IP address ${Net.get("IP")}\n`);
 
-				monitor = monitor.close();
-				if (!config.sntp)
+				this.close();
+				if (!config.sntp || (Date.now() > 1672722071_000))
 					return done();
 
 				new SNTP({host: config.sntp}, function(message, value) {
-					if (1 === message) {
-						trace("got time\n");
+					if (SNTP.time === message) {
+						trace(`got time from ${config.sntp}\n`);
 						Time.set(value);
 					}
-					else if (message < 0)
+					else if (SNTP.error === message)
 						trace("can't get time\n");
 					else
 						return;
@@ -54,11 +55,11 @@ export default function (done) {
 				});
 				break;
 
-			case "connect":
+			case WiFi.connected:
 				trace(`Wi-Fi connected to "${Net.get("SSID")}"\n`);
 				break;
 
-			case "disconnect":
+			case WiFi.disconnected:
 				trace((-1 === code) ? "Wi-Fi password rejected\n" : "Wi-Fi disconnected\n");
 				break;
 		}

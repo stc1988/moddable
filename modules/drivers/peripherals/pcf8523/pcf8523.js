@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021  Moddable Tech, Inc.
+ * Copyright (c) 2021-2023 Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -35,15 +35,15 @@ class PCF8523 {
 	#blockBuffer = new Uint8Array(7);
 
 	constructor(options) {
-		const { rtc } = options;
-		const io = this.#io = new rtc.io({
+		const { clock } = options;
+		const io = this.#io = new clock.io({
 			hz: 400_000,
 			address: 0x68,
-			...rtc
+			...clock
 		});
 
 		try {
-			io.readByte(0);
+			io.readUint8(0);
 		}
 		catch(e) {
 			io.close();
@@ -56,18 +56,22 @@ class PCF8523 {
 	}
 	configure(options) {
 	}
-	get enabled() {
-		return (this.#io.readByte(Register.CTRL1) & Register.STOP_BIT) ? false : true;
+	get configuration() {
+		return {};
 	}
 	get time() {
 		const io = this.#io;
 		const reg = this.#blockBuffer;
 
-		io.readBlock(Register.TIME, reg);
+		io.readBuffer(Register.TIME, reg);
 
 		if (reg[0] & Register.VALID_BIT) {
 			// if high bit of seconds is set, then time is uncertain
 			return undefined;
+		}
+
+		if (this.#io.readUint8(Register.CTRL1) & Register.STOP_BIT) {
+			return undefined; // disabled
 		}
 
 		// yr, mo, day, hr, min, sec
@@ -98,9 +102,9 @@ class PCF8523 {
 		b[5] = decToBcd(now.getUTCMonth() + 1);
 		b[6] = decToBcd(year % 100);
 
-		io.writeBlock(Register.TIME, b);
+		io.writeBuffer(Register.TIME, b);
 
-		io.writeWord(Register.CTRL1, 0);			// enable
+		io.writeUint16(Register.CTRL1, 0);			// enable
 	}
 }
 

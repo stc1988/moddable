@@ -55,6 +55,7 @@ const txBehavior ICACHE_FLASH_ATTR gxOrdinaryBehavior = {
 	fxOrdinarySetPrototype,
 };
 
+#if mxAliasInstance
 txSlot* fxAliasInstance(txMachine* the, txSlot* instance)
 {
 	txSlot* alias;
@@ -98,6 +99,7 @@ txSlot* fxAliasInstance(txMachine* the, txSlot* instance)
 	}
 	return alias;
 }
+#endif
 
 txSlot* fxDuplicateInstance(txMachine* the, txSlot* instance)
 {
@@ -111,19 +113,22 @@ txSlot* fxDuplicateInstance(txMachine* the, txSlot* instance)
 	from = instance->next;
 	to = result;
 	while (from) {
-		to = to->next = fxDuplicateSlot(the, from);
-		if (to->kind == XS_ARRAY_KIND) {
-			txSlot* address = to->value.array.address;
-			if (address) {
-				txSize size = (((txChunk*)(((txByte*)address) - sizeof(txChunk)))->size) / sizeof(txSlot);
-				txSlot* chunk = (txSlot*)fxNewChunk(the, size * sizeof(txSlot));
-				address = to->value.array.address;
-				c_memcpy(chunk, address, size * sizeof(txSlot));
-				to->value.array.address = chunk;
-				while (size) {
-					chunk->flag &= ~XS_MARK_FLAG;
-					chunk++;
-					size--;
+		if (from->kind != XS_WEAK_ENTRY_KIND) {
+			to = to->next = fxDuplicateSlot(the, from);
+			if (from->kind == XS_ARRAY_KIND) {
+				txSlot* address = from->value.array.address;
+				to->value.array.address = C_NULL;
+				if (address) {
+					txSize size = (((txChunk*)(((txByte*)address) - sizeof(txChunk)))->size) / sizeof(txSlot);
+					txSlot* chunk = (txSlot*)fxNewChunk(the, size * sizeof(txSlot));
+					address = from->value.array.address;
+					c_memcpy(chunk, address, size * sizeof(txSlot));
+					to->value.array.address = chunk;
+					while (size) {
+						chunk->flag &= ~XS_MARK_FLAG;
+						chunk++;
+						size--;
+					}
 				}
 			}
 		}
@@ -142,6 +147,7 @@ txSlot* fxGetInstance(txMachine* the, txSlot* theSlot)
 txSlot* fxGetPrototype(txMachine* the, txSlot* instance)
 {
 	txSlot* prototype = instance->value.instance.prototype;
+#if mxAliasInstance
 	if (prototype) {
 		if (prototype->ID) {
 			txSlot* alias = the->aliasArray[prototype->ID];
@@ -149,6 +155,7 @@ txSlot* fxGetPrototype(txMachine* the, txSlot* instance)
 				prototype = alias;
 		}
 	}
+#endif
 	return prototype;
 }
 
@@ -166,6 +173,7 @@ txBoolean fxIsSameInstance(txMachine* the, txSlot* a, txSlot* b)
 {	
 	if (a == b)
 		return 1;
+#if mxAliasInstance
 	if (a->ID) {
 		txSlot* alias = the->aliasArray[a->ID];
 		if (alias) {
@@ -182,6 +190,7 @@ txBoolean fxIsSameInstance(txMachine* the, txSlot* a, txSlot* b)
 				return 1;
 		}
 	}
+#endif
 	return 0;
 }
 
@@ -247,7 +256,7 @@ txSlot* fxToInstance(txMachine* the, txSlot* theSlot)
 #ifdef mxHostFunctionPrimitive
 	case XS_HOST_FUNCTION_KIND: {
 		const txHostFunctionBuilder* builder = theSlot->value.hostFunction.builder;
-		anInstance = fxNewHostFunction(the, builder->callback, builder->length, builder->id);
+		anInstance = fxNewHostFunction(the, builder->callback, builder->length, builder->id, theSlot->value.hostFunction.profileID);
 		mxPullSlot(theSlot);
 		} break;
 #endif
@@ -397,6 +406,7 @@ txBoolean fxOrdinaryDefineOwnProperty(txMachine* the, txSlot* instance, txID id,
 				}
 			}
 		}
+#if mxAliasInstance
 		if (instance->ID) {
 			txSlot* alias = the->aliasArray[instance->ID];
 			if (!alias) {
@@ -404,6 +414,7 @@ txBoolean fxOrdinaryDefineOwnProperty(txMachine* the, txSlot* instance, txID id,
 				property = mxBehaviorGetProperty(the, instance, id, index, XS_OWN);
 			}
 		}
+#endif
 	}
 	else {
 		property = mxBehaviorSetProperty(the, instance, id, index, XS_OWN);
@@ -488,11 +499,13 @@ txBoolean fxOrdinaryDeleteProperty(txMachine* the, txSlot* instance, txID id, tx
 {
 	txSlot** address = &(instance->next);
 	txSlot* property;
+#if mxAliasInstance
 	if (instance->ID) {
 		txSlot* alias = the->aliasArray[instance->ID];
 		if (alias)
 			instance = alias;
 	}
+#endif
 	address = &(instance->next);
 	if (id) {
 		while ((property = *address) && (property->flag & XS_INTERNAL_FLAG))
@@ -501,8 +514,10 @@ txBoolean fxOrdinaryDeleteProperty(txMachine* the, txSlot* instance, txID id, tx
 			if (property->ID == id) {
 				if (property->flag & XS_DONT_DELETE_FLAG)
 					return 0;
+#if mxAliasInstance
 				if (instance->ID)
 					return fxOrdinaryDeleteProperty(the, fxAliasInstance(the, instance), id, index);
+#endif
 				*address = property->next;
 				property->next = C_NULL;
 				return 1;
@@ -540,12 +555,15 @@ txSlot* fxOrdinaryGetProperty(txMachine* the, txSlot* instance, txID id, txIndex
     txSlot* result;
 	mxCheck(the, instance->kind == XS_INSTANCE_KIND);
 again:
+#if mxAliasInstance
 	if (instance->ID) {
 		txSlot* alias = the->aliasArray[instance->ID];
 		if (alias)
 			instance = alias;
 	}
+#endif
 	if (id) {
+#if mxAliasInstance
 		if (the->colors && (instance->flag & XS_DONT_MARSHALL_FLAG)) {
 			if (id < the->keyOffset) {
 				txID color = the->colors[id];
@@ -556,6 +574,7 @@ again:
 				}
 			}
 		}
+#endif
 		result = instance->next;
 		while (result && (result->flag & XS_INTERNAL_FLAG))
 			result = result->next;
@@ -629,11 +648,13 @@ bail:
 txBoolean fxOrdinaryGetPrototype(txMachine* the, txSlot* instance, txSlot* result)
 {
 	txSlot* prototype;
+#if mxAliasInstance
 	if (instance->ID) {
 		txSlot* alias = the->aliasArray[instance->ID];
 		if (alias)
 			instance = alias;
 	}
+#endif
 	prototype = fxGetPrototype(the, instance);
 	if (prototype) {
 		result->kind = XS_REFERENCE_KIND;
@@ -661,22 +682,26 @@ txBoolean fxOrdinaryHasProperty(txMachine* the, txSlot* instance, txID id, txInd
 
 txBoolean fxOrdinaryIsExtensible(txMachine* the, txSlot* instance)
 {
+#if mxAliasInstance
 	if (instance->ID) {
 		txSlot* alias = the->aliasArray[instance->ID];
 		if (alias)
 			instance = alias;
 	}
+#endif
 	return (instance->flag & XS_DONT_PATCH_FLAG) ? 0 : 1;
 }
 
 void fxOrdinaryOwnKeys(txMachine* the, txSlot* instance, txFlag flag, txSlot* keys)
 {
 	txSlot* property;
+#if mxAliasInstance
 	if (instance->ID) {
 		txSlot* alias = the->aliasArray[instance->ID];
 		if (alias)
 			instance = alias;
 	}
+#endif
 	property = instance->next;
 	while (property && (property->flag & XS_INTERNAL_FLAG)) {
 		if (property->kind == XS_ARRAY_KIND)
@@ -688,15 +713,19 @@ void fxOrdinaryOwnKeys(txMachine* the, txSlot* instance, txFlag flag, txSlot* ke
 
 txBoolean fxOrdinaryPreventExtensions(txMachine* the, txSlot* instance)
 {
+#if mxAliasInstance
 	if (instance->ID) {
 		txSlot* alias = the->aliasArray[instance->ID];
 		if (alias)
 			instance = alias;
 	}
+#endif
 	if (instance->flag & XS_DONT_PATCH_FLAG)
 		return 1;
+#if mxAliasInstance
 	if (instance->ID)
 		instance = fxAliasInstance(the, instance);
+#endif
 	instance->flag |= XS_DONT_PATCH_FLAG;
 	return 1;
 }
@@ -706,6 +735,7 @@ txSlot* fxOrdinarySetProperty(txMachine* the, txSlot* instance, txID id, txIndex
 	txSlot** address;
 	txSlot* property;
 	txSlot* result;
+#if mxAliasInstance
 	if (instance->ID) {
 		txSlot* alias = the->aliasArray[instance->ID];
 		if (alias)
@@ -723,7 +753,9 @@ txSlot* fxOrdinarySetProperty(txMachine* the, txSlot* instance, txID id, txIndex
 			instance = fxAliasInstance(the, instance);
 		}
 	}
+#endif
 	if (id) {
+#if mxAliasInstance
 		if (the->colors && (instance->flag & XS_DONT_MARSHALL_FLAG)) {
 			if (id < the->keyOffset) {
 				txID color = the->colors[id];
@@ -734,6 +766,7 @@ txSlot* fxOrdinarySetProperty(txMachine* the, txSlot* instance, txID id, txIndex
 				}
 			}
 		}
+#endif
 		address = &(instance->next);
 		while ((property = *address) && (property->flag & XS_INTERNAL_FLAG))
 			address = &(property->next);
@@ -803,6 +836,7 @@ txBoolean fxOrdinarySetPropertyValue(txMachine* the, txSlot* instance, txID id, 
 	prototype = the->stack;
 	if (!mxBehaviorGetOwnProperty(the, instance, id, index, property)) {
 		if (mxBehaviorGetPrototype(the, instance, prototype)) {
+			fxCheckCStack(the);
 			result = mxBehaviorSetPropertyValue(the, prototype->value.reference, id, index, value, receiver);
 			goto bail;
 		}
@@ -843,11 +877,13 @@ bail:
 txBoolean fxOrdinarySetPrototype(txMachine* the, txSlot* instance, txSlot* slot)
 {
 	txSlot* prototype = (slot->kind == XS_NULL_KIND) ? C_NULL : slot->value.reference;
+#if mxAliasInstance
 	if (instance->ID) {
 		txSlot* alias = the->aliasArray[instance->ID];
 		if (alias)
 			instance = alias;
 	}
+#endif
 	if (instance->value.instance.prototype != prototype) {
 		if (instance->flag & XS_DONT_PATCH_FLAG)
 			return 0;
@@ -857,8 +893,10 @@ txBoolean fxOrdinarySetPrototype(txMachine* the, txSlot* instance, txSlot* slot)
 				return 0;
 			slot = fxGetPrototype(the, slot);
 		}
+#if mxAliasInstance
 		if (instance->ID)
 			instance = fxAliasInstance(the, instance);
+#endif
 		instance->value.instance.prototype = prototype;
 	}
 	return 1;
@@ -1143,6 +1181,8 @@ txSlot* fxNewEnvironmentInstance(txMachine* the, txSlot* environment)
 txBoolean fxEnvironmentDefineOwnProperty(txMachine* the, txSlot* instance, txID id, txIndex index, txSlot* slot, txFlag mask) 
 {
 	txSlot* property = fxOrdinarySetProperty(the, instance, id, index, XS_OWN);
+	if (!property)
+		return 0;
 	property->flag = slot->flag & mask;
 	property->kind = slot->kind;
 	property->value = slot->value;
@@ -1171,17 +1211,22 @@ txBoolean fxEnvironmentDeleteProperty(txMachine* the, txSlot* instance, txID id,
 
 txSlot* fxEnvironmentGetProperty(txMachine* the, txSlot* instance, txID id, txIndex index, txFlag flag)
 {
-	txID alias;
 	if (id) {
 		txSlot* result = instance->next->next;
 		while (result) {
 			if (result->ID == id) {
-				result = result->value.closure;
-				alias = result->ID;
-				if (alias) {
-					txSlot* slot = the->aliasArray[alias];
-					if (slot)
-						result = slot;
+				if (result->kind == XS_CLOSURE_KIND) {
+					result = result->value.closure;
+#if mxAliasInstance
+					if (result) {
+						txID alias = result->ID;
+						if (alias) {
+							txSlot* slot = the->aliasArray[alias];
+							if (slot)
+								result = slot;
+						}	
+					}	
+#endif
 				}	
 				return result;
 			}
@@ -1207,21 +1252,26 @@ txBoolean fxEnvironmentHasProperty(txMachine* the, txSlot* instance, txID id, tx
 
 txSlot* fxEnvironmentSetProperty(txMachine* the, txSlot* instance, txID id, txIndex index, txFlag flag)
 {
-	txID alias;
 	if (id) {
 		txSlot* result = instance->next->next;
 		while (result) {
 			if (result->ID == id) {
-				result = result->value.closure;
-				if (result->flag & XS_DONT_SET_FLAG)
-					mxDebugID(XS_TYPE_ERROR, "set %s: const", id);
-				alias = result->ID;
-				if (alias) {
-					result = the->aliasArray[alias];
-					if (!result) {
-						result = fxNewSlot(the);
-						the->aliasArray[alias] = result;
-					}
+				if (result->kind == XS_CLOSURE_KIND) {
+					result = result->value.closure;
+					if (result->flag & XS_DONT_SET_FLAG)
+						mxDebugID(XS_TYPE_ERROR, "set %s: const", id);
+#if mxAliasInstance
+					else {
+						txID alias = result->ID;
+						if (alias) {
+							result = the->aliasArray[alias];
+							if (!result) {
+								result = fxNewSlot(the);
+								the->aliasArray[alias] = result;
+							}
+						}	
+					}	
+#endif
 				}	
 				return result;
 			}
@@ -1418,15 +1468,16 @@ void fxRunProgramEnvironment(txMachine* the)
 
 txSlot* fxNewRealmInstance(txMachine* the)
 {
-	txSlot* parent = the->stack + 8;
-	txSlot* global = the->stack + 7;
-	txSlot* moduleMap = the->stack + 6;
-	txSlot* own = the->stack + 5;
-	txSlot* closures = the->stack + 4;
-	txSlot* resolveHook = the->stack + 3;
-	txSlot* moduleMapHook = the->stack + 2;
-	txSlot* loadHook = the->stack + 1;
-	txSlot* loadNowHook = the->stack;
+	txSlot* parent = the->stack + 9;
+	txSlot* global = the->stack + 8;
+	txSlot* moduleMap = the->stack + 7;
+	txSlot* own = the->stack + 6;
+	txSlot* closures = the->stack + 5;
+	txSlot* resolveHook = the->stack + 4;
+	txSlot* moduleMapHook = the->stack + 3;
+	txSlot* loadHook = the->stack + 2;
+	txSlot* loadNowHook = the->stack + 1;
+	txSlot* importMetaHook = the->stack;
 	txSlot* realm = fxNewInstance(the);
 	txSlot* slot;
 	/* mxRealmGlobal */
@@ -1448,6 +1499,8 @@ txSlot* fxNewRealmInstance(txMachine* the)
 	slot = fxNextSlotProperty(the, slot, loadHook, XS_NO_ID, XS_GET_ONLY);
 	/* mxLoadNowHook */
 	slot = fxNextSlotProperty(the, slot, loadNowHook, XS_NO_ID, XS_GET_ONLY);
+	/* mxImportMetaHook */
+	slot = fxNextSlotProperty(the, slot, importMetaHook, XS_NO_ID, XS_GET_ONLY);
 	/* mxRealmParent */
 	slot = fxNextSlotProperty(the, slot, parent, XS_NO_ID, XS_GET_ONLY);
     parent->value.reference = realm;

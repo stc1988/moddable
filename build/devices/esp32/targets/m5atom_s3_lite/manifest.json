@@ -1,0 +1,53 @@
+{
+	"build":{
+		"ESP32_SUBCLASS": "esp32s3",
+		"USE_USB": "1",
+		"SDKCONFIGPATH": "./sdkconfig",
+		"PROGRAMMING_MODE_MESSAGE": "INSTRUCTIONS: Press and hold the button until the LED lights.",
+		"BEFORE_DEBUGGING_MESSAGE": "Press and release the Reset button."
+	},
+	"include": [
+		"$(MODULES)/pins/smbus/manifest.json",
+		"$(MODULES)/pins/digital/manifest.json",
+		"$(MODULES)/pins/digital/monitor/manifest.json",
+		"$(MODULES)/drivers/button/manifest.json"
+	],
+	"modules": {
+		"*": [
+			"$(MODULES)/drivers/neopixel/*",
+			"$(MODULES)/drivers/neopixel/esp32/*",
+			"../m5stack_fire/m5button"
+		],
+		"setup/target": "./setup-target"
+	},
+	"preload": [
+		"setup/target",
+		"neopixel",
+		"m5button"
+	],
+	"creation": {
+		"static": 0,
+		"chunk": {
+			"initial": 78848,
+			"incremental": 0
+		},
+		"heap": {
+			"initial": 4928,
+			"incremental": 0
+		},
+		"stack": 512
+	},
+	"defines": {
+		"i2c": {
+			"sda_pin": 38,
+			"scl_pin": 39
+		},
+		"neopixel": {
+			"length": 1,
+			"pin": 35,
+			"order": "#GRB",
+			"rmt_channel": "RMT_CHANNEL_0"
+		}
+	}
+}
+

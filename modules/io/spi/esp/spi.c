@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Moddable Tech, Inc.
+ * Copyright (c) 2021-2023 Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -36,7 +36,7 @@
 #include "builtinCommon.h"
 
 #if ESP32
-	#include "spi_common.h"
+	#include "driver/spi_common.h"
 #endif
 
 struct SPIRecord {
@@ -59,13 +59,12 @@ typedef struct SPIRecord *SPI;
 static void doChipSelect(uint8_t active, modSPIConfiguration config);
 static void doChipSelectNOP(uint8_t active, modSPIConfiguration config);
 
-//@@ pin values for in, out, and clock not being used or verified
 void xs_spi_constructor(xsMachine *the)
 {
 	SPI spi;
-	uint8_t mosi = kInvalidPin, miso = kInvalidPin, clock, select = kInvalidPin, active = 1, mode = 0;
+	uint8_t mosi = kInvalidPin, miso = kInvalidPin, clock, select = kInvalidPin, active = 0, mode = 0;
 	int hz, tmp;
-#if ESP32
+#if ESP32 || nrf52
 	uint8_t spiPort;
 #else
 	char spiPort[8];
@@ -102,13 +101,15 @@ void xs_spi_constructor(xsMachine *the)
 		select = builtinGetPin(the, &xsVar(0));
 		if (!builtinIsPinFree(select))
 			xsUnknownError("in use");
-	}
 
-	if (xsmcHas(xsArg(0), xsID_active)) {
-		xsmcGet(xsVar(0), xsArg(0), xsID_active);
-		active = xsmcToInteger(xsVar(0));
-		if ((0 != active) && (1 != active))
-			xsRangeError("invalid active");
+		if (xsmcHas(xsArg(0), xsID_active)) {
+			xsmcGet(xsVar(0), xsArg(0), xsID_active);
+			active = xsmcToInteger(xsVar(0));
+			if ((0 != active) && (1 != active))
+				xsRangeError("invalid active");
+		}
+		else
+			xsTrace("WARNING: SPI used with default active (0). Please confirm that is intended.\n");
 	}
 
 	if (xsmcHas(xsArg(0), xsID_mode)) {
@@ -124,14 +125,22 @@ void xs_spi_constructor(xsMachine *the)
 
 #if ESP32
 	xsmcGet(xsVar(0), xsArg(0), xsID_port);
-	tmp = xsmcToInteger(xsVar(0));
+	tmp = builtinGetSignedInteger(the, &xsVar(0));
+#if kCPUESP32C6 || kCPUESP32C3 || kCPUESP32H2
+	if ((SPI1_HOST != tmp) && (SPI2_HOST != tmp))
+#elif kCPUESP32S3
+	if ((SPI1_HOST != tmp) && (SPI2_HOST != tmp) && (SPI3_HOST != tmp))
+#else
 	if ((SPI_HOST != tmp) && (HSPI_HOST != tmp)
-#if ESP32 != 2
+#if !defined( kCPUESP32S2 )
 		 && (VSPI_HOST != tmp)
 #endif
 		)
+#endif
 		xsRangeError("invalid port");
 	spiPort = (uint8_t)tmp;
+#elif nrf52
+	spiPort = 0;
 #else
 	xsmcGet(xsVar(0), xsArg(0), xsID_port);
 	xsmcToStringBuffer(xsVar(0), spiPort, sizeof(spiPort));

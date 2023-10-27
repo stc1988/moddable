@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2022  Moddable Tech, Inc.
+ * Copyright (c) 2016-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -43,6 +43,7 @@
 #include "mc.defines.h"
 #include "xs.h"
 #include "xsHosts.h"
+#include "xsHost.h"
 #include "pico/sem.h"
 
 #ifdef mxDebug
@@ -60,7 +61,7 @@ uint8_t gXSBUG[4] = { DEBUG_IP };
 
 
 #define isSerialIP(ip) ((127 == ip[0]) && (0 == ip[1]) && (0 == ip[2]) && (7 == ip[3]))
-#define kSerialConnection ((void*)0x87654321)
+#define kSerialConnection ((txSocket)0x87654321)
 
 static void fx_putpi(txMachine *the, char separator, txBoolean trailingcrlf);
 static void doRemoteCommand(txMachine *the, uint8_t *cmd, uint32_t cmdLen);
@@ -109,7 +110,7 @@ void fx_putc(void *refcon, char c)
 
     if (the->inPrintf) {
         if (0 == c) {
-            if ((txSocket)kSerialConnection == the->connection) {
+            if (kSerialConnection == the->connection) {
                 // write xsbug log trailer
                 const static const char *xsbugTrailer = "&#10;</log></xsbug>\r\n";
                 const char *cp = xsbugTrailer;
@@ -129,7 +130,7 @@ void fx_putc(void *refcon, char c)
             return;
 
         the->inPrintf = true;
-        if ((txSocket)kSerialConnection == the->connection) {
+        if (kSerialConnection == the->connection) {
 			mxDebugMutexTake();
 
             // write xsbug log header
@@ -179,7 +180,7 @@ void fx_putpi(txMachine *the, char separator, txBoolean trailingcrlf)
     }
 }
 
-const char *gXSAbortStrings[] ICACHE_FLASH_ATTR = {
+char *gXSAbortStrings[] ICACHE_FLASH_ATTR = {
 	"debugger",
 	"memory full",
 	"stack overflow",
@@ -203,30 +204,57 @@ void fxAbort(txMachine* the, int status)
 	}
 #endif
 
-#if defined(mxDebug) || defined(mxInstrument)
+#ifdef mxDebug
+	if ((XS_DEAD_STRIP_EXIT == status) && the->debugEval)
+		mxUnknownError("dead strip");
+#endif
+
+#if defined(mxDebug) || defined(mxInstrument) || defined(MODDEF_XS_ABORTHOOK)
 	const char *msg = (status <= XS_UNHANDLED_REJECTION_EXIT) ? gXSAbortStrings[status] : "unknown";
 
+	#if MODDEF_XS_ABORTHOOK
+		if ((XS_STACK_OVERFLOW_EXIT != status) && (XS_DEBUGGER_EXIT != status)) {
+			xsBooleanValue ignore = false;
+			
+			fxBeginHost(the);
+			{
+				mxPush(mxException);
+				txSlot *exception = the->stack;
+				mxException = xsUndefined;
+				mxTry(the) {
+					txID abortID = fxFindName(the, "abort");
+					mxOverflow(-8);
+					mxPush(mxGlobal);
+					if (fxHasID(the, abortID)) {
+						mxPush(mxGlobal);
+						fxCallID(the, abortID);
+						mxPushStringC((char *)msg);
+						mxPushSlot(exception);
+						fxRunCount(the, 2);
+						ignore = (XS_BOOLEAN_KIND == the->stack->kind) && !the->stack->value.boolean;
+						mxPop();
+					}
+				}
+				mxCatch(the) {
+				}
+			}
+			fxEndHost(the);
+			if (ignore)
+				return;
+		}
+	#endif
+
 	fxReport(the, "XS abort: %s\n", msg);
-	#if defined(mxDebug) && !MODDEF_XS_TEST
-		fxDebugger(the, (char*)__FILE__, __LINE__);
+	#if !defined(MODDEF_XS_DEBUGABORT) || MODDEF_XS_DEBUGABORT
+		#if defined(mxDebug) && !MODDEF_XS_TEST
+			if ((char *)&the <= the->stackLimit)
+				the->stackLimit = NULL;
+			fxDebugger(the, (char *)__FILE__, __LINE__);
+		#endif
 	#endif
 #endif
 
-#ifdef MODDEF_XS_RESTARTON
-	static const int restart[] = {
-		#if defined(mxDebug)
-			XS_DEBUGGER_EXIT,
-			XS_FATAL_CHECK_EXIT,
-		#endif
-			MODDEF_XS_RESTARTON };
-	int i;
-	for (i = 0; i < sizeof(restart) / sizeof(int); i++) {
-		if (restart[i] == status)
-			c_exit(status);
-	}
-#else
 	c_exit(status);
-#endif
 }
 
 #ifdef mxDebug
@@ -255,7 +283,7 @@ void fxConnect(txMachine* the)
 			once = true;
 		}
 
-		the->connection = (txSocket)kSerialConnection;
+		the->connection = kSerialConnection;
 	}
 }
 
@@ -278,7 +306,7 @@ txBoolean fxIsConnected(txMachine* the)
 
 txBoolean fxIsReadable(txMachine* the)
 {
-	if ((txSocket)kSerialConnection == the->connection) {
+	if (kSerialConnection == the->connection) {
 		fxReceiveLoop();
 //		taskYIELD();
 		return NULL != the->debugFragments;
@@ -292,7 +320,7 @@ void fxReceive(txMachine* the)
 {
 	the->debugOffset = 0;
 
-	if ((txSocket)kSerialConnection == the->connection) {
+	if (kSerialConnection == the->connection) {
 		uint32_t start = the->debugConnectionVerified ? 0 : modMilliseconds();
 
 		while (!the->debugOffset) {
@@ -332,7 +360,7 @@ void doDebugCommand(void *machine, void *refcon, uint8_t *message, uint16_t mess
 	the->debugNotifyOutstanding = false;
 	if ((txSocket)NULL == the->connection)
 		return;
-	else if ((txSocket)kSerialConnection == the->connection) {
+	else if (kSerialConnection == the->connection) {
 		if (!the->debugFragments)
 			return;
 	}
@@ -497,7 +525,7 @@ void fxSend(txMachine* the, txBoolean flags)
 	txBoolean more = 0 != (flags & 1);
 	txBoolean binary = 0 != (flags & 2);
 
-	if ((txSocket)kSerialConnection == the->connection) {
+	if (kSerialConnection == the->connection) {
 		char *c;
 		txInteger count;
 
@@ -715,6 +743,15 @@ printf("unknown cmdID: %d\n");
 }
 
 #endif /* mxDebug */
+
+uint8_t fxInNetworkDebugLoop(txMachine *the)
+{
+#ifdef mxDebug
+	return the->DEBUG_LOOP && the->connection && (kSerialConnection != the->connection);
+#else
+	return 0;
+#endif
+}
 
 uint32_t pico_memory_remaining() {
 	return (1024);

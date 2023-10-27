@@ -74,9 +74,9 @@ struct sxKeyword {
 struct sxSymbol {
 	txSymbol* next;
 	txID ID;
-	txInteger length;
+	txSize length;
 	txString string;
-	txSize sum;
+	txU4 sum;
 	txInteger usage;
 };
 
@@ -567,6 +567,7 @@ struct sxScope {
 	txInteger closureNodeCount;
 	txInteger declareNodeCount;
 	txInteger defineNodeCount;
+	txInteger disposableNodeCount;
 	txInteger nativeNodeCount;
 	txDeclareNode* firstDeclareNode;
 	txDeclareNode* lastDeclareNode;
@@ -711,6 +712,7 @@ struct sxParser {
 	txSymbol* toStringSymbol;
 	txSymbol* undefinedSymbol;
 	txSymbol* uriSymbol;
+	txSymbol* usingSymbol;
 	txSymbol* valueSymbol;
 	txSymbol* withSymbol;
 	txSymbol* yieldSymbol;
@@ -887,6 +889,7 @@ enum {
 	XS_TOKEN_UNDEFINED,
 	XS_TOKEN_UNSIGNED_RIGHT_SHIFT,
 	XS_TOKEN_UNSIGNED_RIGHT_SHIFT_ASSIGN,
+	XS_TOKEN_USING,
 	XS_TOKEN_VAR,
 	XS_TOKEN_VOID,
 	XS_TOKEN_WHILE,
@@ -936,6 +939,7 @@ enum {
 
 	mxDefineNodeBoundFlag = 1 << 15,
 	mxDefineNodeCodedFlag = 1 << 16,
+	mxDeclareNodeDisposableFlag = 1 << 14,
 	
 
 	mxStringEscapeFlag = 1 << 0,
@@ -1045,6 +1049,7 @@ extern void fxPostfixExpressionNodeBind(void* it, void* param);
 extern void fxPrivateMemberNodeBind(void* it, void* param);
 extern void fxProgramNodeBind(void* it, void* param); 
 extern void fxProgramNodeHoist(void* it, void* param); 
+extern void fxPropertyNodeHoist(void* it, void* param);
 extern void fxSpreadNodeBind(void* it, void* param);
 extern void fxStatementNodeHoist(void* it, void* param);
 extern void fxStringNodeHoist(void* it, void* param);

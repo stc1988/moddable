@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021  Moddable Tech, Inc.
+ * Copyright (c) 2021-2023 Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -44,15 +44,15 @@ class PCF8563 {
 	#blockBuffer = new Uint8Array(7);
 
 	constructor(options) {
-		const { rtc, interrupt, onAlarm } = options;
-		const io = this.#io = new rtc.io({
+		const { clock, interrupt, onAlarm } = options;
+		const io = this.#io = new clock.io({
 			hz: 400_000,
 			address: 0x51,
-			...rtc
+			...clock
 		});
 
 		try {
-			io.readByte(0);
+			io.readUint8(0);
 		}
 		catch(e) {
 			io.close();
@@ -66,7 +66,7 @@ class PCF8563 {
 				...interrupt,
 				edge: interrupt.io.Falling,
 				onReadable: () => {
-					this.#io.writeByte(Register.CTRL2, 0);	//  clear alarm, disable interrupt
+					this.#io.writeUint8(Register.CTRL2, 0);	//  clear alarm, disable interrupt
 					this.#onAlarm();
 				}
 			});
@@ -78,18 +78,65 @@ class PCF8563 {
 		this.#io = undefined;
 	}
 	configure(options) {
+		if (options?.alarm !== undefined) {
+			const time = options.alarm;
+			
+			let io = this.#io;
+			let now = this.time;
+	
+			if (!time) {
+				io.writeUint8(Register.CTRL2, 0);	//  clear alarm, disable interrupt
+				return;
+			}
+
+			if (time - now > AlarmRange)
+				throw new Error;
+	
+			let future = new Date(time);
+			future.setUTCSeconds(0);
+			io.writeUint8(Register.ALARM_MINUTES, decToBcd(future.getUTCMinutes()));
+			io.writeUint8(Register.ALARM_HOURS, decToBcd(future.getUTCHours()));
+			io.writeUint8(Register.ALARM_DAY, decToBcd(future.getUTCDate()));
+			io.writeUint8(Register.ALARM_WEEKDAY, 0x80);		// disable
+	
+			io.writeUint8(Register.CTRL2, 0b0001_0010);	// pulse interrupt, clear alarm, enable interrupt
+		}
 	}
-	get enabled() {
-		const invalid = this.#io.readByte(Register.TIME) & Register.VALID_BIT;
-		return (invalid || this.#io.readByte(Register.CTRL1)) ? false : true;
+	get configuration() {
+		let io = this.#io;
+		let now = new Date(this.time);
+
+		const alarmStatus = io.readUint8(Register.CTRL2) & 0b0000_0010;
+		if (!alarmStatus)
+			return {alarm: 0}; // alarm is disabled
+
+		now.setUTCSeconds(0);
+		now.setUTCMinutes( bcdToDec(io.readUint8(Register.ALARM_MINUTES) & 0x7f) );
+		now.setUTCHours( bcdToDec(io.readUint8(Register.ALARM_HOURS) & 0x3f) );
+
+		let date = bcdToDec(io.readUint8(Register.ALARM_DAY) & 0x3f);
+		if (date < now.getUTCDate()) {
+			let month = now.getUTCMonth() + 1;
+			if (month > 11) {
+				month = 0;
+				now.setUTCFullYear(now.getUTCFullYear() + 1);
+			}
+			now.setUTCMonth(month);
+		}
+		now.setUTCDate( date );
+
+		return {alarm: now.getTime()};
 	}
 	get time() {
 		const io = this.#io;
 		const reg = this.#blockBuffer;
 
-		io.readBlock(Register.TIME, reg);
+		io.readBuffer(Register.TIME, reg);
 
 		if (reg[0] & Register.VALID_BIT) // if high bit of seconds is set, then time is uncertain
+			return undefined;
+
+		if (this.#io.readUint8(Register.CTRL1) & 0b0010_0000) // check if disabled
 			return undefined;
 
 		// yr, mo, day, hr, min, sec
@@ -119,51 +166,9 @@ class PCF8563 {
 		b[5] = decToBcd(now.getUTCMonth() + 1) | (year > 2099 ? Register.CENTURY_BIT : 0);
 		b[6] = decToBcd(year % 100);
 
-		io.writeBlock(Register.TIME, b);
+		io.writeBuffer(Register.TIME, b);
 
-		io.writeWord(Register.CTRL1, 0);			// enable
-	}
-	set alarm(v) {
-		let io = this.#io;
-		let now = this.time;
-
-		if (undefined === v) {
-			io.writeByte(Register.CTRL2, 0);	//  clear alarm, disable interrupt
-			return;
-		}
-
-		if (v - now > AlarmRange)
-			throw new Error;
-
-		let future = new Date(v);
-		future.setUTCSeconds(0);
-		io.writeByte(Register.ALARM_MINUTES, decToBcd(future.getUTCMinutes()));
-		io.writeByte(Register.ALARM_HOURS, decToBcd(future.getUTCHours()));
-		io.writeByte(Register.ALARM_DAY, decToBcd(future.getUTCDate()));
-		io.writeByte(Register.ALARM_WEEKDAY, 0x80);		// disable
-
-		io.writeByte(Register.CTRL2, 0b0001_0010);	// pulse interrupt, clear alarm, enable interrupt
-	}
-	get alarm() {
-		let io = this.#io;
-		let now = new Date(this.time);
-
-		now.setUTCSeconds(0);
-		now.setUTCMinutes( bcdToDec(io.readByte(Register.ALARM_MINUTES) & 0x7f) );
-		now.setUTCHours( bcdToDec(io.readByte(Register.ALARM_HOURS) & 0x3f) );
-
-		let date = bcdToDec(io.readByte(Register.ALARM_DAY) & 0x3f);
-		if (date < now.getUTCDate()) {
-			let month = now.getUTCMonth() + 1;
-			if (month > 11) {
-				month = 0;
-				now.setUTCFullYear(now.getUTCFullYear() + 1);
-			}
-			now.setUTCMonth(month);
-		}
-		now.setUTCDate( date );
-
-		return now;
+		io.writeUint16(Register.CTRL1, 0);			// enable
 	}
 }
 

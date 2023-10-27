@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021  Moddable Tech, Inc.
+ * Copyright (c) 2021-2023 Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -32,20 +32,20 @@ const Register = Object.freeze({
 });
 
 
-class DS3231 {
+class DS1307 {
 	#io;
 	#blockBuffer = new Uint8Array(7);
 
 	constructor(options) {
-		const { rtc } = options;
-		const io = this.#io = new rtc.io({
+		const { clock } = options;
+		const io = this.#io = new clock.io({
 			hz: 400_000,
 			address: 0x68,
-			...rtc
+			...clock
 		});
 
 		try {
-			io.readByte(0);
+			io.readUint8(0);
 		}
 		catch (e) {
 			io.close();
@@ -58,14 +58,14 @@ class DS3231 {
 	}
 	configure(options) {
 	}
-	get enabled() {
-		return (this.#io.readByte(0) & Register.ENABLE_BIT) ? false : true;
+	get configuration() {
+		return {};
 	}
 	get time() {
 		const io = this.#io;
 		const reg = this.#blockBuffer;
 
-		io.readBlock(Register.TIME, reg);
+		io.readBuffer(Register.TIME, reg);
 
 		if (0 != (reg[0] & Register.ENABLE_BIT)) {
 			return undefined;
@@ -93,7 +93,7 @@ class DS3231 {
 		b[5] = decToBcd(now.getUTCMonth() + 1);
 		b[6] = decToBcd(year - 1970);
 
-		this.#io.writeBlock(Register.TIME, b);
+		this.#io.writeBuffer(Register.TIME, b);
 	}
 }
 
@@ -111,5 +111,5 @@ function bcdToDec(b) {
 	return v;
 }
 
-Object.freeze(DS3231.prototype);
-export default DS3231;
+Object.freeze(DS1307.prototype);
+export default DS1307;

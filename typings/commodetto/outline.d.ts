@@ -38,7 +38,7 @@ declare module "commodetto/outline" {
   interface FreeTypePath extends CommodettoPath {
     beginSubpath(x: number, y: number, open?: boolean): void
     conicTo(cx: number, cy: number, x: number, y: number): void
-    cubicTo(c1x: number, c1y: number, c2x: number, c2y: number, x, y: number): void
+    cubicTo(c1x: number, c1y: number, c2x: number, c2y: number, x: number, y: number): void
     endSubpath(): void
     lineTo(x: number, y: number): void
   }
@@ -76,7 +76,7 @@ declare module "commodetto/outline" {
     static SVGPath: SVGPath
 
     static fill(path: CommodettoPath, rule?: number): Outline
-    static stroke(path: CommodettoPath, weight: number, linecap?: number, linejoin?: number, miterLimit?: number): Outline
+    static stroke(path: CommodettoPath, weight?: number, linecap?: number, linejoin?: number, miterLimit?: number): Outline
   
     static readonly NON_ZERO_RULE: number
     static readonly EVEN_ODD_RULE: number

@@ -127,6 +127,8 @@ export class Test262Context {
 		}
 	}
 	onImport(machine, path) {
+		if (system.platform == "win")
+			path = path.replaceAll('/', '\\');
 		if (system.fileExists(path))
 			machine.doModule(path);
 		else
@@ -610,15 +612,20 @@ class Test262FolderTableBehavior extends FolderTableBehavior {
 		let currents = [];
 		let info = iterator.next();
 		while (info) {
-			let name = info.name;
 			let current;
-			if (info.directory) {
-				current = { depth, kind:"folder", name, path:info.path, expanded:false, currents:[] };
-				currents.push(current);
+			while (info && info.symbolicLink) {
+				info = system.getSymbolicLinkInfo(info.path);
 			}
-			else if (name.endsWith(".js") && !name.endsWith("FIXTURE.js")) {
-				current = { depth, kind:"file", name, path:info.path };
-				currents.push(current);
+			if (info) {
+				let name = info.name;
+				if (info.directory) {
+					current = { depth, kind:"folder", name, path:info.path, expanded:false, currents:[] };
+					currents.push(current);
+				}
+				else if (name.endsWith(".js") && !name.endsWith("FIXTURE.js")) {
+					current = { depth, kind:"file", name, path:info.path };
+					currents.push(current);
+				}
 			}
 			info = iterator.next();
 		}

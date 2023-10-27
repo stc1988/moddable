@@ -31,42 +31,6 @@ import * as ControlsPaneNamespace from "ControlsPane";
 import * as DevicePaneNamespace from "DevicePane";
 import * as assetsNamespace from "assets";
 
-const compartmentModuleMap = {
-	"piu/All": piuAllNamespace,
-	"piu/Buttons": piuButtonsNamespace,
-	"piu/PC": piuPCNamespace,
-	"piu/Screen": piuScreenNamespace,
-	"piu/Scrollbars": piuScrollbarsNamespace,
-	"piu/Sliders": piuSlidersNamespace,
-	"piu/Switches": piuSwitchesNamespace,
-	"BinaryMessage": BinaryMessageNamespace,
-	"ControlsPane": ControlsPaneNamespace,
-	"DevicePane": DevicePaneNamespace,
-	"assets": assetsNamespace,
-}
-const compartmentOptions = {
-	resolveHook(specifier, refererSpecifier) {
-		if (specifier[0] == '.') {
-			let separator = '/';
-			if (system.platform == "win") {
-				separator = '\\';
-				specifier = specifier.replaceAll('/', '\\');
-			}
-			let dot = 1;
-			let slash = refererSpecifier.lastIndexOf(separator);
-			if (specifier[1] == '.') {
-				dot++;
-				slash = refererSpecifier.lastIndexOf(separator, slash - 1);
-			}
-			return refererSpecifier.slice(0, slash) + specifier.slice(dot);
-		}
-		return specifier;
-	},
-	loadNowHook(specifier) {
-		return { source:system.readFileString(specifier), meta:{ uri:specifier }, specifier };
-	},
-}
-
 import {} from "piu/PC";
 
 import {
@@ -144,6 +108,44 @@ let noDevice = {
 
 class ApplicationBehavior extends Behavior {
 	onCreate(application) {
+		this.compartmentOptions = {
+			globals: { ...Object.getPrototypeOf(globalThis), ...globalThis, Date, Math },
+			modules: {
+				"piu/All": { namespace: piuAllNamespace },
+				"piu/Buttons": { namespace: piuButtonsNamespace },
+				"piu/PC": { namespace: piuPCNamespace },
+				"piu/Screen": { namespace: piuScreenNamespace },
+				"piu/Scrollbars": { namespace: piuScrollbarsNamespace },
+				"piu/Sliders": { namespace: piuSlidersNamespace },
+				"piu/Switches": { namespace: piuSwitchesNamespace },
+				"BinaryMessage": { namespace: BinaryMessageNamespace },
+				"ControlsPane": { namespace: ControlsPaneNamespace },
+				"DevicePane": { namespace: DevicePaneNamespace },
+				"assets": { namespace: assetsNamespace },
+			},
+			resolveHook(specifier, refererSpecifier) {
+				if (specifier[0] == '.') {
+					let separator = '/';
+					if (system.platform == "win") {
+						separator = '\\';
+						specifier = specifier.replaceAll('/', '\\');
+					}
+					let dot = 1;
+					let slash = refererSpecifier.lastIndexOf(separator);
+					if (specifier[1] == '.') {
+						dot++;
+						slash = refererSpecifier.lastIndexOf(separator, slash - 1);
+					}
+					return refererSpecifier.slice(0, slash) + specifier.slice(dot);
+				}
+				return specifier;
+			},
+			loadNowHook(specifier) {
+				return { source:new ModuleSource(system.readFileString(specifier)), importMeta:{ uri:specifier } };
+			},
+		};
+		
+		
 		let extension = (system.platform == "win") ? "dll" : "so";
 		global.model = this;
   		application.interval = 100;
@@ -236,6 +238,8 @@ class ApplicationBehavior extends Behavior {
 		this.DEVICE.first.delegate("onKeyUp", key);
 	}
 	launchScreen() {
+		if (this.screenOnce)
+			return;
 		if (this.libraryPath) {
 			system.copyFile(this.libraryPath, this.localLibraryPath);
 			if (this.archivePath) {
@@ -250,6 +254,8 @@ class ApplicationBehavior extends Behavior {
 		application.distribute("onInfoChanged");
 	}
 	quitScreen() {
+		if (this.screenOnce)
+			return;
 		if (this.SCREEN)
 			this.SCREEN.quit();
 		if (system.fileExists(this.localArchivePath))
@@ -264,14 +270,13 @@ class ApplicationBehavior extends Behavior {
 		this.selectDevice(application, -1);
 		
 		application.purge();
-		const globals = {...Object.getPrototypeOf(globalThis), ...globalThis, Date, Math };
 		let iterator = new system.DirectoryIterator(this.devicesPath);
 		let info = iterator.next();
 		while (info) {
 			if (!info.directory) {
 				if (info.name.endsWith(".js")) {
 					try {
-						let compartment = new Compartment(globals, compartmentModuleMap, compartmentOptions);
+						let compartment = new Compartment(this.compartmentOptions);
 						let device = compartment.importNow(info.path).default;
 						if (device && (("DeviceTemplate" in device) || ("DeviceTemplates" in device))) {
 							device.compartment = compartment;
@@ -371,13 +376,30 @@ class ApplicationBehavior extends Behavior {
 		}
 	}
 	onOpenFile(application, path) {
-		let info = system.getFileInfo(path);
-		if (info.directory)
-			application.defer("doLocateSimulatorsCallback", new String(path));
-		else
-			application.defer("doOpenFileCallback", new String(path));
+		if (this.onOpenFileList)
+			this.onOpenFileList.push(new String(path));
+		else {
+			this.onOpenFileList = [new String(path)];
+			application.defer("onOpenFileCallback");
+		}
+	}
+	onOpenFileCallback(application) {
+		const paths = this.onOpenFileList;
+		delete this.onOpenFileList;
+		this.quitScreen();
+		this.screenOnce = true;
+		for (let path of paths) {
+			let info = system.getFileInfo(path);
+			if (info.directory)
+				this.doLocateSimulatorsCallback(application, path);
+			else
+				this.doOpenFileCallback(application, path);
+		}
+		delete this.screenOnce;
+		this.launchScreen();
 	}
 	onQuit(application) {
+		this.quitScreen();
 		this.writePreferences();
 		application.quit();
 	}
@@ -452,7 +474,7 @@ class ApplicationBehavior extends Behavior {
 	doOpenFile() {
 		system.openFile({ prompt:"Open File", path:system.documentsDirectory }, path => { if (path) application.defer("doOpenFileCallback", new String(path)); });
 	}
-	doOpenFileCallback(application, path) {
+	doOpenFileCallback(application, path, flag = true) {
 		let extension = (system.platform == "win") ? ".dll" : ".so";
 		if (path.endsWith(extension)) {
 			this.quitScreen();

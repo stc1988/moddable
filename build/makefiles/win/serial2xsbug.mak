@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016-2017  Moddable Tech, Inc.
+# Copyright (c) 2016-2023 Moddable Tech, Inc.
 #
 #   This file is part of the Moddable SDK Tools.
 # 
@@ -40,7 +40,8 @@ C_OPTIONS = \
 	/I$(SRC_DIR) \
 	/I$(TLS_DIR) \
 	/I$(TMP_DIR) \
-	/nologo
+	/nologo \
+	/MP
 	
 !IF "$(GOAL)"=="debug"
 C_OPTIONS = $(C_OPTIONS) \
@@ -58,7 +59,7 @@ C_OPTIONS = $(C_OPTIONS) \
 	/W0
 !ENDIF
 
-LIBRARIES = ws2_32.lib advapi32.lib comctl32.lib comdlg32.lib gdi32.lib kernel32.lib user32.lib
+LIBRARIES = ws2_32.lib advapi32.lib comctl32.lib comdlg32.lib gdi32.lib kernel32.lib user32.lib Setupapi.lib
 	
 LINK_OPTIONS = /incremental:no /nologo /subsystem:console
 !IF "$(GOAL)"=="debug"
@@ -66,8 +67,8 @@ LINK_OPTIONS = $(LINK_OPTIONS) /debug
 !ENDIF
 
 OBJECTS = \
-	$(TMP_DIR)\serial2xsbug.o \
-	$(TMP_DIR)\serial2xsbug_win.o
+	$(TMP_DIR)\serial2xsbug.obj \
+	$(TMP_DIR)\serial2xsbug_win.obj
 
 build : $(TMP_DIR) $(BIN_DIR) $(BIN_DIR)\$(NAME).exe
 
@@ -86,8 +87,9 @@ $(BIN_DIR)\$(NAME).exe : $(OBJECTS)
 		/out:$(BIN_DIR)\$(NAME).exe
 
 $(OBJECTS) : $(SRC_DIR)\serial2xsbug.h
-{$(SRC_DIR)\}.c{$(TMP_DIR)\}.o:
-	cl $< $(C_OPTIONS) /Fo$@
+{$(SRC_DIR)\}.c{$(TMP_DIR)\}.obj::
+	cd $(TMP_DIR)
+	cl $< $(C_OPTIONS)
 
 clean :
 	del /Q $(BUILD_DIR)\bin\win\debug\$(NAME).exe

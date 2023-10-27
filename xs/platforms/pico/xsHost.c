@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2022  Moddable Tech, Inc.
+ * Copyright (c) 2016-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -46,6 +46,7 @@
 #include <stdio.h>
 
 #include "hardware/sync.h"
+#include "pico/cyw43_arch.h"
 
 #ifdef mxInstrument
 	#include "modTimer.h"
@@ -309,6 +310,7 @@ void espInitInstrumentation(txMachine *the)
 	modInstrumentationSetCallback(GarbageCollectionCount, (ModInstrumentationGetter)modInstrumentationGarbageCollectionCount);
 	modInstrumentationSetCallback(ModulesLoaded, (ModInstrumentationGetter)modInstrumentationModulesLoaded);
 	modInstrumentationSetCallback(StackRemain, (ModInstrumentationGetter)modInstrumentationStackRemain);
+	modInstrumentationSetCallback(PromisesSettledCount, (ModInstrumentationGetter)modInstrumentationPromisesSettledCount);
 }
 
 void espSampleInstrumentation(modTimer timer, void *refcon, int refconSize)
@@ -476,6 +478,7 @@ int modMessageService(xsMachine *the, int maxDelayMS)
 
 		if (best_effort_wfe_or_timeout(until))
 			break;
+		tight_loop_contents();
 	}
 #else
 	while (!gMessageQueue && !best_effort_wfe_or_timeout(until))
@@ -538,13 +541,15 @@ static txBoolean spiWrite(void *dst, size_t offset, void *buffer, size_t size)
 	return modSPIWrite(offset - (uintptr_t)kFlashStart, size, buffer);
 }
 
-void *modInstallMods(void *preparationIn, uint8_t *status)
+void *modInstallMods(xsMachine *the, void *preparationIn, uint8_t *status)
 {
 	txPreparation *preparation = preparationIn;
 	void *result = NULL;
 
-	if (fxMapArchive(preparation, (void *)kModulesStart, (void *)kModulesStart, kFlashSectorSize, spiRead, spiWrite))
+	if (fxMapArchive(the, preparation, (void *)kModulesStart, (void *)kModulesStart, kFlashSectorSize, spiRead, spiWrite)) {
 		result = (void *)kModulesStart;
+		fxSetArchive(the, result);
+	}
 
 	if (XS_ATOM_ERROR == c_read32be(4 + kModulesStart)) {
 		*status = *(8 + (uint8_t *)kModulesStart);
@@ -705,3 +710,27 @@ void pico_get_mac(uint8_t *id_out)		// 64 bit identifier
 	flash_get_unique_id(id_out);
 }
 
+#if CYW43_LWIP
+static uint32_t sCYW43_useCount = 0;
+int pico_use_cyw43() {
+	int err = 0;
+	if (0 == sCYW43_useCount++) {
+		err = cyw43_arch_init();
+		if (err) {
+			sCYW43_useCount--;
+			return err;
+		}
+	}
+	return 0;
+}
+
+void pico_unuse_cyw43() {
+	if (0 == --sCYW43_useCount)
+		cyw43_arch_deinit();
+}
+
+int pico_cyw43_inited() {
+	return (sCYW43_useCount > 0);
+}
+
+#endif

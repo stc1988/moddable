@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2021  Moddable Tech, Inc.
+ * Copyright (c) 2019-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -29,47 +29,37 @@ class SMBus {
 
     constructor(options) {
         this.#io = new I2C(options);
-		if (options.sendStop)
+		if (options.stop)
 			this.#stop = true;
     }
     close() {
-		if (!this.#io)
-			return;
-
-		this.#io.close();
+		this.#io?.close();
 		this.#io = undefined;
     }
 
-    readByte(register) {
-		const io = this.#io, buffer = this.#byteBuffer;
+    readUint8(register) {
+		const buffer = this.#byteBuffer;
 
         buffer[0] = register;
-        io.write(buffer, this.#stop);
-
-        io.read(buffer);
-        return buffer[0];
+        this.#io.writeRead(buffer, buffer, this.#stop);
+		return buffer[0];
     }
 
-    readWord(register, bigEndian) {
+    readUint16(register, bigEndian) {
 		const io = this.#io, buffer = this.#wordBuffer;
 
         this.#byteBuffer[0] = register;
-        io.write(this.#byteBuffer, this.#stop);
+        io.writeRead(this.#byteBuffer, buffer, this.#stop);
 
-        io.read(buffer);
 		return bigEndian ? ((buffer[0] << 8) | buffer[1]) : ((buffer[1] << 8) | buffer[0]);
     }
 
-    readBlock(register, buffer) {
-		const io = this.#io;
-
+    readBuffer(register, buffer) {
         this.#byteBuffer[0] = register;
-        io.write(this.#byteBuffer, this.#stop);
-
-        return io.read(buffer);
+        return this.#io.writeRead(this.#byteBuffer, buffer, this.#stop);
     }
 
-    writeByte(register, byte) {
+    writeUint8(register, byte) {
 		const io = this.#io, buffer = this.#wordBuffer;
 
         buffer[0] = register;
@@ -77,7 +67,7 @@ class SMBus {
         io.write(buffer);
     }
 
-    writeWord(register, word, bigEndian) {
+    writeUint16(register, word, bigEndian) {
 		const io = this.#io, buffer = this.#writeWordBuffer;
 
         buffer[0] = register;
@@ -92,7 +82,7 @@ class SMBus {
         io.write(buffer);
     }
 
-    writeBlock(register, buffer) {
+    writeBuffer(register, buffer) {
 		if (buffer instanceof ArrayBuffer)
 			buffer = new Uint8Array(buffer);
 		const data = new Uint8Array(1 + buffer.length);
@@ -105,22 +95,22 @@ class SMBus {
 		const io = this.#io, buffer = this.#byteBuffer;
 
 		buffer[0] = command;
-		io.write(buffer, this.#stop);
+		io.write(buffer);
 	}
 
 	receiveByte() {
 		const io = this.#io, buffer = this.#byteBuffer;
 
-		io.read(buffer, this.#stop);
+		io.read(buffer);
 		return (buffer[0]);
 	}
 
 	readQuick() {
-		this.#io.read(0, this.#stop);
+		this.#io.read(0);
 	}
 
 	writeQuick() {
-		this.#io.write(new ArrayBuffer, this.#stop);
+		this.#io.write(new ArrayBuffer);
 	}
 
 	get format() {
@@ -128,7 +118,44 @@ class SMBus {
 	}
 	set format(value) {
 		if ("buffer" !== value)
-			throw new Error;
+			throw new RangeError;
+	}
+
+	// inherited from i2c
+	read(count, stop = true) {
+		return this.#io.read(count, stop);
+	}
+	write(buffer, stop = true) {
+		return this.#io.write(buffer, stop);
+	}
+	writeRead(buffer, count, stop = true) {
+		return this.#io.writeRead(buffer, count, stop);
+	}
+
+	// compatibility - to be removed
+	readByte(register) {
+		trace("readByte renamed to readUint8\n");
+		return this.readUint8(register);
+	}
+	writeByte(register, byte) {
+		trace("writeByte renamed to writeUint8\n");
+		this.writeUint8(register, byte);
+	}
+	readWord(...args) {
+		trace("readWord renamed to readUint16\n");
+		return this.readUint16(...args);
+	}
+	writeWord(...args) {
+		trace("writeWord renamed to writeUint16\n");
+		this.writeUint16(...args);
+	}
+	readBlock(register, buffer) {
+		trace("readBlock renamed to readBuffer\n");
+		return this.readBuffer(register, buffer);
+	}
+	writeBlock(register, buffer) {
+		trace("writeBlock renamed to writeBuffer\n");
+		this.writeBuffer(register, buffer);
 	}
 }
 

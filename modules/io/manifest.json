@@ -2,16 +2,18 @@
 	"build": {
 		"IO": "$(MODDABLE)/modules/io"
 	},
-	"include": [
-		"$(MODDABLE)/examples/manifest_base.json",
-		"$(MODDABLE)/examples/manifest_net.json"
-	],
 	"platforms": {
 		"esp": {
 			"include": "./manifests/esp/manifest.json"
 		},
 		"esp32": {
 			"include": "./manifests/esp32/manifest.json"
+		},
+		"pico": {
+			"include": "./manifests/pico/manifest.json"
+		},
+		"nrf52": {
+			"include": "./manifests/nrf52/manifest.json"
 		},
 		"mac": {
 			"include": "./manifests/mac/manifest.json"

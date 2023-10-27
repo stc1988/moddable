@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017  Moddable Tech, Inc.
+ * Copyright (c) 2016-2022  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Tools.
  * 
@@ -33,9 +33,11 @@
 	#include <dirent.h>
 	#include <sys/stat.h>
     #include <sys/types.h>
+    #include <sys/wait.h>
     #include <ifaddrs.h>
     #include <netdb.h>
 	#include <unistd.h>
+	#include <spawn.h>
 	#define mxSeparator '/'
 #endif
 
@@ -93,7 +95,7 @@ extern int mainXSC(int argc, char* argv[]) ;
 int main(int argc, char* argv[]) 
 {
 	int error = 0;
-	if (!strcmp(argv[1], "cp")) {
+	if ((argc > 1) && !strcmp(argv[1], "cp")) {
 #ifdef XSTOOLS
 		char buffer[1024];
 		FILE* src = NULL;
@@ -119,12 +121,12 @@ int main(int argc, char* argv[])
 			fclose(src);
 #endif
 	}
-	else if (!strcmp(argv[1], "xsa")) {
+	else if ((argc > 1) && !strcmp(argv[1], "xsa")) {
 #ifdef XSTOOLS
 		error = mainXSA(argc - 1, &argv[1]);
 #endif
 	}
-	else if (!strcmp(argv[1], "xsc")) {
+	else if ((argc > 1) && !strcmp(argv[1], "xsc")) {
 #ifdef XSTOOLS
 		error = mainXSC(argc - 1, &argv[1]);
 #endif
@@ -150,6 +152,10 @@ int main(int argc, char* argv[])
 						xsResult = fxPop();
 						xsCall0(xsResult, xsID_run);
 					}
+                    else {
+                        fprintf(stderr, "### no tool to run!\n");
+                        error = 1;
+                    }
 				}
 				xsCatch {
 					xsStringValue message = xsToString(xsException);
@@ -285,6 +291,15 @@ void FILE_prototype_writeString(xsMachine* the)
 	size_t size = strlen(buffer);
 	size = fwrite(buffer, 1, size, file);		
 	xsResult = xsInteger(size);
+}
+
+void Tool_prototype_get_build(xsMachine* the)
+{
+	#if mxDebug
+		xsResult = xsString("debug");
+	#else
+		xsResult = xsString("release");
+	#endif
 }
 
 void Tool_prototype_get_ipAddress(xsMachine* the)
@@ -599,6 +614,13 @@ void Tool_prototype_getFileSize(xsMachine* the)
 	}
 }
 
+void Tool_prototype_getToolsVersion(xsMachine *the)
+{
+#ifdef kModdableToolsVersion
+	xsResult = xsString(kModdableToolsVersion);
+#endif
+}
+
 void Tool_prototype_joinPath(xsMachine* the)
 {
 	char path[PATH_MAX];
@@ -793,6 +815,49 @@ void Tool_prototype_setenv(xsMachine* the)
 		overwrite = xsToInteger(xsArg(2));
 	setenv(name, value, overwrite);
 #endif
+}
+
+#if mxWindows
+#else
+extern char **environ;
+#endif
+
+void Tool_prototype_spawn(xsMachine* the)
+{
+	xsIntegerValue c = xsToInteger(xsArgc), i;
+	char **argv = NULL;
+	xsTry {
+	#if mxWindows
+	#else
+		pid_t pid;
+	#endif
+		int status;
+		for (i = 0; i < c; i++)
+			xsToString(xsArg(i));
+		argv = malloc(sizeof(char *)*(c + 1));
+		xsElseThrow(argv);
+		for (i = 0; i < c; i++)
+			argv[i] = xsToString(xsArg(i));
+		argv[i] = C_NULL;
+	#if mxWindows
+		status = _spawnvp(_P_WAIT, argv[0], argv);
+	#else
+		status = posix_spawnp(&pid, argv[0], NULL, NULL, argv, environ);
+		xsElseThrow(status == 0);
+		do {
+			xsElseThrow(waitpid(pid, &status, 0) != -1);
+		} while (!WIFEXITED(status) && !WIFSIGNALED(status));
+		status = WEXITSTATUS(status);
+	#endif
+		free(argv);
+		argv = NULL;
+		xsResult = xsInteger(status);
+	}
+	xsCatch {
+		if (argv)
+			free(argv);
+		xsThrow(xsException);
+	}
 }
 
 void Tool_prototype_splitPath(xsMachine* the)

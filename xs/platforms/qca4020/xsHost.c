@@ -447,7 +447,7 @@ txSlot* fxAllocateSlots(txMachine* the, txSize theCount)
 	result = (txSlot *)mc_xs_slot_allocator(the, theCount * sizeof(txSlot));
 	if (!result) {
 		fxReport(the, "# Slot allocation: failed. trying to make room...\n");
-		fxCollect(the, 1);	/* expecting memory from the chunk pool */
+		fxCollect(the, XS_COMPACT_FLAG | XS_ORGANIC_FLAG);	/* expecting memory from the chunk pool */
 		if (the->firstBlock != C_NULL && the->firstBlock->limit == mc_xs_chunk_allocator(the, 0)) {	/* sanity check just in case */
 			fxReport(the, "# Slot allocation: %d bytes returned\n", the->firstBlock->limit - the->firstBlock->current);
 			the->maximumChunksSize -= the->firstBlock->limit - the->firstBlock->current;
@@ -726,7 +726,7 @@ static int32_t modInstrumentationChunkHeapSize(void *theIn)
 static int32_t modInstrumentationKeysUsed(void *theIn)
 {
 	txMachine *the = theIn;
-	return the->keyIndex - the->keyOffset;
+	return the->keyIndex - the->keyOffset - the->keyholeCount;
 }
 
 static int32_t modInstrumentationGarbageCollectionCount(void *theIn)

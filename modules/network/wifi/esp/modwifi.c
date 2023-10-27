@@ -123,14 +123,14 @@ void xs_wifi_connect(xsMachine *the)
 	if (!xsmcTest(xsVar(0)))
 		xsUnknownError("ssid required");
 	str = xsmcToString(xsVar(0));
-	if (c_strlen(str) > (sizeof(config.ssid) - 1))
+	if (c_strlen(str) > sizeof(config.ssid))
 		xsUnknownError("ssid too long - 32 bytes max");
 	c_memcpy(config.ssid, str, c_strlen(str));
 
 	xsmcGet(xsVar(0), xsArg(0), xsID_password);
 	if (xsmcTest(xsVar(0))) {
 		str = xsmcToString(xsVar(0));
-		if (c_strlen(str) > (sizeof(config.password) - 1))
+		if (c_strlen(str) > sizeof(config.password))
 			xsUnknownError("password too long - 64 bytes max");
 		c_memcpy(config.password, str, c_strlen(str));
 	}
@@ -151,6 +151,8 @@ void xs_wifi_connect(xsMachine *the)
 	wifi_set_opmode_current(STATION_MODE);
 
 	wifi_station_set_config_current(&config);
+
+	wifi_set_sleep_type(NONE_SLEEP_T);
 
 	if (channel >= 0)
 		wifi_set_channel(channel);
@@ -408,7 +410,7 @@ void xs_wifi_accessPoint(xsMachine *the)
 	xsmcGet(xsVar(0), xsArg(0), xsID_ssid);
 	str = xsmcToString(xsVar(0));
 	config.ssid_len = c_strlen(str);
-	if (config.ssid_len > (sizeof(config.ssid) - 1))
+	if (config.ssid_len > sizeof(config.ssid))
 		xsUnknownError("ssid too long - 32 bytes max");
 	c_memcpy(config.ssid, str, config.ssid_len);
 
@@ -416,7 +418,7 @@ void xs_wifi_accessPoint(xsMachine *the)
 	if (xsmcHas(xsArg(0), xsID_password)) {
 		xsmcGet(xsVar(0), xsArg(0), xsID_password);
 		str = xsmcToString(xsVar(0));
-		if (c_strlen(str) > (sizeof(config.password) - 1))
+		if (c_strlen(str) > sizeof(config.password))
 			xsUnknownError("password too long - 64 bytes max");
 		if (c_strlen(str) < 8)
 			xsUnknownError("password too short - 8 bytes min");
@@ -462,6 +464,8 @@ void xs_wifi_accessPoint(xsMachine *the)
 	ETS_UART_INTR_ENABLE();
 	if (!ret)
 		xsUnknownError("wifi_set_opmode_current failed");
+
+	wifi_set_sleep_type(NONE_SLEEP_T);
 
 	ETS_UART_INTR_DISABLE();
 	ret = wifi_softap_set_config_current(&config);

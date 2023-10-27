@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016-2021  Moddable Tech, Inc.
+# Copyright (c) 2016-2023 Moddable Tech, Inc.
 #
 #   This file is part of the Moddable SDK Tools.
 # 
@@ -24,9 +24,19 @@
 !ENDIF
 
 !IF "$(DEBUG)"=="1"
+!IF "$(XSBUG_LOG)"=="1"
+START_XSBUG =
+!ELSE
 START_XSBUG = tasklist /nh /fi "imagename eq xsbug.exe" | find /i "xsbug.exe" > nul || (start $(BUILD_DIR)\bin\win\release\xsbug.exe)
+!ENDIF
 !ELSE
 START_XSBUG =
+!ENDIF
+
+!IF "$(XSBUG_LOG)"=="1"
+START_COMMAND = cd $(MODDABLE)\tools\xsbug-log && node xsbug-log start /B $(SIMULATOR) $(SIMULATORS) $(BIN_DIR)\mc.dll
+!ELSE
+START_COMMAND = start $(SIMULATOR) $(SIMULATORS) $(BIN_DIR)\mc.dll
 !ENDIF
 
 XS_DIRECTORIES = \
@@ -44,50 +54,49 @@ XS_HEADERS = \
 	$(XS_DIR)\sources\xsScript.h
 
 XS_OBJECTS = \
-	$(LIB_DIR)\win_xs.o \
-	$(LIB_DIR)\xsAll.o \
-	$(LIB_DIR)\xsAPI.o \
-	$(LIB_DIR)\xsArguments.o \
-	$(LIB_DIR)\xsArray.o \
-	$(LIB_DIR)\xsAtomics.o \
-	$(LIB_DIR)\xsBigInt.o \
-	$(LIB_DIR)\xsBoolean.o \
-	$(LIB_DIR)\xsCode.o \
-	$(LIB_DIR)\xsCommon.o \
-	$(LIB_DIR)\xsDataView.o \
-	$(LIB_DIR)\xsDate.o \
-	$(LIB_DIR)\xsDebug.o \
-	$(LIB_DIR)\xsError.o \
-	$(LIB_DIR)\xsFunction.o \
-	$(LIB_DIR)\xsGenerator.o \
-	$(LIB_DIR)\xsGlobal.o \
-	$(LIB_DIR)\xsJSON.o \
-	$(LIB_DIR)\xsLexical.o \
-	$(LIB_DIR)\xsMapSet.o \
-	$(LIB_DIR)\xsMarshall.o \
-	$(LIB_DIR)\xsMath.o \
-	$(LIB_DIR)\xsMemory.o \
-	$(LIB_DIR)\xsModule.o \
-	$(LIB_DIR)\xsNumber.o \
-	$(LIB_DIR)\xsObject.o \
-	$(LIB_DIR)\xsPlatforms.o \
-	$(LIB_DIR)\xsProfile.o \
-	$(LIB_DIR)\xsPromise.o \
-	$(LIB_DIR)\xsProperty.o \
-	$(LIB_DIR)\xsProxy.o \
-	$(LIB_DIR)\xsRegExp.o \
-	$(LIB_DIR)\xsRun.o \
-	$(LIB_DIR)\xsScope.o \
-	$(LIB_DIR)\xsScript.o \
-	$(LIB_DIR)\xsSourceMap.o \
-	$(LIB_DIR)\xsString.o \
-	$(LIB_DIR)\xsSymbol.o \
-	$(LIB_DIR)\xsSyntaxical.o \
-	$(LIB_DIR)\xsTree.o \
-	$(LIB_DIR)\xsType.o \
-	$(LIB_DIR)\xsdtoa.o \
-	$(LIB_DIR)\xsmc.o \
-	$(LIB_DIR)\xsre.o
+	$(LIB_DIR)\win_xs.obj \
+	$(LIB_DIR)\xsAll.obj \
+	$(LIB_DIR)\xsAPI.obj \
+	$(LIB_DIR)\xsArguments.obj \
+	$(LIB_DIR)\xsArray.obj \
+	$(LIB_DIR)\xsAtomics.obj \
+	$(LIB_DIR)\xsBigInt.obj \
+	$(LIB_DIR)\xsBoolean.obj \
+	$(LIB_DIR)\xsCode.obj \
+	$(LIB_DIR)\xsCommon.obj \
+	$(LIB_DIR)\xsDataView.obj \
+	$(LIB_DIR)\xsDate.obj \
+	$(LIB_DIR)\xsDebug.obj \
+	$(LIB_DIR)\xsError.obj \
+	$(LIB_DIR)\xsFunction.obj \
+	$(LIB_DIR)\xsGenerator.obj \
+	$(LIB_DIR)\xsGlobal.obj \
+	$(LIB_DIR)\xsJSON.obj \
+	$(LIB_DIR)\xsLexical.obj \
+	$(LIB_DIR)\xsMapSet.obj \
+	$(LIB_DIR)\xsMarshall.obj \
+	$(LIB_DIR)\xsMath.obj \
+	$(LIB_DIR)\xsMemory.obj \
+	$(LIB_DIR)\xsModule.obj \
+	$(LIB_DIR)\xsNumber.obj \
+	$(LIB_DIR)\xsObject.obj \
+	$(LIB_DIR)\xsPlatforms.obj \
+	$(LIB_DIR)\xsPromise.obj \
+	$(LIB_DIR)\xsProperty.obj \
+	$(LIB_DIR)\xsProxy.obj \
+	$(LIB_DIR)\xsRegExp.obj \
+	$(LIB_DIR)\xsRun.obj \
+	$(LIB_DIR)\xsScope.obj \
+	$(LIB_DIR)\xsScript.obj \
+	$(LIB_DIR)\xsSourceMap.obj \
+	$(LIB_DIR)\xsString.obj \
+	$(LIB_DIR)\xsSymbol.obj \
+	$(LIB_DIR)\xsSyntaxical.obj \
+	$(LIB_DIR)\xsTree.obj \
+	$(LIB_DIR)\xsType.obj \
+	$(LIB_DIR)\xsdtoa.obj \
+	$(LIB_DIR)\xsmc.obj \
+	$(LIB_DIR)\xsre.obj
 
 DIRECTORIES = $(DIRECTORIES) $(XS_DIRECTORIES)
 	
@@ -102,8 +111,8 @@ C_DEFINES = \
 	/D mxNoFunctionName=1 \
 	/D mxHostFunctionPrimitive=1 \
 	/D mxFewGlobalsTable=1 \
-	/D kCommodettoBitmapFormat=$(DISPLAY) \
-	/D kPocoRotation=$(ROTATION)
+	/D kCommodettoBitmapFormat=$(COMMODETTOBITMAPFORMAT) \
+	/D kPocoRotation=$(POCOROTATION)
 !IF "$(INSTRUMENT)"=="1"
 C_DEFINES = $(C_DEFINES) \
 	/D MODINSTRUMENTATION=1 \
@@ -118,7 +127,8 @@ C_FLAGS = \
 	/D WIN32 \
 	/D _CRT_SECURE_NO_DEPRECATE \
 	/D HAVE_MEMMOVE=1 \
-	/nologo
+	/nologo \
+	/MP
 !IF "$(DEBUG)"=="1"
 C_FLAGS = $(C_FLAGS) \
 	/D _DEBUG \
@@ -135,28 +145,16 @@ C_FLAGS = $(C_FLAGS) \
 	/W0
 !ENDIF
 
-LINK_LIBRARIES = ws2_32.lib advapi32.lib comctl32.lib comdlg32.lib gdi32.lib kernel32.lib user32.lib dsound.lib wlanapi.lib Iphlpapi.lib
+LINK_LIBRARIES = ws2_32.lib advapi32.lib comctl32.lib comdlg32.lib gdi32.lib kernel32.lib user32.lib dsound.lib wlanapi.lib Iphlpapi.lib winmm.lib
 
 LINK_OPTIONS = /incremental:no /nologo /dll
 !IF "$(DEBUG)"=="1"
 LINK_OPTIONS = $(LINK_OPTIONS) /debug
 !ENDIF
 
-BUILDCLUT = $(BUILD_DIR)\bin\win\debug\buildclut
-COMPRESSBMF = $(BUILD_DIR)\bin\win\debug\compressbmf
-IMAGE2CS = $(BUILD_DIR)\bin\win\debug\image2cs
-MCLOCAL = $(BUILD_DIR)\bin\win\debug\mclocal
-MCREZ = $(BUILD_DIR)\bin\win\debug\mcrez
-PNG2BMP = $(BUILD_DIR)\bin\win\debug\png2bmp
-RLE4ENCODE = $(BUILD_DIR)\bin\win\debug\rle4encode
-WAV2MAUD = $(BUILD_DIR)\bin\win\debug\wav2maud
-XSC = $(BUILD_DIR)\bin\win\debug\xsc
-XSID = $(BUILD_DIR)\bin\win\debug\xsid
-XSL = $(BUILD_DIR)\bin\win\debug\xsl
-	
 all: build
 	$(START_XSBUG)
-	start $(SIMULATOR) $(SIMULATORS) $(BIN_DIR)\mc.dll
+	$(START_COMMAND)
 
 build: $(LIB_DIR) $(BIN_DIR)\mc.dll
 
@@ -176,30 +174,32 @@ clean:
 $(LIB_DIR) :
 	if not exist $(LIB_DIR)\$(NULL) mkdir $(LIB_DIR)
 
-$(BIN_DIR)\mc.dll: $(XS_OBJECTS) $(TMP_DIR)\mc.xs.o $(TMP_DIR)\mc.resources.o $(OBJECTS) 
+$(BIN_DIR)\mc.dll: $(XS_OBJECTS) $(TMP_DIR)\mc.xs.obj $(TMP_DIR)\mc.resources.obj $(OBJECTS) 
 	@echo # link mc.dll
-	link $(LINK_OPTIONS) $(LINK_LIBRARIES) $(XS_OBJECTS) $(TMP_DIR)\mc.xs.o $(TMP_DIR)\mc.resources.o $(OBJECTS) /implib:$(TMP_DIR)\mc.lib /out:$@
+	link $(LINK_OPTIONS) $(LINK_LIBRARIES) $(XS_OBJECTS) $(TMP_DIR)\mc.xs.obj $(TMP_DIR)\mc.resources.obj $(OBJECTS) /implib:$(TMP_DIR)\mc.lib /out:$@
 	
 $(XS_OBJECTS) : $(XS_HEADERS)
-{$(XS_DIR)\sources\}.c{$(LIB_DIR)\}.o:
-	cl $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) $< /Fo$@
-{$(XS_DIR)\platforms\}.c{$(LIB_DIR)\}.o:
-	cl $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) $< /Fo$@
+{$(XS_DIR)\sources\}.c{$(LIB_DIR)\}.obj::
+	cd $(LIB_DIR)
+	cl $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) $<
+{$(XS_DIR)\platforms\}.c{$(LIB_DIR)\}.obj::
+	cd $(LIB_DIR)
+	cl $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) $<
 
-$(TMP_DIR)\mc.xs.o: $(TMP_DIR)\mc.xs.c $(HEADERS)
+$(TMP_DIR)\mc.xs.obj: $(TMP_DIR)\mc.xs.c $(HEADERS)
 	cl $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) $(TMP_DIR)\mc.xs.c /Fo$@
 	
 $(TMP_DIR)\mc.xs.c: $(MODULES) $(MANIFEST)
 	@echo # xsl modules
-	$(XSL) <<args.txt 
+	xsl <<args.txt 
 -b $(MODULES_DIR) -o $(TMP_DIR) $(PRELOADS) $(STRIPS) $(CREATION) $(MODULES)
 <<
 
-$(TMP_DIR)\mc.resources.o: $(TMP_DIR)\mc.resources.c $(HEADERS)
+$(TMP_DIR)\mc.resources.obj: $(TMP_DIR)\mc.resources.c $(HEADERS)
 	cl $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) $(TMP_DIR)\mc.resources.c /Fo$@
 
 $(TMP_DIR)\mc.resources.c: $(DATA) $(RESOURCES) $(MANIFEST)
 	@echo # mcrez resources
-	$(MCREZ) <<args.txt
+	mcrez <<args.txt
 $(DATA) $(RESOURCES) -o $(TMP_DIR) -r mc.resources.c
 <<

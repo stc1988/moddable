@@ -149,6 +149,7 @@ void fxInitializeParser(txParser* parser, void* console, txSize bufferSize, txSi
 	parser->toStringSymbol = fxNewParserSymbol(parser, "toString");
 	parser->undefinedSymbol = fxNewParserSymbol(parser, "undefined");
 	parser->uriSymbol = fxNewParserSymbol(parser, "uri");
+	parser->usingSymbol = fxNewParserSymbol(parser, "using");
 	parser->valueSymbol = fxNewParserSymbol(parser, "value");
 	parser->withSymbol = fxNewParserSymbol(parser, "with");
 	parser->yieldSymbol = fxNewParserSymbol(parser, "yield");
@@ -194,8 +195,8 @@ txSymbol* fxNewParserSymbol(txParser* parser, txString theString)
 {
 	txString aString;
 	txSize aLength;
-	txSize aSum;
-	txSize aModulo;
+	txU4 aSum;
+	txU4 aModulo;
 	txSymbol* aSymbol;
 	
 	aString = theString;

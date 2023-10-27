@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017  Moddable Tech, Inc.
+ * Copyright (c) 2016-2023  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Tools.
  * 
@@ -389,6 +389,13 @@ export default class extends Tool {
 		this.localsName = "modLocals";
 		super.run();
 
+		if (this.cFiles?.length) {
+			trace("Native code detected:\n")
+			this.cFiles.forEach(item => trace(`  ${item.source}\n`));
+			trace("Mods cannot contain native code. Did you intend to build using mcconfig?\n")
+			throw new Error("mod cannot contain native code")
+		}
+
 		if ("URL" in this.config)
 			this.environment.URL = this.config.URL;
 
@@ -405,11 +412,18 @@ export default class extends Tool {
 		this.recipes = null;
 		this.strip = null;
 		this.typescript = this.manifest.typescript;
+		
+		let check = true;
 
 		if (this.rotation === undefined)
 			this.rotation = this.config.rotation ?? 0;
-		if (this.format === "UNDEFINED")
+		if (this.format === "UNDEFINED") {
+			if ("x" === this.config.format)
+				check = false;
 			this.format = (this.config.format ?? "rgb565le").toLowerCase();
+		}
+		else
+			check = "x" !== this.format;
 
 		var name = this.environment.NAME
 		this.binPath = this.createDirectories(this.outputPath, "bin", name);
@@ -426,7 +440,7 @@ export default class extends Tool {
 			this.createFolder(path, folder);
 		
 		var file;
-		if (this.format) {
+		if (check) {
 			var target = "check.xsb";
 			if (!this.jsFiles.find(file => file.target == target)) {
 				var source = this.tmpPath + this.slash + "check.js";
@@ -434,24 +448,22 @@ export default class extends Tool {
 				file.generate(this);
 				this.jsFiles.push({ source, target });
 			}
-
-			if (this.config) {
-				this.createDirectory(this.modulesPath + this.slash + "mod");
-				let source = this.tmpPath + this.slash + "mod.config.js";
-				file = new ConfigFile(source, this);
-				file.generate(this);
-				this.jsFiles.push({ source, target: "mod" + this.slash + "config.xsb" });
-			}
-
-			if (this.fragmentPath) {
-				file = new FormatFile(this.tmpPath + this.slash + "mc.format.h", this);
-				file.generate(this);
-				file = new RotationFile(this.tmpPath + this.slash + "mc.rotation.h", this);
-				file.generate(this);
-			}
 		}
 		
+		if (this.config && Object.keys(this.config).length) {
+			this.createDirectory(this.modulesPath + this.slash + "mod");
+			let source = this.tmpPath + this.slash + "mod.config.js";
+			file = new ConfigFile(source, this);
+			file.generate(this);
+			this.jsFiles.push({ source, target: "mod" + this.slash + "config.xsb" });
+		}
+
 		if (this.fragmentPath) {
+			file = new FormatFile(this.tmpPath + this.slash + "mc.format.h", this);
+			file.generate(this);
+			file = new RotationFile(this.tmpPath + this.slash + "mc.rotation.h", this);
+			file.generate(this);
+
 			if (this.tsFiles.length) {
 				file = new TSConfigFile(this.modulesPath + this.slash + "tsconfig.json");
 				file.generate(this);
@@ -460,18 +472,32 @@ export default class extends Tool {
 			file = new MakeFile(path);
 			file.generate(this);
 			if (this.make) {
+				let cmd;
 				if (this.buildTarget) {
 					if (this.windows)
-						this.then("nmake", "/nologo", "/f", path, this.buildTarget);
+						cmd = ["nmake", "/nologo", "/f", path, this.buildTarget];
 					else 
-						this.then("make", "-f", path, this.buildTarget);
+						cmd = ["make", "-f", path, this.buildTarget];
 				}
 				else {
 					if (this.windows)
-						this.then("nmake", "/nologo", "/f", path);
+						cmd = ["nmake", "/nologo", "/f", path];
 					else
-						this.then("make", "-f", path);
+						cmd = ["make", "-f", path];
 				}
+
+				if ("esp32" === this.platform) {
+					if (this.getenv("IDF_PATH")) {		// IDF not required for mcrun; if present, set it up so we use the same Python environment as mcconfig
+						if (this.spawn(this.windows ? "where" : "which", "idf.py") !== 0) { // IDF installed but not sourced
+							if (this.windows)
+								cmd = ["cmd", "/C", `set IDF_EXPORT_QUIET=1 && pushd %IDF_PATH% && "%IDF_TOOLS_PATH%\\idf_cmd_init.bat" && popd && ${cmd.join(" ")}`];
+							else
+								cmd = ["bash", "-c", `export IDF_EXPORT_QUIET=1 && source $IDF_PATH/export.sh && ${cmd.join(" ")}`];
+						}
+					}
+				}
+
+				this.then.apply(this, cmd);
 			}
 		}
 		else {
