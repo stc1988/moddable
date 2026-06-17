@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025  Moddable Tech, Inc.
+ * Copyright (c) 2025-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -159,7 +159,7 @@ struct BLEServerRecord {
 	uint8_t		addressType;
 	uint8_t		secure;
 	uint8_t		immediate;
-	uint16_t	mtu;
+	uint16_t		mtu;
 };
 typedef struct BLEServerRecord BLEServerRecord;
 typedef struct BLEServerRecord *BLEServer;
@@ -1128,6 +1128,9 @@ void xs_gattserverconnection_notify(xsMachine *the)
 
 void xs_gattserverconnection_close(xsMachine *the)
 {
+	if (C_NULL == xsmcGetHostData(xsThis))
+		return;
+
 	BLEGATTServerConnection connection = xsmcGetHostDataValidate(xsThis, xs_gattserverconnection_destructor);
 	BLEServer server = connection->server;
 	ble_gap_terminate(connection->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
@@ -1151,6 +1154,22 @@ void xs_gattserverconnection_get_maximumWrite(xsMachine *the)
 	BLEGATTServerConnection connection = xsmcGetHostDataValidate(xsThis, xs_gattserverconnection_destructor);
 
 	xsmcSetInteger(xsResult, connection->maximumWrite);
+}
+
+void xs_gattserverconnection_get_remoteAddress(xsMachine *the)
+{
+	BLEGATTServerConnection connection = xsmcGetHostDataValidate(xsThis, xs_gattserverconnection_destructor);
+
+	struct ble_gap_conn_desc desc;
+	if (0 != ble_gap_conn_find(connection->conn_handle, &desc))
+		return;
+
+	char address[24];
+	snprintf(address, sizeof(address), "%02X:%02X:%02X:%02X:%02X:%02X/%02X",
+         desc.peer_id_addr.val[5], desc.peer_id_addr.val[4], desc.peer_id_addr.val[3],
+         desc.peer_id_addr.val[2], desc.peer_id_addr.val[1], desc.peer_id_addr.val[0],
+         desc.peer_id_addr.type);
+	xsmcSetString(xsResult, address);
 }
 
 void xs_gattserverconnection_replyToPasskey(xsMachine *the)
@@ -1190,6 +1209,12 @@ void xs_gattserverconnection_replyToPasskey(xsMachine *the)
 	int err = ble_sm_inject_io(connection->conn_handle, &pkey);
 	if (err)
 		xsUnknownError("failed");
+}
+
+void xs_gattserverconnection_disconnect(xsMachine *the)
+{
+	BLEGATTServerConnection connection = xsmcGetHostDataValidate(xsThis, xs_gattserverconnection_destructor);
+	ble_gap_terminate(connection->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
 }
 
 void xs_gattservercharacteristic_destructor(void *data)

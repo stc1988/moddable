@@ -17,7 +17,9 @@ declare module "embedded:io/bluetoothle/peripheral" {
         close(): void;
         notify(characteristic: GATTServerCharacteristic, value: ArrayBuffer, callback?: (error?: Error) => void): void;
         replyToPasskey(action: "input" | "compareNumber" | "outOfBand", value: number | boolean | ArrayBuffer): void;
-        get maxinumWrite(): number;
+        disconnect(): void;
+        readonly maxinumWrite: number;
+        readonly remoteAddress: string | undefined;
     }
 
     interface GATTServerService {
