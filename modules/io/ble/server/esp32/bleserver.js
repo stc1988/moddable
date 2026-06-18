@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 20252-206  Moddable Tech, Inc.
+ * Copyright (c) 2025-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -26,6 +26,10 @@ class GATTServerConnection extends Native("xs_gattserverconnection_destructor") 
 	get remoteAddress() { return native("xs_gattserverconnection_get_remoteAddress").call(this); }
 	replyToPasskey(action, value) { return native("xs_gattserverconnection_replyToPasskey").call(this, action, value); }
 	disconnect() { return native("xs_gattserverconnection_disconnect").call(this); }
+
+	static {
+		this.prototype[Symbol.dispose] = this.prototype.close;
+	}
 }
 
 class GATTServerCharacteristic extends Native("xs_gattservercharacteristic_destructor") {
@@ -90,6 +94,10 @@ class GATTServer extends Native("xs_gattserver_destructor") {
 		writeEncrypted: (1 << 12) | (1 << 3),
 		writeWithOutResponse: (1 << 2),
 	});
+
+	static {
+		this.prototype[Symbol.dispose] = this.prototype.close;
+	}
 }
 
 function convert(ad) {

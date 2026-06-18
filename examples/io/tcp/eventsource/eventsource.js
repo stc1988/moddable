@@ -331,6 +331,8 @@ class EventSource {
 		EventSource.prototype.CONNECTING = EventSource.CONNECTING;
 		EventSource.prototype.OPEN = EventSource.OPEN;
 		EventSource.prototype.CLOSED = EventSource.CLOSED;
+
+		this.prototype[Symbol.dispose] = this.prototype.close;
 	}
 }
 

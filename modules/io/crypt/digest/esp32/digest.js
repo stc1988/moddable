@@ -28,6 +28,10 @@ class Digest extends Native("xs_digest_destructor") {
 
 	get blockSize() { return native("xs_digest_get_blockSize").call(this); }
 	get outputSize() { return native("xs_digest_get_outputSize").call(this); }
+
+	static {
+		this.prototype[Symbol.dispose] = this.prototype.close;
+	}
 }
 
 export default Digest;
