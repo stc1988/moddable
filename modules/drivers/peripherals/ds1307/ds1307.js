@@ -115,5 +115,4 @@ function bcdToDec(b) {
 	return v;
 }
 
-Object.freeze(DS1307.prototype);
 export default DS1307;

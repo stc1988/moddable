@@ -38,6 +38,5 @@ class UDP extends Native("xs_udp_destructor") {
 		this.prototype[Symbol.dispose] = this.prototype.close;
 	}
 }
-Object.freeze(UDP.prototype);
 
 export default UDP;

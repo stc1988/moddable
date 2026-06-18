@@ -193,6 +193,5 @@ class HMC5883 {
 		this.prototype[Symbol.dispose] = this.prototype.close;
 	}
 }
-Object.freeze(HMC5883.prototype);
 
 export {HMC5883 as default, HMC5883, Config};

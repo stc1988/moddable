@@ -81,7 +81,6 @@ export class Texture @ "PiuTextureDelete" {
 		}
 	}
 }
-Object.freeze(Texture.prototype);
 global.Texture = Texture;
 
 // PiuApplication.c
@@ -134,7 +133,6 @@ class View @ "PiuViewDelete" {
 	onTouchEnded(index, x, y, ticks) @ "PiuView_onTouchEnded"
 	onTouchMoved(index, x, y, ticks) @ "PiuView_onTouchMoved"
 }
-Object.freeze(View.prototype);
 
 const inverter = {
 	__proto__: Content.prototype,

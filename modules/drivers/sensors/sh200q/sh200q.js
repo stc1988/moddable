@@ -183,6 +183,5 @@ class SH200Q {
         this.prototype[Symbol.dispose] = this.prototype.close;
     }
 }
-Object.freeze(SH200Q.prototype);
 
 export default SH200Q;

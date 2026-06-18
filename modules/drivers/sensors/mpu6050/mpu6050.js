@@ -170,6 +170,5 @@ class MPU6050 {
 		this.prototype[Symbol.dispose] = this.prototype.close;
 	}
 }
-Object.freeze(MPU6050.prototype);
 
 export { MPU6050 as default, MPU6050, Config };

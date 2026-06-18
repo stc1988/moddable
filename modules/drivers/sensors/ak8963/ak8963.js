@@ -140,6 +140,5 @@ class AK8963 {
 		this.prototype[Symbol.dispose] = this.prototype.close;
 	}
 }
-Object.freeze(AK8963.prototype);
 
 export default AK8963;

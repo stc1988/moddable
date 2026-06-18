@@ -206,6 +206,5 @@ class L3GD20 {
 		this.prototype[Symbol.dispose] = this.prototype.close;
 	}
 }
-Object.freeze(L3GD20.prototype);
 
 export default L3GD20;

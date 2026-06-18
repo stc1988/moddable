@@ -32,6 +32,5 @@ class Serial extends Native("xs_serial_destructor") {
 		this.prototype[Symbol.dispose] = this.prototype.close;
 	}
 }
-Object.freeze(Serial.prototype);
 
 export default Serial;

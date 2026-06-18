@@ -188,6 +188,5 @@ class MPU9250 {
 		this.prototype[Symbol.dispose] = this.prototype.close;
 	}
 }
-Object.freeze(MPU9250.prototype);
 
 export default MPU9250;

@@ -98,7 +98,6 @@ class AHT10 {
 		this.prototype[Symbol.dispose] = this.prototype.close;
 	}
 }
-Object.freeze(AHT10.prototype);
 
 export default AHT10;
 
