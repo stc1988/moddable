@@ -479,6 +479,7 @@ static const txString gXSAbortStrings[] = {
 	"too much computation",
 	"unhandled rejection",
 	"native stack overflow",
+	"incompatible mod",
 };
 
 txString fxAbortString(int status)

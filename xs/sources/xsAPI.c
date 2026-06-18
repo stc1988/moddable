@@ -1994,6 +1994,7 @@ static void fxMapperStep(txMapper* self);
 #define mxElseStatus(_ASSERTION,_STATUS) \
 	((void)((_ASSERTION) || ((self->buffer[8] = (_STATUS)), c_longjmp(self->jmp_buf, 1), 0)))
 #define mxElseFatalCheck(_ASSERTION) mxElseStatus(_ASSERTION, XS_FATAL_CHECK_EXIT)
+#define mxElseIncompatibleMod(_ASSERTION) mxElseStatus(_ASSERTION, XS_INCOMPATIBLE_MOD_EXIT)
 #define mxElseNoMoreKeys(_ASSERTION) mxElseStatus(_ASSERTION, XS_NO_MORE_KEYS_EXIT)
 #define mxElseNotEnoughMemory(_ASSERTION) mxElseStatus(_ASSERTION, XS_NOT_ENOUGH_MEMORY_EXIT)
 #define mxElseInstall(_ASSERTION) if (!(_ASSERTION)) goto install
@@ -2183,6 +2184,7 @@ void* fxMapArchive(txMachine* the, txPreparation* preparation, void* archive, si
 	Atom atom;
 	txU1* p;
 	txU1* q;
+	txU1 major = 0, minor = 0, patch = 0;
 	txID id;
 	txID c, i;
 	txFlag clean;
@@ -2212,9 +2214,13 @@ void* fxMapArchive(txMachine* the, txPreparation* preparation, void* archive, si
 		mxMapAtom(p);
 		mxElseFatalCheck(atom.atomType == XS_ATOM_VERSION);
 		mxElseFatalCheck(atom.atomSize == sizeof(Atom) + 4);
-		mxElseFatalCheck(*p++ == XS_MAJOR_VERSION);
-		mxElseFatalCheck(*p++ == XS_MINOR_VERSION);
-		p++;
+		major = *p++;
+		minor = *p++;
+		patch = *p++;
+		txU2 mod = (major << 8) + minor;
+		txU2 min = (XS_MOD_COMPATIBLE_MAJOR_VERSION << 8) + XS_MOD_COMPATIBLE_MINOR_VERSION;
+		txU2 max = (XS_MAJOR_VERSION << 8) + XS_MINOR_VERSION;
+		mxElseIncompatibleMod((min <= mod) && (mod <= max));
 		p++;
 		mxMapAtom(p);
 		mxElseFatalCheck(atom.atomType == XS_ATOM_SIGNATURE);
@@ -2331,12 +2337,15 @@ void* fxMapArchive(txMachine* the, txPreparation* preparation, void* archive, si
 		self->buffer[0] = 0;
 		self->buffer[1] = 0;
 		self->buffer[2] = 0;
-		self->buffer[3] = 9;
+		self->buffer[3] = 12;
 		self->buffer[4] = 'X';
 		self->buffer[5] = 'S';
 		self->buffer[6] = '_';
 		self->buffer[7] = 'E';
-		self->write(self->archive, 0, self->buffer, 9);
+		self->buffer[9] = major;
+		self->buffer[10] = minor;
+		self->buffer[11] = patch;
+		self->write(self->archive, 0, self->buffer, 12);
 		self->archive = C_NULL;
 	}
 bail:
