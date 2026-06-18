@@ -359,12 +359,14 @@ void fxStripCallbacks(txLinker* linker, txMachine* the)
 #if mxExplicitResourceManagement
 	if (fxIsCallbackStripped(linker, fx_DisposableStack)) {
 		fxStripClass(linker, the, &mxDisposableStackConstructor);
+		fxUnstripCallback(linker, fx_Error_toString);
 	}
 	else {
 		fxUnstripCallback(linker, fx_SuppressedError);
 	}
 	if (fxIsCallbackStripped(linker, fx_AsyncDisposableStack)) {
 		fxStripClass(linker, the, &mxAsyncDisposableStackConstructor);
+		fxUnstripCallback(linker, fx_Error_toString);
 	}
 	else {
 		fxUnstripCallback(linker, fx_SuppressedError);
