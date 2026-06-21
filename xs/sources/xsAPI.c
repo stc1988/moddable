@@ -976,7 +976,7 @@ void fxEnumerate(txMachine* the)
 	mxRunCount(0);
 }
 
-void fxGetAll(txMachine* the, txSlot* stack, txID id, txIndex index)
+txBoolean fxGetAll(txMachine* the, txSlot* stack, txID id, txIndex index)
 {
 	txBoolean flag = mxIsReference(stack) ? 1 : 0;
 	txSlot* instance = (flag) ? stack->value.reference : fxToInstance(the, stack);
@@ -984,8 +984,9 @@ void fxGetAll(txMachine* the, txSlot* stack, txID id, txIndex index)
 	if (!property) {
 		the->stack = stack;
 		stack->kind = XS_UNDEFINED_KIND;
+		return 0;
 	}
-	else if (property->kind == XS_ACCESSOR_KIND) {
+	if (property->kind == XS_ACCESSOR_KIND) {
 		txSlot* function = property->value.accessor.getter;
 		if (mxIsFunction(function)) {
 			txSlot* slot;
@@ -1014,23 +1015,24 @@ void fxGetAll(txMachine* the, txSlot* stack, txID id, txIndex index)
 		stack->kind = property->kind;
 		stack->value = property->value;
 	}
+	return 1;
 }
 
-void fxGetAt(txMachine* the)
+txBoolean fxGetAt(txMachine* the)
 {
 	txSlot* at = fxAt(the, the->stack);
 	mxPop();
-	mxGetAll(at->value.at.id, at->value.at.index);
+	return mxGetAll(at->value.at.id, at->value.at.index);
 }
 
-void fxGetID(txMachine* the, txID id)
+txBoolean fxGetID(txMachine* the, txID id)
 {
-	mxGetAll(id, 0);
+	return mxGetAll(id, 0);
 }
 
-void fxGetIndex(txMachine* the, txIndex index)
+txBoolean fxGetIndex(txMachine* the, txIndex index)
 {
-	mxGetAll(XS_NO_ID, index);
+	return mxGetAll(XS_NO_ID, index);
 }
 
 txBoolean fxHasAll(txMachine* the, txSlot* stack, txID id, txIndex index)
