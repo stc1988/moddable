@@ -104,17 +104,12 @@ void _xs_i2c_constructor(xsMachine *the)
 
 	xsmcVars(1);
 
-	if (!xsmcHas(xsArg(0), xsID_data))
+	if (!xsmcGet(xsVar(0), xsArg(0), xsID_data))
 		xsRangeError("data required");
-	if (!xsmcHas(xsArg(0), xsID_clock))
-		xsRangeError("clock required");
-	if (!xsmcHas(xsArg(0), xsID_address))
-		xsRangeError("address required");
-
-	xsmcGet(xsVar(0), xsArg(0), xsID_data);
 	data = builtinGetPin(the, &xsVar(0));
 
-	xsmcGet(xsVar(0), xsArg(0), xsID_clock);
+	if (!xsmcGet(xsVar(0), xsArg(0), xsID_clock))
+		xsRangeError("clock required");
 	clock = builtinGetPin(the, &xsVar(0));
 
 	if (usingPins(data, clock))
@@ -122,7 +117,8 @@ void _xs_i2c_constructor(xsMachine *the)
 	else if (!builtinIsPinFree(data) || !builtinIsPinFree(clock))
 		xsRangeError("inUse");
 
-	xsmcGet(xsVar(0), xsArg(0), xsID_address);
+	if (!xsmcGet(xsVar(0), xsArg(0), xsID_address))
+		xsRangeError("address required");
 	address = builtinGetPin(the, &xsVar(0));
 	if ((address < 0) || (address > 127))
 		xsRangeError("invalid address");
@@ -140,20 +136,16 @@ void _xs_i2c_constructor(xsMachine *the)
 	if ((hz <= 0) || (hz > 20000000))
 		xsRangeError("invalid hz");
 
-	if (xsmcHas(xsArg(0), xsID_timeout)) {
-		xsmcGet(xsVar(0), xsArg(0), xsID_timeout);
+	if (xsmcGet(xsVar(0), xsArg(0), xsID_timeout)) {
 		timeout = xsmcToInteger(xsVar(0));
 		if (timeout < -1)
 			xsRangeError("invalid timeout");
 	}
 
-	if (xsmcHas(xsArg(0), xsID_pullup)) {
-		xsmcGet(xsVar(0), xsArg(0), xsID_pullup);
+	if (xsmcGet(xsVar(0), xsArg(0), xsID_pullup))
 		pullup = xsmcToBoolean(xsVar(0));
-	}
 
-	if (xsmcHas(xsArg(0), xsID_port)) {
-		xsmcGet(xsVar(0), xsArg(0), xsID_port);
+	if (xsmcGet(xsVar(0), xsArg(0), xsID_port)) {
 		port = xsmcToInteger(xsVar(0));
 		if ((port < 0) || (port >= I2C_NUM_MAX))
 			xsRangeError("invalid port");
@@ -924,10 +916,8 @@ void _xs_smbusasync_constructor(xsMachine *the)
 	I2C i2c = xsmcGetHostDataValidate(xsThis, (xsHostHooks *)&xsI2CHooks);
 	xsSetHostHooks(xsThis, (xsHostHooks *)&xsSMBusHooks);
 	i2c->stop = 0;
-	if (xsmcHas(xsArg(0), xsID_stop)) {
-		xsmcGet(xsVar(0), xsArg(0), xsID_stop);
+	if (xsmcGet(xsVar(0), xsArg(0), xsID_stop))
 		i2c->stop = xsmcToBoolean(xsVar(0));
-	}
 }
 
 void _xs_smbusasync_close(xsMachine *the)

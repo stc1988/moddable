@@ -93,15 +93,13 @@ void xs_udp_constructor(xsMachine *the)
 
 	onReadable = builtinGetCallback(the, xsID_onReadable);
 
-	if (xsmcHas(xsArg(0), xsID_port)) {
-		xsmcGet(xsVar(0), xsArg(0), xsID_port);
+	if (xsmcGet(xsVar(0), xsArg(0), xsID_port)) {
 		port = xsmcToInteger(xsVar(0));
 		if ((port < 0) || (port > 65535))
 			xsRangeError("invalid port");
 	}
 
-	if (xsmcHas(xsArg(0), xsID_timeToLive)) {
-		xsmcGet(xsVar(0), xsArg(0), xsID_timeToLive);
+	if (xsmcGet(xsVar(0), xsArg(0), xsID_timeToLive)) {
 		ttl = xsmcToInteger(xsVar(0));
 		if ((ttl <= 0) || (ttl > 255))
 			xsRangeError("invalid timeToLive");

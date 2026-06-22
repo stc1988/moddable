@@ -268,9 +268,7 @@ void xs_gattserver_build(xsMachine *the)
 	xsSlot *onSecured = builtinGetCallback(the, xsID_onSecured);
 
 	uint8_t secure = 0, authenticate = 0, immediate = 0, bond = 0, display = 0, keyboard = 0;
-	if (xsmcHas(xsArg(0), xsID_security)) {
-		xsmcGet(xsVar(0), xsArg(0), xsID_security);
-
+	if (xsmcGet(xsVar(0), xsArg(0), xsID_security)) {
 		xsmcGet(xsVar(1), xsVar(0), xsID_authenticate);
 		authenticate = xsmcTest(xsVar(1));
 
@@ -304,10 +302,10 @@ void xs_gattserver_build(xsMachine *the)
 	builtinInitializeTarget(the);
 
 	int mtu = 0;
-	if (xsmcHas(xsArg(0), xsID_mtu)) {
-		xsSlot tmp;
-		xsmcGet(tmp, xsArg(0), xsID_mtu);
+	xsSlot tmp;
+	if (xsmcGet(tmp, xsArg(0), xsID_mtu)) {
 		mtu = xsmcToInteger(tmp);
+
 		if (mtu > BLE_ATT_MTU_MAX)
 			mtu = BLE_ATT_MTU_MAX;
 		else if (mtu < BLE_ATT_MTU_DFLT)
@@ -439,8 +437,7 @@ void xs_gattserver_addService(xsMachine *the)
 			if (!xsmcTest(xsVar(2)))
 				xsUnknownError("properies missing");
 			gsc->properties = xsmcToInteger(xsVar(2));
-			if (xsmcHas(xsVar(1), xsID_value)) {
-				xsmcGet(xsVar(2), xsVar(1), xsID_value);
+			if (xsmcGet(xsVar(2), xsVar(1), xsID_value)) {
 				void *data;
 				xsUnsignedValue dataLength;
 				xsmcGetBufferReadable(xsVar(2), &data, &dataLength);
@@ -498,10 +495,9 @@ void xs_gattserver_addService(xsMachine *the)
 				if (ble_uuid_from_str(&gsd->uuid, xsmcToString(xsVar(4))))
 					xsRangeError("bad uuid");
 
-				if (xsmcHas(xsVar(3), xsID_value)) {
+				if (xsmcGet(xsVar(4), xsVar(3), xsID_value)) {
 					if (xsmcHas(xsVar(3), xsID_onRead) || xsmcHas(xsVar(3), xsID_onWrite))
 						xsUnknownError("invalid - no callbacks with value");
-					xsmcGet(xsVar(4), xsVar(3), xsID_value);
 					void *data;
 					xsUnsignedValue dataLength;
 					xsmcGetBufferReadable(xsVar(4), &data, &dataLength);

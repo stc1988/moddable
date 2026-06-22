@@ -157,20 +157,17 @@ uint8_t builtinSetFormat(xsMachine *the)
 
 void builtinInitializeTarget(xsMachine *the)
 {
-	if (xsmcHas(xsArg(0), xsID_target)) {
-		xsSlot target;
+	xsSlot target;
 
-		xsmcGet(target, xsArg(0), xsID_target);
+	if (xsmcGet(target, xsArg(0), xsID_target))
 		xsmcSet(xsThis, xsID_target, target);
-	}
 }
 
 uint8_t builtinInitializeFormat(xsMachine *the, uint8_t format)
 {
-	if (xsmcHas(xsArg(0), xsID_format)) {
-		xsSlot slot;
+	xsSlot slot;
 
-		xsmcGet(slot, xsArg(0), xsID_format);
+	if (xsmcGet(slot, xsArg(0), xsID_format)) {
 		if (!xsmcTest(slot))
 			return format;
 

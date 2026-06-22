@@ -218,7 +218,7 @@ static const xsHostHooks xsPebbleButtonHooks = {
 uint32_t resolveButton(xsMachine *the, xsSlot *aType)
 {
 	ButtonId button;
-	char *type = xsmcToString(xsVar(1));
+	char *type = xsmcToString(*aType);
 	if (c_strcmp(type, "back") == 0)
 		button = BUTTON_ID_BACK;
 	else if (c_strcmp(type, "down") == 0)
@@ -237,9 +237,8 @@ void xs_pebblebutton(xsMachine *the)
 	uint32_t buttons = 0;
 
 	xsmcVars(3);
-	if (xsmcHas(xsArg(0), xsID_type)) {
-		xsmcGet(xsVar(1), xsArg(0), xsID_type);
-		buttons = resolveButton(the, &xsVar(0));
+	if (xsmcGet(xsVar(1), xsArg(0), xsID_type)) {
+		buttons = resolveButton(the, &xsVar(1));
 	}
 	else {
 		xsSlot tmp;
@@ -250,13 +249,12 @@ void xs_pebblebutton(xsMachine *the)
 			xsUnknownError("no buttons");
 		while (count--) {
 			xsmcGetIndex(xsVar(1), xsVar(0), count);
-			buttons |= resolveButton(the, &xsVar(0));
+			buttons |= resolveButton(the, &xsVar(1));
 		}
 
 	}
-	if (!xsmcHas(xsArg(0), xsID_onPush))
+	if (!xsmcGet(xsVar(0), xsArg(0), xsID_onPush))
 		xsUnknownError("onPush required");
-	xsmcGet(xsVar(0), xsArg(0), xsID_onPush);
 
 	uint8_t recognizers = 0;
 	int repeat = 0, delay = 0, min = 0, max = 0, lastOnly = 0, timeout = 0;
@@ -264,10 +262,8 @@ void xs_pebblebutton(xsMachine *the)
 	if (xsmcTest(xsVar(1))) {
 		recognizers |= kRecognizerSingle;
 		if (xsReferenceType == xsmcTypeOf(xsVar(1))) {
-			if (xsmcHas(xsVar(1), xsID_repeat)) {
-				xsmcGet(xsVar(2), xsVar(1), xsID_repeat);
+			if (xsmcGet(xsVar(2), xsVar(1), xsID_repeat))
 				repeat = xsmcToInteger(xsVar(2));
-			}
 		}
 	}
 	xsmcGet(xsVar(1), xsArg(0), xsID_long);
@@ -276,32 +272,22 @@ void xs_pebblebutton(xsMachine *the)
 		if (buttons & (1 << BUTTON_ID_BACK))
 			xsUnknownError("no long back");
 		if (xsReferenceType == xsmcTypeOf(xsVar(1))) {
-			if (xsmcHas(xsVar(1), xsID_delay)) {
-				xsmcGet(xsVar(2), xsVar(1), xsID_delay);
+			if (xsmcGet(xsVar(2), xsVar(1), xsID_delay))
 				delay = xsmcToInteger(xsVar(2));
-			}
 		}
 	}
 	xsmcGet(xsVar(1), xsArg(0), xsID_multi);
 	if (xsmcTest(xsVar(1))) {
 		recognizers |= kRecognizerMulti;
 		if (xsReferenceType == xsmcTypeOf(xsVar(1))) {
-			if (xsmcHas(xsVar(1), xsID_min)) {
-				xsmcGet(xsVar(2), xsVar(1), xsID_min);
+			if (xsmcGet(xsVar(2), xsVar(1), xsID_min))
 				min = xsmcToInteger(xsVar(2));
-			}
-			if (xsmcHas(xsVar(1), xsID_max)) {
-				xsmcGet(xsVar(2), xsVar(1), xsID_max);
+			if (xsmcGet(xsVar(2), xsVar(1), xsID_max))
 				max = xsmcToInteger(xsVar(2));
-			}
-			if (xsmcHas(xsVar(1), xsID_lastOnly)) {
-				xsmcGet(xsVar(2), xsVar(1), xsID_lastOnly);
+			if (xsmcGet(xsVar(2), xsVar(1), xsID_lastOnly))
 				lastOnly = xsmcToBoolean(xsVar(2));
-			}
-			if (xsmcHas(xsVar(1), xsID_timeout)) {
-				xsmcGet(xsVar(2), xsVar(1), xsID_timeout);
+			if (xsmcGet(xsVar(2), xsVar(1), xsID_timeout))
 				timeout = xsmcToInteger(xsVar(2));
-			}
 		}
 	}
 	xsmcGet(xsVar(1), xsArg(0), xsID_raw);

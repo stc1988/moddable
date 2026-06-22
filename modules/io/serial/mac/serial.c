@@ -109,17 +109,13 @@ void xs_serial_constructor(xsMachine *the)
 	xsmcGet(onWritable, xsArg(0), xsID_onWritable);
 	xsmcGet(onError, xsArg(0), xsID_onError);
 
-	if (xsmcHas(xsArg(0), xsID_format)) {
-		xsmcGet(xsVar(0), xsArg(0), xsID_format);
+	if (xsmcGet(xsVar(0), xsArg(0), xsID_format))
 		xsmcToStringBuffer(xsVar(0), format, sizeof(format));
-	}
 	else
 		format[0] = 0;
 
-	if (xsmcHas(xsArg(0), xsID_target)) {
-		xsmcGet(xsVar(0), xsArg(0), xsID_target);
+	if (xsmcGet(xsVar(0), xsArg(0), xsID_target))
 		xsmcSet(xsThis, xsID_target, xsVar(0));
-	}
 
 	s = calloc(1, sizeof(xsSerialRecord));
 	if (!s)
@@ -289,16 +285,14 @@ void xs_serial_set(xsMachine *the)
 
 	ioctl(s->fd, TIOCMGET, &flags);
 
-	if (xsmcHas(xsArg(0), xsID_RTS)) {
-		xsmcGet(xsVar(0), xsArg(0), xsID_RTS);
+	if (xsmcGet(xsVar(0), xsArg(0), xsID_RTS)) {
 		if (xsmcTest(xsVar(0)))
 			flags |= TIOCM_RTS;
 		else
 			flags &= ~TIOCM_RTS;
 	}
 
-	if (xsmcHas(xsArg(0), xsID_DTR)) {
-		xsmcGet(xsVar(0), xsArg(0), xsID_DTR);
+	if (xsmcGet(xsVar(0), xsArg(0), xsID_DTR)) {
 		if (xsmcTest(xsVar(0)))
 			flags |= TIOCM_DTR;
 		else

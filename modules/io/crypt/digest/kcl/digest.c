@@ -88,9 +88,8 @@ void xs_digest_destructor(void *data)
 void xs_digest_constructor(xsMachine *the)
 {
 	xsmcVars(1);
-	if (!xsmcHas(xsArg(0), xsID_algorithm))
+	if (!xsmcGet(xsVar(0), xsArg(0), xsID_algorithm))
 		xsUnknownError("algorithm required");
-	xsmcGet(xsVar(0), xsArg(0), xsID_algorithm);
 	char *algorithm = xsmcToString(xsVar(0));
 
 	const DigestAlgEntry *entry;
@@ -104,9 +103,8 @@ void xs_digest_constructor(xsMachine *the)
 	DigestRecord init = { .alg = entry->alg };
 
 	if (kAlgGHASH == entry->alg) {
-		if (!xsmcHas(xsArg(0), xsID_H))
+		if (!xsmcGet(xsVar(0), xsArg(0), xsID_H))
 			xsUnknownError("H required");
-		xsmcGet(xsVar(0), xsArg(0), xsID_H);
 		void *H;
 		xsUnsignedValue HLen;
 		xsmcGetBufferReadable(xsVar(0), &H, &HLen);
@@ -115,8 +113,7 @@ void xs_digest_constructor(xsMachine *the)
 		c_memcpy(&init.ctx.ghash.h, H, 16);
 		_ghash_fix128(&init.ctx.ghash.h);
 
-		if (xsmcHas(xsArg(0), xsID_additionalData)) {
-			xsmcGet(xsVar(0), xsArg(0), xsID_additionalData);
+		if (xsmcGet(xsVar(0), xsArg(0), xsID_additionalData)) {
 			void *aad;
 			xsUnsignedValue aadLen;
 			xsmcGetBufferReadable(xsVar(0), &aad, &aadLen);
