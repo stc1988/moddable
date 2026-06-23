@@ -54,8 +54,7 @@ void xs_inflate(xsMachine *the)
 	z_stream *zlib;
 
 	xsmcVars(1);
-	if (xsmcHas(xsArg(0), xsID_windowBits)) {
-		xsmcGet(xsVar(0), xsArg(0), xsID_windowBits);
+	if (xsmcGet(xsVar(0), xsArg(0), xsID_windowBits)) {
 		windowBits = xsmcToInteger(xsVar(0));
 		if ((15 != windowBits) && (-15 != windowBits))
 			xsRangeError("invalid windowBits");

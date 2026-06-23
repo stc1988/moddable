@@ -184,9 +184,8 @@ void xs_co5300(xsMachine *the)
 {
 	co5300Display sd;
 
-	if (xsmcHas(xsArg(0), xsID_pixelFormat)) {
-		xsmcVars(1);
-		xsmcGet(xsVar(0), xsArg(0), xsID_pixelFormat);
+	xsmcVars(1);
+	if (xsmcGet(xsVar(0), xsArg(0), xsID_pixelFormat)) {
 		if (kCommodettoBitmapFormat != xsmcToInteger(xsVar(0)))
 			xsUnknownError("bad format");
 	}

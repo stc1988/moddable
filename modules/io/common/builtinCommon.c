@@ -105,7 +105,8 @@ void builtinFreePins(uint32_t bank, uint32_t pins)
 xsSlot *builtinGetCallback(xsMachine *the, xsIdentifier id)
 {
 	xsSlot slot;
-	xsmcGet(slot, xsArg(0), id);
+	if (!xsmcGet(slot, xsArg(0), id))
+		return C_NULL;
 	xsType type = fxTypeOf(the, &slot);
 	if ((xsUndefinedType == type) || (xsNullType == type))
 		return C_NULL;
