@@ -41,8 +41,6 @@ typedef struct {
 
 	// pebblebutton
 	void					*buttons;
-	EventServiceInfo		eventServiceDown;
-	EventServiceInfo		eventServiceUp;
 
 	// pebble-accelerometer
 	void					*accelerometer;
