@@ -102,6 +102,7 @@
 				"embedded:provider/builtin": "$(TYPINGS)/pebble/device",
 				"pebble/button": "$(TYPINGS)/pebble/button",
 				"pebble/dictation": "$(TYPINGS)/pebble/dictation",
+				"pebble/health": "$(TYPINGS)/pebble/health",
 				"pebble/message": "$(TYPINGS)/pebble/message",
 				"pebble/vibes": "$(TYPINGS)/pebble/vibes",
 				"pebble/wakeup": "$(TYPINGS)/pebble/wakeup"
