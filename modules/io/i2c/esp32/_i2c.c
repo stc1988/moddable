@@ -510,6 +510,7 @@ struct TransactionRecord {
 	uint8_t				hasReadBuffer;
 	uint8_t				operation;
 	uint8_t				bufferLength;
+	uint8_t				otherBufferLength;	// for writeRead: buffer & bufferLength are read, (buffer + bufferLength) & otherBufferLength are write
 	uint8_t				processing;		// 0 unstarted, 1 i2c transaction in progress, 2 i2c transaction done
 	uint8_t				reg;			// smbus register
 	int					err;
@@ -522,6 +523,7 @@ enum {
 	kOperationClose,
 	kOperationWrite,
 	kOperationRead,
+	kOperationWriteRead,
 	kOperationReadUint8,
 	kOperationReadUint16,
 	kOperationWriteUint8,
@@ -680,6 +682,11 @@ static void i2cTask(void *pvParameter)
 							transaction->err = i2c_master_transmit(i2c->device, transaction->buffer, transaction->bufferLength, i2c->timeout);
 						else //@@ write quick unsupported thorugh transmit, but probe seems similar-ish
 							transaction->err = i2c_master_probe(i2c->bus, i2c->address, 1000);
+						break;
+
+					case kOperationWriteRead:
+						transaction->err = i2c_master_transmit_receive(i2c->device, transaction->buffer + transaction->bufferLength, transaction->otherBufferLength, transaction->buffer, transaction->bufferLength, i2c->timeout);
+						transaction->operation = kOperationRead;
 						break;
 
 					case kOperationWriteUint8:
@@ -900,6 +907,49 @@ void _xs_i2casync_write(xsMachine *the)
 	// set-up transaction record
 	transaction = newI2CTransaction(the, i2c, kOperationWrite, length, callbackIndex);
 	c_memmove(transaction->buffer, buffer, length);
+	
+	queueTransaction(transaction);
+}
+
+void _xs_i2casync_writeRead(xsMachine *the)
+{
+	I2C i2c = xsmcGetHostDataValidate(xsThis, (xsHostHooks *)&xsI2CHooks);
+	xsUnsignedValue lengthWrite, lengthRead;
+	void *bufferWrite, *bufferRead;
+	uint8_t stop = true, hasReadBuffer = false;
+	int callbackIndex = -1;
+
+	if (xsmcArgc > 2) {
+		if (xsmcIsCallable(xsArg(2)))
+			callbackIndex = 2;
+		else {
+			stop = xsmcToBoolean(xsArg(2));
+			if (xsmcArgc > 2)
+				callbackIndex = 3;
+		}
+	}
+
+	if (xsReferenceType == xsmcTypeOf(xsArg(1))) {
+		xsmcGetBufferWritable(xsArg(1), &bufferRead, &lengthRead);
+		hasReadBuffer = true;
+	}
+	else
+ 		lengthRead = xsmcToInteger(xsArg(1));
+
+	xsmcGetBufferReadable(xsArg(0), &bufferWrite, &lengthWrite);
+
+	// set-up transaction record
+	Transaction transaction = newI2CTransaction(the, i2c, kOperationWriteRead, lengthRead + lengthWrite, callbackIndex);
+
+	c_memmove(transaction->buffer + lengthRead, bufferWrite, lengthWrite);
+	transaction->bufferLength = lengthRead;
+	transaction->otherBufferLength = lengthWrite;
+
+	transaction->hasReadBuffer = hasReadBuffer;
+	if (hasReadBuffer) {
+		transaction->readBuffer = xsArg(1);
+		xsRemember(transaction->readBuffer);
+	}
 	
 	queueTransaction(transaction);
 }
