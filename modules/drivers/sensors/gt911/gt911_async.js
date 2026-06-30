@@ -57,10 +57,8 @@ class GT911 {
 		}
 
 		this.#onPoints = (error) => {
-			if (error) {
-				this.#onError?.(error);
-				return;
-			}
+			if (error)
+				return void this.#onError?.(error);
 
 			const io = this.#io, data = this.#data;
 			io.write(NEXT);		// ready chip for next reading
@@ -105,18 +103,15 @@ class GT911 {
 		io.write(ID, (error) => {
 			if (error)
 				return void this.#onError?.(error);
-			io.read(3, (error, idData) => {
+			io.read(3, (error, data) => {
 				if (error)
 					return void this.#onError?.(error);
-				const data = new Uint8Array(idData);
+				data = new Uint8Array(data);
 				if ((57 !== data[0]) || (49 !== data[1]) || (49 !== data[2]))
 					return void this.#onError?.("unrecognized");
-				io.write(NEXT, (error) => {
-					if (error)
-						return void this.#onError?.(error);
-					if (!io.interrupt)
-						this.#timer = Timer.set(() => this.#doSample(), 0, 33);
-				});
+				io.write(NEXT);		// ready chip for next reading
+				if (!io.interrupt)
+					this.#timer = Timer.set(() => this.#doSample(), 0, 33);
 			});
 		});
 	}
