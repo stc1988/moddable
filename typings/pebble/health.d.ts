@@ -79,8 +79,8 @@ interface HealthMetricAlertOptions {
 declare class HealthMetricAlert {
   constructor(options: HealthMetricAlertOptions);
   close(): void;
-  [Symbol.dispose](): void;
 }
+interface HealthMetricAlert extends Disposable {}
 
 interface HealthMinuteHistoryOptions {
   length: number;

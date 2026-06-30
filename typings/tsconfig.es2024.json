@@ -1,7 +1,7 @@
 {
 	"_comment": "Base tsconfig for projects using @moddable/typings. Project tsconfig.json should `extends` this and add its own outDir, include, sourceMap, etc.",
 	"compilerOptions": {
-		"lib": ["es2024"],
+		"lib": ["es2024", "esnext.disposable"],
 		"module": "preserve",
 		"moduleResolution": "bundler",
 		"target": "ES2024",

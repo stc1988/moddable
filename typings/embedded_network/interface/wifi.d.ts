@@ -71,6 +71,7 @@ declare module "embedded:network/interface/wifi" {
 		readonly SSID: string | undefined;
 		readonly RSSI: number | undefined;
 	}
+	interface WiFi extends Disposable {}
 
 	export default WiFi;
 }

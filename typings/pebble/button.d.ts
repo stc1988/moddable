@@ -36,5 +36,6 @@ declare class PebbleButton {
   constructor(options: PebbleButtonOptions);
   close(): void;
 }
+interface PebbleButton extends Disposable {}
 
 export default PebbleButton;

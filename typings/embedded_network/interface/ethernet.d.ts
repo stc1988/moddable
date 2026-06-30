@@ -51,6 +51,7 @@ declare module "embedded:network/interface/ethernet" {
 		readonly address: string | undefined;
 		readonly MAC: string | undefined;
 	}
+	interface Ethernet extends Disposable {}
 
 	export default Ethernet;
 }
