@@ -19,6 +19,7 @@
  */
 
 import Timer from "timer";
+import Time from "time";
 
 const ID = Object.freeze(Uint8Array.of(0x81, 0x40).buffer);
 const ADDR = Object.freeze(Uint8Array.of(0x81, 0x4E).buffer);
@@ -29,6 +30,7 @@ class GT911 {
 	#data;
 	#length;
 	#timer;
+	#ticksQueue = [];
 	#onError;
 	#onSample;
 	#onPoints;
@@ -57,6 +59,8 @@ class GT911 {
 		}
 
 		this.#onPoints = (error) => {
+			const ticks = this.#ticksQueue.shift();		// matched with this completion's #doSample
+
 			if (error)
 				return void this.#onError?.(error);
 
@@ -77,13 +81,16 @@ class GT911 {
 				if (io.none)
 					return;
 				io.none = true;
-				io.sample = [];
+				const sample = [];
+				sample.ticks = ticks;
+				io.sample = sample;
 				this.#onSample?.();
 				return;
 			}
 			delete io.none;
 
 			const result = new Array(touchCount);
+			result.ticks = ticks;
 			for (let i = 0; i < touchCount; i++) {
 				const offset = i * 8 + 1;
 				const id = data[offset];
@@ -138,6 +145,7 @@ class GT911 {
 		return result;
 	}
 	#doSample() {
+		this.#ticksQueue.push(Time.ticks);		// pair this transaction's ticks with its completion
 		if (this.#timer)
 			Timer.schedule(this.#timer);
 		this.#io.writeRead(ADDR, this.#data, this.#onPoints);
