@@ -1331,6 +1331,9 @@ enum {
 	_rawJSON,
 	_sumPrecise,
 #endif
+#if mxImmutableArrayBuffers
+	_sliceToImmutable,
+#endif
 	XS_ID_COUNT
 };
 #define XS_SYMBOL_ID_COUNT _AggregateError
