@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2025  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Tools.
  * 
@@ -46,6 +46,9 @@ static void fx_assert_throws(xsMachine *the);
 #if FUZZILLI
 static void fx_memoryFail(txMachine *the);
 static void fx_fuzzilli(xsMachine* the);
+extern int fxBundleIs(const char *buffer, size_t size);
+extern void fxBundleRun(txMachine *the, char *buffer, size_t size);
+extern void fxBundleMapReset(void);
 #endif
 extern int gxStress;
 int gxMemoryFail;		// not thread safe
@@ -534,16 +537,20 @@ int fuzz(int argc, char* argv[])
 				}
 				buffer[script_size] = 0;	// required when debugger active
 
-				// run the script
-				txSlot* realm = mxProgram.value.reference->next->value.module.realm;
-				txStringCStream aStream;
-				aStream.buffer = buffer;
-				aStream.offset = 0;
-				aStream.size = script_size;
-				the->script = fxParseScript(the, &aStream, fxStringCGetter, mxProgramFlag | mxDebugFlag);
-				fxRunScript(the, the->script, mxRealmGlobal(realm), C_NULL, mxRealmClosures(realm)->value.reference, C_NULL, mxProgram.value.reference);
-				the->script = NULL;
-				mxPullSlot(mxResult);
+				if (fxBundleIs(buffer, script_size)) 
+					fxBundleRun(the, buffer, script_size);
+				else {
+					// run the script
+					txSlot* realm = mxProgram.value.reference->next->value.module.realm;
+					txStringCStream aStream;
+					aStream.buffer = buffer;
+					aStream.offset = 0;
+					aStream.size = script_size;
+					the->script = fxParseScript(the, &aStream, fxStringCGetter, mxProgramFlag | mxDebugFlag);
+					fxRunScript(the, the->script, mxRealmGlobal(realm), C_NULL, mxRealmClosures(realm)->value.reference, C_NULL, mxProgram.value.reference);
+					the->script = NULL;
+					mxPullSlot(mxResult);
+				}
 
 				fxRunLoop(the);
 			}
@@ -557,6 +564,7 @@ int fuzz(int argc, char* argv[])
 		xsEndHost(machine);
 		}
 		xsEndMetering(machine);
+		fxBundleMapReset();
 		gxMemoryFail = 0;
 		fxDeleteScript(machine->script);
 		int status = (machine->exitStatus & 0xff) << 8;
