@@ -81,7 +81,7 @@ void CFESetFontData(CommodettoFontEngine bmf, const void *fontData, uint32_t fon
 		return;					// unchanged
 
 	bmf->charCount = 0;			// zero in case of failure
-	if (fontDataSize < 5)
+	if (fontDataSize < 9)
 		return;
 
 	const unsigned char *start = fontData;
@@ -100,8 +100,6 @@ void CFESetFontData(CommodettoFontEngine bmf, const void *fontData, uint32_t fon
 		return;
 	bytes += 1;
 
-	if ((end - bytes) < 4)
-		return;
 	uint32_t size = c_read32(bytes);
 	if (size > (uint32_t)((end - bytes) - 4))
 		return;
@@ -135,12 +133,10 @@ void CFESetFontData(CommodettoFontEngine bmf, const void *fontData, uint32_t fon
 	bytes += 4 + size;
 
 	// use block 4
-	if (((end - bytes) < 1) || (4 != c_read8(bytes)))
+	if (((end - bytes) < 5) || (4 != c_read8(bytes)))
 		return;
 	bytes += 1;
 
-	if ((end - bytes) < 4)
-		return;
 	size = c_read32(bytes);
 	if ((size % 20) || (size < 20) || (size > (uint32_t)((end - bytes) - 4)))
 		return;
@@ -151,11 +147,15 @@ void CFESetFontData(CommodettoFontEngine bmf, const void *fontData, uint32_t fon
 #if MODDEF_CFE_KERN
 	// block 5 - kerning
 	bytes += 4 + size;
-	if (((end - bytes) >= 11) && (5 == c_read8(bytes))) {
+	if (((end - bytes) >= 5) && (5 == c_read8(bytes))) {
+		uint32_t kernSize;
 		bytes += 1;
-		bmf->kernCount = c_read32(bytes) / 10;
-		bmf->kernTriples = bytes + 4;
-		bmf->kernSorted = (0x80 & c_read8(19 + bmf->charTable)) ? 1 : 0;
+		kernSize = c_read32(bytes);
+		if (kernSize <= (uint32_t)((end - bytes) - 4)) {
+			bmf->kernCount = kernSize / 10;
+			bmf->kernTriples = bytes + 4;
+			bmf->kernSorted = (0x80 & c_read8(19 + bmf->charTable)) ? 1 : 0;
+		}
 	}
 #endif
 

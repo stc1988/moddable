@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2021  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -35,70 +35,62 @@ void xs_parseBMF(xsMachine *the)
 	start = bytes;
 	end = bytes + byteLength;
 
-	if ((byteLength < 5) || (0x42 != c_read8(bytes + 0)) || (0x4D != c_read8(bytes + 1)) || (0x46 != c_read8(bytes + 2)) || ((3 != c_read8(bytes + 3)) && (4 != c_read8(bytes + 3))))
+	if (byteLength < 9)
+		xsUnknownError("invalid BMF");
+
+	if ((0x42 != c_read8(bytes + 0)) || (0x4D != c_read8(bytes + 1)) || (0x46 != c_read8(bytes + 2)) || ((3 != c_read8(bytes + 3)) && (4 != c_read8(bytes + 3))))
 		xsUnknownError("Invalid BMF header");
 	bytes += 4;
 
 	// skip block 1
 	if (1 != c_read8(bytes))
-		xsUnknownError("can't find info block");
+		xsUnknownError("no info block");
 	bytes += 1;
 
-	if ((end - bytes) < 4)
-		xsUnknownError("truncated BMF");
 	size = c_read32(bytes);
 	if (size > (uint32_t)((end - bytes) - 4))
-		xsUnknownError("truncated BMF");
+		xsUnknownError("invalid BMF");
 	bytes += 4 + size;
 
 	// get lineHeight from block 2
-	if (((end - bytes) < 1) || (2 != c_read8(bytes)))
-		xsUnknownError("can't find common block");
+	if (((end - bytes) < 5) || (2 != c_read8(bytes)))
+		xsUnknownError("no common block");
 	bytes += 1;
 
-	if ((end - bytes) < 4)
-		xsUnknownError("truncated BMF");
 	size = c_read32(bytes);
 	bytes += 4;
 	if (((end - bytes) < 10) || (size < 8) || (size > (uint32_t)(end - bytes)))
-		xsUnknownError("truncated BMF");
+		xsUnknownError("invalid BMF");
 
 	xsmcSetInteger(xsResult, c_read16(bytes));
-	bytes += 2;
 	xsmcDefine(xsArg(0), xsID_height, xsResult, xsDontDelete | xsDontSet);
 
-	xsmcSetInteger(xsResult, c_read16(bytes));
-	bytes += 2;
+	xsmcSetInteger(xsResult, c_read16(bytes + 2));
 	xsmcDefine(xsArg(0), xsID_ascent, xsResult, xsDontDelete | xsDontSet);
 
-	bytes += 2 + 2;		// scaleW and scaleH
-	if (1 != c_read16(bytes))	// pages
+	if (1 != c_read16(bytes + 8))	// pages
 		xsUnknownError("not single page");
 
-	bytes += size - 8;
+	bytes += size;
 
 	// skip block 3
-	if (((end - bytes) < 1) || (3 != c_read8(bytes)))
-		xsUnknownError("can't find pages block");
+	if (((end - bytes) < 5) || (3 != c_read8(bytes)))
+		xsUnknownError("no pages block");
 	bytes += 1;
 
-	if ((end - bytes) < 4)
-		xsUnknownError("truncated BMF");
 	size = c_read32(bytes);
 	if (size > (uint32_t)((end - bytes) - 4))
-		xsUnknownError("truncated BMF");
+		xsUnknownError("invalid BMF");
 	bytes += 4 + size;
 
 	// use block 4
-	if (((end - bytes) < 1) || (4 != c_read8(bytes)))
-		xsUnknownError("can't find chars block");
+	if (((end - bytes) < 5) || (4 != c_read8(bytes)))
+		xsUnknownError("no chars block");
 	bytes += 1;
 
 	xsmcSetInteger(xsResult, bytes - start);
 	xsmcDefine(xsArg(0), xsID_position, xsResult, xsDontDelete | xsDontSet);
 
-	if ((end - bytes) < 4)
-		xsUnknownError("truncated BMF");
 	size = c_read32(bytes);
 	if ((size % 20) || (size > (uint32_t)((end - bytes) - 4)))
 		xsUnknownError("bad chars block size");
