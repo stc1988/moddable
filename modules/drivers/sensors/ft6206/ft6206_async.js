@@ -151,7 +151,7 @@ class FT6206  {
 	configure(options) {
 		const io = this.#io;
 		if (io.configure) {
-			io.configure = {...options, ...io.configure};
+			io.configure = {...io.configure, ...options};
 			return;
 		}
 
