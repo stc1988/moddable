@@ -1093,7 +1093,7 @@ xsVar(0) = xsGet(xsThis, xsID("foo"));
 
 #### xsmcGet
 
-The `xsmcGet` macro is functionally equivalent to the `xsGet` macro. The property is returned in the slot provided. The return valud is a boolean which indicates if the peoperly exists.
+The `xsmcGet` macro is functionally equivalent to the `xsGet` macro. The property is returned in the slot provided. The return value is a boolean which indicates if the property exists.
 
 **`xsBooleanValue xsmcGet(xsSlot theSlot, xsSlot theThis, xsIdentifier theID)`**
 
@@ -1155,9 +1155,9 @@ xsGetAt(xsVar(0), xsInteger(5));
 
 #### xsmcGetAt
 
-The `xsmcGetAt` macro is functionally equivalent to the `xsGetAt` macro. The property is returned in the slot provided. The return valud is a boolean which indicates if the peoperly exists.
+The `xsmcGetAt` macro is functionally equivalent to the `xsGetAt` macro. The property is returned in the slot provided. The return value is a boolean which indicates if the property exists.
 
-**`xsBooleabValue xsmcGetAt(xsSlot theSlot, xsSlot theThis, xsSlot theKey)`**
+**`xsBooleanValue xsmcGetAt(xsSlot theSlot, xsSlot theThis, xsSlot theKey)`**
 
 | Arguments | Description |
 | --- | :-- |
@@ -1210,7 +1210,7 @@ xsGetIndex(xsThis, 0);
 
 #### xsmcGetIndex
 
-The `xsmcGetIndex` macro is functionally equivalent to the `xsGetIndex` macro. The property is returned in the slot provided. The return valud is a boolean which indicates if the peoperly exists.
+The `xsmcGetIndex` macro is functionally equivalent to the `xsGetIndex` macro. The property is returned in the slot provided. The return value is a boolean which indicates if the property exists.
 
 **`xsBooleanValue xsmcGetIndex(xsSlot theSlot, xsSlot theThis, xsIndex theIndex)`**
 
