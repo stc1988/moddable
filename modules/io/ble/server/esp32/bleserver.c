@@ -701,6 +701,8 @@ static void writeCharacteristic(void *the, void *refcon, uint8_t *message, uint1
 int accessCharacteristic(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg)
 {
 	BLEGATTServerConnection connection = findConnection(gServer, conn_handle);		//@@ gServer
+	if (C_NULL == connection)
+		return BLE_ATT_ERR_UNLIKELY;
 
 	switch (ctxt->op) {
 		case BLE_GATT_ACCESS_OP_READ_CHR: {
@@ -895,6 +897,8 @@ static void deliverOnSecured(void *theIn, void *refcon, uint8_t *message, uint16
 	BLEServer server = refcon;
 	uint16_t conn_handle = *(uint16_t *)message;
 	BLEGATTServerConnection connection = findConnection(server, conn_handle);
+	if (C_NULL == connection)
+		return;
 
 	struct ble_gap_conn_desc desc;
 	if (0 != ble_gap_conn_find(conn_handle, &desc))
@@ -921,6 +925,8 @@ static void deliverOnPasskey(void *theIn, void *refcon, uint8_t *message, uint16
 	BLEServer server = refcon;
 	struct ble_gap_event *event = (struct ble_gap_event *)message;
 	BLEGATTServerConnection connection = findConnection(server, event->passkey.conn_handle);
+	if (C_NULL == connection)
+		return;
 	struct ble_gap_passkey_params *params = &event->passkey.params;
 
 	xsBeginHost(the);
@@ -967,7 +973,11 @@ static void deliverSubscribe(void *the, void *refcon, uint8_t *message, uint16_t
 	BLEServer server = refcon;
 	BLESubscribe sub = (BLESubscribe)message;
 	BLEGATTServerCharacteristic gsc = findCharacteristic(server, sub->attr_handle);
+	if (C_NULL == gsc)
+		return;
 	BLEGATTServerConnection connection = findConnection(server, sub->conn_handle);
+	if (C_NULL == connection)
+		return;
 	uint8_t enable = sub->notify || sub->indicate;
 	gsc->notify = sub->notify;
 	gsc->indicate = sub->indicate;
@@ -1022,9 +1032,11 @@ int handleGAPEvent(struct ble_gap_event *event, void *arg)
 			modMessagePostToMachine(server->the, (void *)&event->disconnect.conn, sizeof(event->disconnect.conn), deliverDisconnect, server);
 			break;
 
-		case BLE_GAP_EVENT_MTU:
-			(findConnection(server, event->mtu.conn_handle))->maximumWrite = event->mtu.value - 3; 
-			break;
+		case BLE_GAP_EVENT_MTU: {
+			BLEGATTServerConnection connection = findConnection(server, event->mtu.conn_handle);
+			if (connection)
+				connection->maximumWrite = event->mtu.value - 3; 
+			} break;
 
 		case BLE_GAP_EVENT_PARING_COMPLETE:
 			if ((0 == event->enc_change.status) && server->onSecured)
