@@ -442,7 +442,15 @@ else
 		DEBUGGER_SRC_FILE = $(PROJ_DIR)/main/debugger_tinyusb.c
 	else
 		ifeq ("$(ESP32_SUBCLASS)","esp32s3")
-				DEBUGGER_SRC_FILE = $(PROJ_DIR)/main/debugger_uart_cdc.c
+			ifeq ($(USE_USB),2)
+				DEBUGGER_SRC_FILE = $(PROJ_DIR)/main/debugger_cdc.c
+			else
+				ifeq ($(DEBUG),1)
+					DEBUGGER_SRC_FILE = $(PROJ_DIR)/main/debugger_uart_cdc.c
+				else
+					DEBUGGER_SRC_FILE = $(PROJ_DIR)/main/debugger_uart.c
+				endif
+			endif	
 		else
 			ifeq ($(USE_USB),2)
 				DEBUGGER_SRC_FILE = $(PROJ_DIR)/main/debugger_cdc.c
