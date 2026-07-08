@@ -1,0 +1,10 @@
+{
+	"include": [
+		"$(MODDABLE)/examples/manifest_base.json",
+		"$(MODDABLE)/examples/manifest_net.json",
+		"$(MODULES)/io/wifiaccesspoint/manifest.json"
+	],
+	"modules": {
+		"*": "./main"
+	}
+}

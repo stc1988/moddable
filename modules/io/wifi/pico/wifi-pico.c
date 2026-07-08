@@ -240,8 +240,8 @@ static void initWiFi(xsMachine *the)
 
 	cyw43_arch_enable_sta_mode();
 
-	netif_set_link_callback(netif_list, wifiLinkCallback);
-	netif_set_status_callback(netif_list, wifiStatusCallback);
+	netif_set_link_callback((&cyw43_state.netif[CYW43_ITF_STA]), wifiLinkCallback);
+	netif_set_status_callback((&cyw43_state.netif[CYW43_ITF_STA]), wifiStatusCallback);
 
 	gInited = 1;
 }
@@ -505,7 +505,7 @@ void xs_wifi419_configure(xsMachine *the)
 
 	if (xsmcGet(xsVar(0), xsArg(0), xsID_hostname)) {
 		xsmcToStringBuffer(xsVar(0), gHostname, sizeof(gHostname));
-		netif_set_hostname(netif_list, gHostname);
+		netif_set_hostname((&cyw43_state.netif[CYW43_ITF_STA]), gHostname);
 	}
 
 	if (xsmcGet(xsVar(0), xsArg(0), xsID_static)) {
@@ -524,10 +524,10 @@ void xs_wifi419_configure(xsMachine *the)
 			if (!ip4addr_aton(xsmcToString(xsVar(1)), &gw))
 				xsRangeError("invalid gateway");
 
-			dhcp_stop(netif_list);
-			netif_set_addr(netif_list, &ip, &netmask, &gw);
+			dhcp_stop((&cyw43_state.netif[CYW43_ITF_STA]));
+			netif_set_addr((&cyw43_state.netif[CYW43_ITF_STA]), &ip, &netmask, &gw);
 
-			if (netif_is_link_up(netif_list)) {
+			if (netif_is_link_up((&cyw43_state.netif[CYW43_ITF_STA]))) {
 				WiFiEventMsg msg = {0};
 				msg.event = PICO_EVENT_GOT_IP;
 				msg.addressChanged = 1;
@@ -536,10 +536,10 @@ void xs_wifi419_configure(xsMachine *the)
 		}
 		else {
 			ip4_addr_t zero = {0};
-			netif_set_addr(netif_list, &zero, &zero, &zero);
-			dhcp_start(netif_list);
+			netif_set_addr((&cyw43_state.netif[CYW43_ITF_STA]), &zero, &zero, &zero);
+			dhcp_start((&cyw43_state.netif[CYW43_ITF_STA]));
 
-			if (netif_is_link_up(netif_list)) {
+			if (netif_is_link_up((&cyw43_state.netif[CYW43_ITF_STA]))) {
 				WiFiEventMsg msg = {0};
 				msg.event = PICO_EVENT_CONNECTED;
 				broadcastWiFiEvent(&msg);
@@ -567,10 +567,10 @@ void xs_wifi419_address_get(xsMachine *the)
 {
 	(void)xsmcGetHostDataValidate(xsThis, (void *)&xsWiFiHooks);
 
-	if (!netif_is_up(netif_list))
+	if (!netif_is_up((&cyw43_state.netif[CYW43_ITF_STA])))
 		return;
 
-	const ip4_addr_t *ip = netif_ip4_addr(netif_list);
+	const ip4_addr_t *ip = netif_ip4_addr((&cyw43_state.netif[CYW43_ITF_STA]));
 	if (!ip->addr)
 		return;
 

@@ -24,6 +24,7 @@
 #include "builtinCommon.h"
 
 #include "user_interface.h"
+#include "wifi-esp-events.h"
 
 #define wifiStationAssociated() (wifi_station_get_rssi() < 10)
 
@@ -205,8 +206,8 @@ static void initWiFi(void)
 	if (gInited) return;
 	gInited = 1;
 
-	wifi_set_opmode_current(STATION_MODE);
-	wifi_set_event_handler_cb(doWiFiEvent);
+	wifi_set_opmode_current(wifi_get_opmode() | STATION_MODE);
+	wifi_esp_events_addListener(doWiFiEvent);
 }
 
 static void doWiFiEvent(System_Event_t *msg)

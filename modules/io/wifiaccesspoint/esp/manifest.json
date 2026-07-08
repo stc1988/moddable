@@ -1,0 +1,9 @@
+{
+	"modules": {
+		"embedded:network/interface/wifi/accesspoint": "./wifiaccesspoint-esp",
+		"*": "$(MODULES)/io/wifi/esp/wifi-esp-events"
+	},
+	"preload": [
+		"embedded:network/interface/wifi/accesspoint"
+	]
+}

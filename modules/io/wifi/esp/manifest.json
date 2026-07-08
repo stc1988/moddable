@@ -1,6 +1,7 @@
 {
 	"modules": {
-		"embedded:network/interface/wifi": "./wifi-esp"
+		"embedded:network/interface/wifi": "./wifi-esp",
+		"*": "./wifi-esp-events"
 	},
 	"preload": [
 		"embedded:network/interface/wifi"

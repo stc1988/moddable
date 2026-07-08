@@ -1,0 +1,22 @@
+{
+	"modules": {
+		"*": "$(MODULES)/io/common/builtinCommon"
+	},
+	"platforms": {
+		"esp32": {
+			"include": "./esp32/manifest.json"
+		},
+		"esp": {
+			"include": "./esp/manifest.json"
+		},
+		"pico": {
+			"include": "./pico/manifest.json"
+		},
+		"zephyr": {
+			"include": "./zephyr/manifest.json"
+		},
+		"...": {
+			"error": "ECMA-419 Wi-Fi access point unsupported target"
+		}
+	}
+}

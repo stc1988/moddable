@@ -1,0 +1,11 @@
+{
+	"modules": {
+		"embedded:network/interface/wifi/accesspoint": "./wifiaccesspoint-esp32"
+	},
+	"preload": [
+		"embedded:network/interface/wifi/accesspoint"
+	],
+	"dependency": [
+		{ "idf": "esp_wifi" }
+	]
+}
