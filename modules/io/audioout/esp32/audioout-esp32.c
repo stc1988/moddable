@@ -322,17 +322,18 @@ void xs_audioout_constructor_(xsMachine *the)
 
 	err = i2s_new_channel(&tx_chan_cfg, &audioOut->tx_handle, C_NULL);
 	if (ESP_OK != err)
-		xsUnknownError("new channel failed");
+		xsUnknownError("new channel failed %d", (int)err);
 #if MODDEF_AUDIOOUT_I2S_PDM_PIN
 	err = i2s_channel_init_pdm_tx_mode(audioOut->tx_handle, &tx_cfg);
 	if (ESP_OK != err)
-		xsUnknownError("init PDM failed");
+		xsUnknownError("init PDM failed %d", (int)err);
 	gPDMAudioOutBusy = 1;
 #elif MODDEF_AUDIOOUT_I2S_BCK_PIN
 	err = i2s_channel_init_std_mode(audioOut->tx_handle, &i2s_config);
+	if (ESP_OK != err)
+		xsUnknownError("init I2S failed %d", (int)err);
 	i2s_channel_reconfig_std_slot(audioOut->tx_handle, &i2s_config.slot_cfg);
 	i2s_channel_reconfig_std_clock(audioOut->tx_handle, &i2s_config.clk_cfg);
-
 #elif MODDEF_AUDIOOUT_I2S_DAC
 #else
 #endif
@@ -400,7 +401,7 @@ void xs_audioout_start_(xsMachine *the)
 
 	err = i2s_channel_enable(audioOut->tx_handle);
 	if (ESP_OK != err)
-		xsUnknownError("can't enable");
+		xsUnknownError("can't enable %d", (int)err);
 
 	audioOut->started = true;
 	audioOut->bytesWritable = audioOut->total_dma_buf_size;
