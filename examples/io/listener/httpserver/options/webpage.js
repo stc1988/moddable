@@ -44,7 +44,10 @@ export default Object.freeze({
 		}
 		else
 			throw new Error("unsupported data type");
+		route.headers?.forEach((value, key) => response.headers.set(key, value));
 		response.headers.set("content-type", route.contentType ?? "text/html");
+		if (undefined !== route.status)
+			response.status = route.status;
 		this.respond(response);
 	},
 	onWritable(count) {
