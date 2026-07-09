@@ -2,12 +2,14 @@
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/examples/manifest_net.json",
-		"$(MODDABLE)/examples/io/udp/dns/manifest_dnsserver.json",
-		"$(MODULES)/io/wifiaccesspoint/manifest.json",
-		"$(MODDABLE)/examples/io/listener/httpserver/manifest_httpserver.json",
-		"$(MODDABLE)/examples/io/tcp/websocket/manifest_websocket.json"
+		"./manifest_captiveportal.json"
 	],
 	"modules": {
 		"*": "./main"
+	},
+	"data": {
+		"*": [
+			"./site/*"
+		]
 	}
 }
