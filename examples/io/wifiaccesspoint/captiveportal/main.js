@@ -49,8 +49,8 @@ socket.addEventListener("message", event => {
 	if ("scan" === msg.event) {
 		socket.send(JSON.stringify({
 			event: "connect",
-			SSID: "12 Paul Revere",
-			password: "allegra07"
+			SSID: "my SSID",
+			password: "my PASSWORD"
 		}));
 	}
 	else if (("wifi-change" === msg.event) && ("connection" === msg.property) && (parseInt(msg.value) >= 500)) {
