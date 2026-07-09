@@ -26,15 +26,15 @@ export default Object.freeze({
 		route.state ??= new WeakMap;
 		const state = {data};
 		route.state.set(this, state);
-		if (data instanceof ArrayBuffer) { 
-			state.position = 0;
-			state.byteLength = data.byteLength;
-			response.headers.set("content-length", state.byteLength);
-		}
-		else if (ArrayBuffer.isView(data)) {
+		if (ArrayBuffer.isView(data)) {
 			state.position = data.byteOffset;
 			state.byteLength = data.byteLength;
 			state.data = data.buffer;
+			response.headers.set("content-length", state.byteLength);
+		}
+		else if ((data instanceof ArrayBuffer) || data.byteLength) {	// arraybuffer or hostbuffer 
+			state.position = 0;
+			state.byteLength = data.byteLength;
 			response.headers.set("content-length", state.byteLength);
 		}
 		else if ("string" === typeof data) {
