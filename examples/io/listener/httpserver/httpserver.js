@@ -420,7 +420,7 @@ class HTTPServer {
 			onReadable(count) {
 				while (count--) {
 					try {
-						const connection = new Connection(this.read(), connection => this.target.#connections.delete(connection));
+						const connection = new Connection(this.read(), connection => this.target.#connections?.delete(connection));
 						this.target.#onConnect(connection);
 					}
 					catch {
