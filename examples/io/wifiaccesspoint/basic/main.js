@@ -20,16 +20,18 @@ new WiFiAccessPoint({
 	channel: 6,
 	onChanged(name) {
 		if ("connection" === name) {
-			if (400 === this.connection)
+			if (this.connection >= 400)
 				trace(`AP up as ${this.SSID} at ${this.address} (${this.MAC}) on channel ${this.channel}\n`);
 			else
 				trace(`AP stopped\n`);
 		}
 	},
 	onConnect(station) {
-		trace(`joined: ${station.MAC}. ${stations.size} connections.\n`);
+		this.stations = (this.stations ?? 0) + 1;
+		trace(`joined: ${station.MAC}. ${this.stations} connections.\n`);
 	},
 	onDisconnect(station) {
-		trace(`left: ${station.MAC}. ${stations.size} connections.\n`);
+		this.stations -= 1;
+		trace(`left: ${station.MAC}. ${this.stations} connections.\n`);
 	}
 });
