@@ -197,6 +197,17 @@ static void initWiFi(void)
 	wifi_mode_t mode;
 	if (ESP_OK == esp_wifi_get_mode(&mode)) {
 		gStation = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+		if (!gStation)
+			gStation = esp_netif_create_default_wifi_sta();
+
+		wifi_mode_t newMode = mode;
+		if (WIFI_MODE_AP == mode)
+			newMode = WIFI_MODE_APSTA;
+		else if (WIFI_MODE_NULL == mode)
+			newMode = WIFI_MODE_STA;
+		if (newMode != mode)
+			esp_wifi_set_mode(newMode);
+
 		ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, doWiFiEvent, C_NULL));
 		ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, doIPEvent, C_NULL));
 		return;
