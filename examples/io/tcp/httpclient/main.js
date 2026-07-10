@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024  Moddable Tech, Inc.
+ * Copyright (c) 2021-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK.
  * 
@@ -25,8 +25,8 @@ for (let i = 0; i < 3; i++) {
 			["date", Date()],
 			["user-agent", "ecma-419 test"]
 		]),
-		onHeaders(status, headers) {
-			trace(`Status ${status}\n`);
+		onHeaders(status, headers, statusText) {
+			trace(`Status ${status}:${statusText}\n`);
 			headers.forEach((value, key) => {
 				trace(`${key}: ${value}\n`);
 			});

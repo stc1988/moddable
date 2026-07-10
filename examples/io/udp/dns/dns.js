@@ -40,6 +40,8 @@ class Resolver {
 	constructor(options) {
 		this.#servers = options.servers.slice();
 		this.#UDP = options.socket;
+		if (!this.#UDP || !this.#servers?.length)
+			throw new Error("invalid");
 	}
 	close() {
 		this.#socket?.close();

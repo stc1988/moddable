@@ -125,7 +125,7 @@ TLS Certificates are used to encrypt the data you send to a server. `SecureSocke
 The certificate store is located in the [`modules/crypt/data` directory](../../modules/crypt/data) of the Moddable SDK. Not every certificate is used by every application, so it would be a waste of limited flash memory to include all of them by default. Instead, certificates are explicitly included in the `resources` section of manifests.
 
 ```json
-"resources": {
+"data": {
     "*": [
         "$(MODULES)/crypt/data/ca9",
     ]
@@ -139,7 +139,7 @@ If you are unsure which certificate you need to include, just run your applicati
 In this case, `ca109.der` needs to be included, so it should be added in the manifest’s `resources` object.
 
 ```json
-"resources": {
+"data": {
     "*": [
         "$(MODULES)/crypt/data/ca109"
     ]

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2026  Moddable Tech, Inc.
+ * Copyright (c) 2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -28,8 +28,10 @@ class Server {
 	#ttl;
 
 	constructor(options) {
-		this.#onResolve = options.onResolve;
 		this.#ttl = options.ttl ?? 60;
+		this.#onResolve = options.onResolve;
+		if (!this.#onResolve)
+			throw new Error("onResolve required");
 
 		this.#socket = new (options.socket.io)({
 			target: this,
@@ -37,7 +39,7 @@ class Server {
 			onReadable(count) {
 				while (count--) {
 					const buffer = this.read();
-					this.target.#receive(buffer, buffer.address, buffer.port);
+					this.target.#receive(buffer);
 				}
 			}
 		});
@@ -46,7 +48,7 @@ class Server {
 		this.#socket?.close();
 		this.#socket = this.#onResolve = undefined;
 	}
-	#receive(buffer, address, port) {
+	#receive(buffer) {
 		const packet = new Parser(buffer);
 		const question = packet.question(0);
 		if (!question || (DNS.CLASS.IN !== question.qclass) || (DNS.RR.A !== question.qtype))
@@ -60,7 +62,7 @@ class Server {
 		const response = new Serializer({query: false, authoritative: true, id: packet.id});
 		response.add(DNS.SECTION.QUESTION, name, DNS.RR.A, DNS.CLASS.IN);
 		response.add(DNS.SECTION.ANSWER, name, DNS.RR.A, DNS.CLASS.IN, this.#ttl, resolved);
-		this.#socket.write(response.build(), address, port);
+		this.#socket.write(response.build(), buffer.address, buffer.port);
 	}
 
 	static {
