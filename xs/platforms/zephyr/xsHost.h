@@ -89,7 +89,7 @@ extern void ESP_putc(int c);
 #define modLogVar(msg) modLog_transmit(msg)
 #define modLogInt(msg) \
 	do { \
-		char temp[10]; \
+		char temp[12]; \
 		itoa(msg, temp, 10); \
 		modLog_transmit(temp); \
 	} while (0)
