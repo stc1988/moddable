@@ -37,13 +37,6 @@ class GT911 {
 		this.#onSample = onSample;
 		this.#length = 2;
 
-		const workerConfig = {
-			address: sensor.address ?? 0x5D,
-			hz: sensor.hz ?? 200_000,
-			interruptPin: interrupt?.pin,
-			length: this.#length
-		};
-
 		this.#worker = new Worker("gt911/#worker", {
 			static: 8192,
 			chunk: {initial: 3072, incremental: 256},
@@ -51,25 +44,30 @@ class GT911 {
 			stack: 112
 		});
 
-		this.#worker.onmessage = (msg) => {
-			if (!Array.isArray(msg)) {
-				if (msg?.error)
-					this.#onError?.(msg.error);
-				return;
-			}
-			this.#sample = msg;
+		this.#worker.onmessage = msg => {
+			if (msg.error)
+				return void this.#onError?.(msg.error);
+
 			this.#worker.postMessage(0);
+			this.#sample = msg;
 			this.#onSample?.();
 		};
 
-		this.#worker.postMessage({type: "init", config: workerConfig});
+		this.#worker.postMessage({
+			type: "init",
+			config: {
+				address: sensor.address ?? 0x5D,
+				hz: sensor.hz ?? 200_000,
+				interruptPin: interrupt?.pin,
+				length: this.#length
+			}
+		});
 	}
 	close(callback) {
-		if (this.#worker) {
-			this.#worker.postMessage({type: "close"});
-			this.#worker.close?.();
-			this.#worker = undefined;
-		}
+		this.#worker?.postMessage({type: "close"});
+		this.#worker?.terminate();
+		this.#worker = undefined;
+
 		if (callback)
 			Timer.set(() => callback(null));
 	}

@@ -82,8 +82,8 @@ const device = {
 					...options,
 					sensor: {
 						...device.I2C.default,
-						address,
-						hz: 400_000,
+						hz: 200_000,
+						address
 					},
 					interrupt: {
 						io: Digital,
