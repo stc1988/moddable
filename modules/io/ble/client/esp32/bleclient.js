@@ -140,6 +140,9 @@ class GATTClient extends Native("xs_gattclient_destructor") {
 
 		features.constructor.call(this, options);
 
+		if (options.from)
+			return;
+
 		const {onReady, onError} = options;
 		new GATTClient.#Request(this, features.connect, error => {
 			if (error)

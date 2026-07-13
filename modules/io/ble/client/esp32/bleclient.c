@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025  Moddable Tech, Inc.
+ * Copyright (c) 2025-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -37,6 +37,8 @@
 #if MYNEWT_VAL(BLE_ENABLE_CONN_REATTEMPT)
 	#error Espressif reconnect not supported. Disable using CONFIG_BT_NIMBLE_ENABLE_CONN_REATTEMPT in SDKCONFIG.
 #endif
+
+extern uint16_t xs_ble_server_get_conn_handle(xsMachine *the, xsSlot *slot) __attribute__((weak));
 
 static void xs_ble_ready(void);
 static void xs_ble_nimble_task(void *param);
@@ -444,14 +446,17 @@ typedef struct {
 	struct ble_gatt_dsc 	*descriptors;
 	int				descriptorsLength;	
 	
-	uint8_t			isRead;
-	uint16_t		readResultByteLength;
 	void			*readResult;
+	uint16_t		readResultByteLength;
+	uint8_t			isRead:1;
 	
-	uint8_t			isClose;
+	uint8_t			isClose:1;
 
-	uint8_t 		secure;
-	uint8_t			immediate;
+	uint8_t 		secure:1;
+	uint8_t			immediate:1;
+
+	uint8_t			attached:1;
+	struct ble_gap_event_listener listener;
 
 	BLEGATTCharacteristicValue		values;
 	uint8_t							onReadableInFlight;
@@ -465,6 +470,7 @@ typedef struct {
 } GATTClientCharacteristicRecord, *GATTClientCharacteristic;
 
 static int onGATTConnectionEvent(struct ble_gap_event *event, void *arg);
+static int onAttachedGAPListener(struct ble_gap_event *event, void *arg);
 static void gattClientExecuted(GATTClient gc, int result);
 
 void xs_gattclient_destructor(void *data)
@@ -511,6 +517,8 @@ void xs_gattclient_constructor(xsMachine *the)
 	ble_addr_t address;
 	int mtu = 0;
 	uint8_t secure = 0, authenticate = 0, bond = 0, display = 0, keyboard = 0, immediate = 0;
+	uint8_t attached = 0;
+	uint16_t attached_conn_handle = 0;
 
 	xsmcVars(2);
 
@@ -522,20 +530,28 @@ void xs_gattclient_constructor(xsMachine *the)
 			mtu = BLE_ATT_MTU_DFLT;
 	}
 
-	xsmcGet(xsVar(0), xsArg(0), xsID_address);
-    if (sscanf(xsmcToString(xsVar(0)),
-               "%2hhx:%2hhx:%2hhx:%2hhx:%2hhx:%2hhx/%2hhx",
-               &address.val[5], &address.val[4], &address.val[3],
-               &address.val[2], &address.val[1], &address.val[0],
-               &address.type) != 7)
-		xsUnknownError("invalid address");
+	if (xsmcGet(xsVar(0), xsArg(0), xsID_from)) {
+		if (!xs_ble_server_get_conn_handle)
+			xsUnknownError("no peripheral module");
+		attached_conn_handle = xs_ble_server_get_conn_handle(the, &xsVar(0));
+		attached = 1;
+	}
+	else {
+		xsmcGet(xsVar(0), xsArg(0), xsID_address);
+	    if (sscanf(xsmcToString(xsVar(0)),
+	               "%2hhx:%2hhx:%2hhx:%2hhx:%2hhx:%2hhx/%2hhx",
+	               &address.val[5], &address.val[4], &address.val[3],
+	               &address.val[2], &address.val[1], &address.val[0],
+	               &address.type) != 7)
+			xsUnknownError("invalid address");
+	}
 
 	xsSlot *onReadable = builtinGetCallback(the, xsID_onReadable);
 	xsSlot *onError = builtinGetCallback(the, xsID_onError);
 	xsSlot *onSecured = builtinGetCallback(the, xsID_onSecured);
 	xsSlot *onPasskey = builtinGetCallback(the, xsID_onPasskey);
 
-	if (xsmcGet(xsVar(0), xsArg(0), xsID_security)) {
+	if (!attached && xsmcGet(xsVar(0), xsArg(0), xsID_security)) {
 		xsmcGet(xsVar(1), xsVar(0), xsID_authenticate);
 		authenticate = xsmcTest(xsVar(1));
 
@@ -573,7 +589,8 @@ void xs_gattclient_constructor(xsMachine *the)
 	gc->the = the;
 	gc->obj = xsThis;
 	xsRemember(gc->obj);
-	gc->address = address;
+	if (!attached)
+		gc->address = address;
 	gc->onReadable = onReadable;
 	gc->onError = onError;
 	gc->onSecured = onSecured;
@@ -584,6 +601,16 @@ void xs_gattclient_constructor(xsMachine *the)
 
 	xsmcSetHostData(xsThis, gc);
 	xsSetHostHooks(xsThis, (xsHostHooks *)&xsGATTClientHooks);
+
+	if (attached) {
+		gc->attached = 1;
+		gc->connected = 1;
+		gc->conn_handle = attached_conn_handle;
+		gc->mtu = ble_att_mtu(attached_conn_handle);
+		if (ble_gap_event_listener_register(&gc->listener, onAttachedGAPListener, gc))
+			xsUnknownError("listener register failed");
+		return;
+	}
 
 	ble_hs_cfg.sm_sc = secure;
 	if (secure) {
@@ -608,7 +635,12 @@ void xs_gattclient_close(xsMachine *the)
 	if (xsmcArgc) {
 		gc->request = xsmcToReference(xsArg(0));
 		gc->isClose = 1;
-		if (gc->connected) {
+		if (gc->attached) {
+			ble_gap_event_listener_unregister(&gc->listener);
+			gc->connected = 0;
+			gattClientExecuted(gc, 0);
+		}
+		else if (gc->connected) {
 			if (0 != ble_gap_terminate(gc->conn_handle, BLE_ERR_REM_USER_CONN_TERM))
 				gattClientExecuted(gc, 0);
 		}
@@ -616,7 +648,9 @@ void xs_gattclient_close(xsMachine *the)
 			gattClientExecuted(gc, 0);
 	}
 	else {
-		if (gc->connecting)
+		if (gc->attached)
+			ble_gap_event_listener_unregister(&gc->listener);
+		else if (gc->connecting)
 			ble_gap_conn_cancel();
 	}
 }
@@ -839,6 +873,23 @@ static int onGATTMCUExchanged(uint16_t conn_handle, const struct ble_gatt_error 
 		ble_gap_security_initiate(conn_handle);
 
 	return 0;
+}
+
+static int onAttachedGAPListener(struct ble_gap_event *event, void *arg)
+{
+	GATTClient gc = arg;
+	uint16_t conn_handle;
+	switch (event->type) {
+		case BLE_GAP_EVENT_DISCONNECT:		conn_handle = event->disconnect.conn.conn_handle; break;
+		case BLE_GAP_EVENT_MTU:				conn_handle = event->mtu.conn_handle; break;
+		case BLE_GAP_EVENT_ENC_CHANGE:		conn_handle = event->enc_change.conn_handle; break;
+		case BLE_GAP_EVENT_NOTIFY_RX:		conn_handle = event->notify_rx.conn_handle; break;
+		case BLE_GAP_EVENT_PASSKEY_ACTION:	conn_handle = event->passkey.conn_handle; break;
+		default: return 0;
+	}
+	if (conn_handle != gc->conn_handle)
+		return 0;
+	return onGATTConnectionEvent(event, gc);
 }
 
 int onGATTConnectionEvent(struct ble_gap_event *event, void *arg)
