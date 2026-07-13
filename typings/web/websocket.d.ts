@@ -21,14 +21,17 @@
 declare module "web/websocket" {
   import Headers from "headers"
 
-  interface WebSocketOptions {
+  interface WebSocketClientOptions {
     url: string;
     protocol?: string;
     keepalive?: number;
     headers?: Headers | Record<string, string>;
-    attach?: any;
     ws?: any;
     wss?: any;
+  }
+
+  interface WebSocketAttachOptions {
+    attach: any;
   }
 
   interface WebSocketCloseEvent {
@@ -53,7 +56,8 @@ declare module "web/websocket" {
 
   class WebSocket {
     constructor(url: string, protocol?: string);
-    constructor(options: WebSocketOptions);
+    constructor(options: WebSocketClientOptions);
+    constructor(options: WebSocketAttachOptions);
 
     static readonly CONNECTING: 0;
     static readonly OPEN: 1;

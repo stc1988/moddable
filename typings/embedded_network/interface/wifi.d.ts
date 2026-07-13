@@ -43,6 +43,7 @@ declare module "embedded:network/interface/wifi" {
 	export interface WiFiConnectOptions {
 		SSID: string;
 		password?: string;
+		secure?: boolean;
 	}
 
 	export interface WiFiStaticAddress {
