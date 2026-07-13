@@ -185,6 +185,17 @@ void xs_wifi419_close(xsMachine *the)
 		}
 	}
 
+	if (!gWiFiList && !wf->connected && !wf->connecting) {
+		wifi_mode_t mode;
+		if (ESP_OK == esp_wifi_get_mode(&mode)) {
+			if (WIFI_MODE_APSTA == mode)
+				esp_wifi_set_mode(WIFI_MODE_AP);
+			else if (WIFI_MODE_STA == mode)
+				esp_wifi_set_mode(WIFI_MODE_NULL);
+		}
+		gStation = C_NULL;
+	}
+
 	xs_wifi419_destructor(wf);
 	xsmcSetHostData(xsThis, C_NULL);
 	xsSetHostDestructor(xsThis, C_NULL);
