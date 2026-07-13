@@ -33,8 +33,8 @@ declare module "embedded:storage/key-value" {
 
 		delete(key: string): void;
 
-		read(key: string): ArrayBuffer | string | number | bigint;
-		read(key: string, buffer: ByteBuffer): number;
+		read(key: string): ArrayBuffer | string | number | bigint | undefined;
+		read(key: string, buffer: ByteBuffer): number | undefined;
 		write(key: string, value: ByteBuffer | string | number | bigint): void;
 
 		[Symbol.iterator](): IterableIterator<string>;
