@@ -1,0 +1,11 @@
+{
+	"include": [
+		"../domexception/manifest.json"
+	],
+	"modules": {
+		"web/abortsignal": "./AbortSignal"
+	},
+	"preload": [
+		"web/abortsignal"
+	]
+}

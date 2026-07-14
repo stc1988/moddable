@@ -1,0 +1,12 @@
+{
+	"include": [
+		"../../../../data/text/encoder/manifest.json",
+		"../../all/manifest.json"
+	],
+	"modules": {
+		"web/textencoderstream": "./TextEncoderStream"
+	},
+	"preload": [
+		"web/textencoderstream"
+	]
+}

@@ -1,0 +1,25 @@
+{
+	"include": [
+		"../../abortsignal/manifest.json"
+	],
+	"modules": {
+		"web/streams": "./mcStreamAll",
+		"*": [
+			"./mcReadableStream",
+			"./mcReadableStreamDefaultReader",
+			"./mcReadableStreamBYOBReader",
+			"./mcReadableStreamDefaultController",
+			"./mcReadableByteStreamController",
+			"./mcWritableStream",
+			"./mcWritableStreamDefaultWriter",
+			"./mcWritableStreamDefaultController",
+			"./mcTransformStream",
+			"./mcStreamPipe",
+			"./mcStreamIterator",
+			"./mcStreamTee"
+		]
+	},
+	"preload": [
+		"web/streams"
+	]
+}

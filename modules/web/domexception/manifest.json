@@ -1,0 +1,8 @@
+{
+	"modules": {
+		"web/domexception": "./DOMException"
+	},
+	"preload": [
+		"web/domexception"
+	]
+}
