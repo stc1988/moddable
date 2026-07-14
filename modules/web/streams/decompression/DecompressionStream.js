@@ -163,50 +163,56 @@ class DecompressionStream {
 
 		this.#writable = new WritableStream({
 			async write(chunk) {
-				// Normalize chunk to Uint8Array
-				if (ArrayBuffer.isView(chunk)) {
-					if (!(chunk instanceof Uint8Array))
-						chunk = new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
-				}
-				else if ((chunk instanceof ArrayBuffer) || (chunk instanceof SharedArrayBuffer))
-					chunk = new Uint8Array(chunk);
-				else
-					throw new TypeError("invalid chunk");
-				if (chunk.byteLength === 0)
-					return;
-
-				// Post-end: accept trailing gzip trailer bytes silently; error on extra data.
-				if (ended) {
-					if (gzipTrailerRemaining > 0) {
-						const consume = Math.min(gzipTrailerRemaining, chunk.byteLength);
-						gzipTrailerRemaining -= consume;
-						if (consume === chunk.byteLength)
-							return;
+				try {
+					// Normalize chunk to Uint8Array
+					if (ArrayBuffer.isView(chunk)) {
+						if (!(chunk instanceof Uint8Array))
+							chunk = new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
 					}
-					const e = new TypeError("data after end of compressed stream");
-					readableController.error(e);
-					throw e;
-				}
-
-				if (gzipParser && !gzipParser.done) {
-					let payload;
-					try {
-						payload = gzipParser.push(chunk);
-					}
-					catch (e) {
-						readableController?.error(e);
+					else if ((chunk instanceof ArrayBuffer) || (chunk instanceof SharedArrayBuffer))
+						chunk = new Uint8Array(chunk);
+					else
+						throw new TypeError("invalid chunk");
+					if (chunk.byteLength === 0)
+						return;
+	
+					// Post-end: accept trailing gzip trailer bytes silently; error on extra data.
+					if (ended) {
+						if (gzipTrailerRemaining > 0) {
+							const consume = Math.min(gzipTrailerRemaining, chunk.byteLength);
+							gzipTrailerRemaining -= consume;
+							if (consume === chunk.byteLength)
+								return;
+						}
+						const e = new TypeError("data after end of compressed stream");
+// 						readableController.error(e);
 						throw e;
 					}
-					if (!payload || (payload.byteLength === 0))
-						return;
-					chunk = payload;
+	
+					if (gzipParser && !gzipParser.done) {
+						let payload;
+						try {
+							payload = gzipParser.push(chunk);
+						}
+						catch (e) {
+// 							readableController?.error(e);
+							throw e;
+						}
+						if (!payload || (payload.byteLength === 0))
+							return;
+						chunk = payload;
+					}
+	
+					// Append the chunk view to the queue — no copy.
+					pendingQueue.push(chunk);
+					pendingBytes += chunk.byteLength;
+					wakeInput();
+					await waitForConsumed();
 				}
-
-				// Append the chunk view to the queue — no copy.
-				pendingQueue.push(chunk);
-				pendingBytes += chunk.byteLength;
-				wakeInput();
-				await waitForConsumed();
+				catch (e) {
+					readableController?.error(e);
+					throw e;
+				}
 			},
 			close() {
 				writeClosed = true;

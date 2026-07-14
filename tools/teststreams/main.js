@@ -50,10 +50,16 @@ for (let key in abortsignal)
 import * as streams from "web/streams";
 for (let key in streams)
 	globalThis[key] = streams[key];
+import TextDecoder from "text/decoder";
+globalThis.TextDecoder = TextDecoder;
 import TextDecoderStream from "web/textdecoderstream";
 globalThis.TextDecoderStream = TextDecoderStream;
+import TextEncoder from "text/encoder";
+globalThis.TextEncoder = TextEncoder;
 import TextEncoderStream from "web/textencoderstream";
 globalThis.TextEncoderStream = TextEncoderStream;
+import DecompressionStream from "web/decompressionstream";
+globalThis.DecompressionStream = DecompressionStream;
 
 globalThis.readableStreamFromArray = function(array) {
   return new ReadableStream({
@@ -121,7 +127,7 @@ let testCount = 0;
 let passedCount = 0;
 add_completion_callback((tests, status) => {
 	let path = globalThis["<xsbug:path>"];
-	path = path.slice(path.indexOf("wpt/") + 4);
+	path = path.slice(path.indexOf("web/") + 4);
 	print(`# ./${path}`);
 	for (let test of tests) {
 		testCount++;
