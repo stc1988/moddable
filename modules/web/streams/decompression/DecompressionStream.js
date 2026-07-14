@@ -184,20 +184,11 @@ class DecompressionStream {
 							if (consume === chunk.byteLength)
 								return;
 						}
-						const e = new TypeError("data after end of compressed stream");
-// 						readableController.error(e);
-						throw e;
+						throw new TypeError("data after end of compressed stream");
 					}
 	
 					if (gzipParser && !gzipParser.done) {
-						let payload;
-						try {
-							payload = gzipParser.push(chunk);
-						}
-						catch (e) {
-// 							readableController?.error(e);
-							throw e;
-						}
+						let payload = gzipParser.push(chunk);
 						if (!payload || (payload.byteLength === 0))
 							return;
 						chunk = payload;
