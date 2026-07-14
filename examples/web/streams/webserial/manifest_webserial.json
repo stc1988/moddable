@@ -1,0 +1,9 @@
+{
+	"include": [
+		"$(MODDABLE)/modules/web/streams/all/manifest.json"
+	],
+	"modules": {
+		"*": "./webserial"
+	},
+	"preload": "webserial"
+}

@@ -1,0 +1,16 @@
+{
+	"include": [
+		"$(MODDABLE)/examples/manifest_base.json",
+		"$(MODULES)/web/streams/all/manifest.json",
+		"$(MODULES)/web/streams/decompression/manifest.json",
+		"$(MODULES)/web/streams/text/decoder/manifest.json"
+	],
+	"creation": {
+		"stack": 1024
+	},
+	"modules": {
+		"*": [
+			"./main"
+		]
+	}
+}

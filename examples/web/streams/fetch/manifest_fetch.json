@@ -1,0 +1,17 @@
+{
+	"include": [
+		"$(MODDABLE)/modules/data/headers/manifest.json",
+		"$(MODDABLE)/modules/data/url/manifest.json",
+		"$(MODDABLE)/examples/io/tcp/httpsclient/manifest_httpsclient.json",
+		"$(MODULES)/web/streams/all/manifest.json",
+		"$(MODULES)/web/streams/decompression/manifest.json"
+	],
+	"modules": {
+		"*": [
+			"./fetch"
+		]
+	},
+	"preload": [
+		"fetch"
+	]
+}

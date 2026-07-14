@@ -1,0 +1,19 @@
+{
+	"include": [
+		"$(MODDABLE)/examples/manifest_base.json",
+		"$(MODDABLE)/modules/io/manifest.json",
+		"$(MODDABLE)/modules/data/text/decoder/manifest.json",
+		"$(MODDABLE)/modules/data/text/encoder/manifest.json",
+		"./manifest_webserial.json"
+	],
+	"modules": {
+		"*": [
+			"./main"
+		]
+	},
+	"defines": {
+		"main": {
+			"async": 1
+		}
+	}
+}

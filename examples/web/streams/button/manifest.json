@@ -1,0 +1,19 @@
+{
+	"include": [
+		"$(MODDABLE)/examples/manifest_base.json",
+		"$(MODDABLE)/modules/io/manifest.json",
+		"$(MODDABLE)/modules/web/streams/all/manifest.json"
+	],
+	"creation": {
+		"stack": 1024
+	},
+	"modules": {
+		"*": [
+			"./main",
+			"..//modules/iostreams"
+		]
+	},
+	"preload": [
+		"iostreams"
+	]
+}
