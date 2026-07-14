@@ -1,0 +1,202 @@
+{
+	"build": {
+		"BUILD": "$(MODDABLE)/build",
+		"ESP32_SUBCLASS": "esp32s3",
+		"MODULES": "$(MODDABLE)/modules",
+		"TEST262": "$(MODDABLE)/tools/test262",
+		"WPT": "../wpt"
+	},
+	"creation": {
+		"static": 65536,
+		"chunk": {
+			"initial": 1536,
+			"incremental": 512
+		},
+		"heap": {
+			"initial": 512,
+			"incremental": 64
+		},
+		"stack": 1024,
+		"keys": {
+			"available": 16386,
+			"name": 127,
+			"symbol": 127
+		},
+		"parser": {
+			"buffer": 9000,
+			"table": 127
+		},
+		"main": "main"
+	},
+	"include": [
+		"$(MODDABLE)/examples/manifest_base.json",
+		"$(MODULES)/base/modules/manifest.json",
+		"$(MODULES)/data/url/manifest.json",
+		"$(MODULES)/web/streams/all/manifest.json",
+		"$(MODULES)/web/streams/text/decoder/manifest.json",
+		"$(MODULES)/web/streams/text/encoder/manifest.json"
+	],
+	"modules": {
+		"*": [
+			"$(TEST262)/_262",
+			"./self",
+			"./harness/testharness.js",
+			"./harness/test-utils.js",
+			"./harness/recording-streams.js",
+			"./harness/rs-test-templates.js",
+			"./harness/rs-utils.js",
+			"./main"
+		]
+	},
+	"strip": [],
+	"platforms": {
+		"esp": {
+			"error": "test262 is unsupported on esp8266"
+		},
+		"esp32": {
+			"defines": {
+				"XS_TEST": 1,
+				"softreset": 1
+			},
+			"modules": {
+				"*": [
+					"$(MODULES)/base/timer/*",
+					"$(MODULES)/base/timer/mc/*",
+					"$(MODULES)/network/socket/lwip/modLwipSafe",
+					"$(MODULES)/files/preference/*",
+					"$(MODULES)/files/preference/esp32/*"
+				]
+			},
+			"dependency": [
+				{ "idf": "log" },
+				{ "idf": "efuse" }
+			]
+		},
+		"esp32/esp32s3": {
+			"build": {
+				"ESP32_SUBCLASS": "esp32s3"
+			},
+			"defines": {
+				"XS_TEST": 1,
+				"softreset": 1
+			},
+			"modules": {
+				"*": [
+					"$(MODULES)/base/timer/*",
+					"$(MODULES)/base/timer/mc/*",
+					"$(MODULES)/network/socket/lwip/modLwipSafe",
+					"$(MODULES)/files/preference/*",
+					"$(MODULES)/files/preference/esp32/*"
+				]
+			},
+			"dependency": [
+				{ "idf": "log" },
+				{ "idf": "efuse" }
+			]
+		},
+		"esp32/moddable_six": {
+			"build": {
+				"ESP32_SUBCLASS": "esp32s3",
+				"EXPECTED_ESP_IDF": "6.0",
+				"USE_USB": "2",
+				"SDKCONFIGPATH": "$(MODDABLE)/build/devices/esp32/targets/moddable_six/sdkconfig"
+			},
+			"creation": {
+				"static": 0,
+				"chunk": {
+					"initial": 524288,
+					"incremental": 524288
+				},
+				"heap": {
+					"initial": 32768,
+					"incremental": 32768 
+				},
+				"stack": 16384,
+				"keys": {
+					"available": 16386,
+					"name": 127,
+					"symbol": 127
+				},
+				"parser": {
+					"buffer": 32768,
+					"table": 127
+				},
+				"main": "main"
+			},
+			"defines": {
+				"XS_TEST": 1,
+				"softreset": 1
+			},
+			"modules": {
+				"*": [
+					"$(MODULES)/base/timer/*",
+					"$(MODULES)/base/timer/mc/*",
+					"$(MODULES)/network/socket/lwip/modLwipSafe",
+					"$(MODULES)/files/preference/*",
+					"$(MODULES)/files/preference/esp32/*"
+				]
+			},
+			"dependency": [
+				{ "idf": "log" },
+				{ "idf": "efuse" },
+				{ "idf": "esp_driver_gptimer" }
+			]
+		},
+		"lin": {
+			"build": {
+				"SIMULATOR": "$(BUILD)/bin/lin/debug/mcsim"
+			},
+			"modules": {
+				"*": [
+					"$(BUILD)/simulators/modules/screen",
+					"$(MODULES)/base/timer/*",
+					"$(MODULES)/base/timer/lin/*"
+				]
+			}
+		},
+		"mac": {
+			"build": {
+				"SIMULATOR": "$(BUILD)/bin/mac/debug/mcsim.app"
+			},
+			"modules": {
+				"*": [
+					"$(BUILD)/simulators/modules/screen",
+					"$(MODULES)/base/time/*",
+					"$(MODULES)/base/time/mac/*",
+					"$(MODULES)/base/timer/*",
+					"$(MODULES)/base/timer/mac/*"
+				]
+			}
+		},
+		"win": {
+			"build": {
+				"SIMULATOR": "$(BUILD)/bin/win/debug/mcsim.exe"
+			},
+			"modules": {
+				"*": [
+					"$(BUILD)/simulators/modules/screen",
+					"$(MODULES)/base/time/*",
+					"$(MODULES)/base/time/win/*",
+					"$(MODULES)/base/timer/*",
+					"$(MODULES)/base/timer/win/*"
+				]
+			}
+		},
+		"zephyr": {
+			"build": {
+				"MAKE_FRAGMENT": "$(MODDABLE)/build/devices/zephyr/config/CMakeLists.txt",
+				"ZEPHYR_BOARD": "$(SUBPLATFORM)"
+			},
+			"defines": {
+				"XS_TEST": 1
+			},
+			"modules": {
+				"*": [
+					"$(MODULES)/base/timer/*",
+					"$(MODULES)/base/timer/mc/*",
+					"$(MODULES)/files/resource/Resource"
+				]
+			}
+		}
+	}
+}
