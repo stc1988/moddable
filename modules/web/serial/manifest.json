@@ -3,7 +3,7 @@
 		"$(MODDABLE)/modules/web/streams/all/manifest.json"
 	],
 	"modules": {
-		"*": "./webserial"
+		"web/serial": "./webserial"
 	},
-	"preload": "webserial"
+	"preload": "web/serial"
 }
