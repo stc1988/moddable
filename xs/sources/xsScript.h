@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -122,7 +122,7 @@ typedef struct sxStringNode txStringNode;
 	txNode* next;\
 	const txNodeDescription* description;\
 	txSymbol* path;\
-	txInteger line;\
+	txUnsigned line;\
 	txUnsigned flags
 
 #define mxAccessNodePart\
@@ -144,7 +144,7 @@ typedef struct {
 	txNode* next;
 	const txNodeDescription* description;
 	txSymbol* symbol;
-	txInteger line;
+	txUnsigned line;
 	txUnsigned flags;
 } txNodeLink;
 
@@ -599,7 +599,7 @@ struct sxParserJump {
 };
 
 struct sxParserState {
-	int line;
+	txUnsigned line;
 	int crlf;
 	int escaped;
 	txBigInt bigint;

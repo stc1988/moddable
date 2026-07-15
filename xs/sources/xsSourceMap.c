@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2025  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -44,7 +44,7 @@ static txInteger fxSourceMapValue(txParser* parser, txString* p);
 
 void fxParserSourceMap(txParser* parser, void* theStream, txGetter theGetter, txUnsigned flags, txString* name)
 {
-	txInteger line = parser->states[0].line;
+	txUnsigned line = parser->states[0].line;
 	txNode* root = parser->root;
 	txNode* object;
     txNode* item;
@@ -115,7 +115,7 @@ void fxParserSourceMap(txParser* parser, void* theStream, txGetter theGetter, tx
 	mxAssert(source, "source map: no source");
 	mxAssert(mappings, "source map: no mappings");
 	
-	parser->lines = fxNewParserChunkClear(parser, (1 + line) * sizeof(txInteger));
+	parser->lines = fxNewParserChunkClear(parser, (1 + line) * sizeof(txUnsigned));
 
 	fxSourceMapLines(parser, mappings);
 	*name = source;
@@ -124,11 +124,11 @@ void fxParserSourceMap(txParser* parser, void* theStream, txGetter theGetter, tx
 void fxSourceMapLines(txParser* parser, txString mappings)
 {
 	enum { BEGIN, SOURCE, LINE, COLUMN, NAME, END };
-	txInteger generatedLine = 0;
+	txUnsigned generatedLine = 0;
 //	txInteger generatedColumn = 0;
 //	txInteger name = 0;
 //	txInteger source = 0;
-	txInteger sourceLine = 0;
+	txUnsigned sourceLine = 0;
 //	txInteger sourceColumn = 0;
 	txInteger state = BEGIN;
 	txString p = mappings;

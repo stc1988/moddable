@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2025  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -114,7 +114,7 @@ struct sxCoder {
 	txInteger stackLevel;
 	txInteger targetIndex;
 	txSymbol* path;
-	txInteger line;
+	txUnsigned line;
 	txBoolean programFlag;
 	txBoolean evalFlag;
 	txBoolean importFlag;
