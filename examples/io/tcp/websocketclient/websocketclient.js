@@ -35,7 +35,7 @@ class WebSocketClient {
 	#options;
 	#state;
 	#line;
-	#data;
+	#data;		// bytes remaining to read in current fragment
 	#format;		// true for number, false for buffer
 	#writable = 0;
 	#mask;			// write mask
@@ -253,18 +253,25 @@ class WebSocketClient {
 		if (!this.#data && options.unread) {	// finished this message and have unread data pending on socket
 			options.timer = Timer.set(() => {
 				delete this.#options.timer;
-				this.#onReadable(this.#options.unread);
+				const unread = this.#options.unread;
+				delete this.#options.unread;
+				this.#onReadable(unread);
 			});
 		}
 
 		return result;
 	}
-	#onReadable(count) {
+	#onReadable(readable) {
+		if (this.#options.unread) {
+			this.#options.unread = readable - this.#data;
+			return;
+		}
+
 		switch (this.#state) {
 			case "receiveStatus":
 			case "receiveHeader":
 				for (;;) {
-					while (count--) {
+					while (readable--) {
 						const c = this.#socket.read();
 						this.#line += String.fromCharCode(c);
 						if (10 === c)
@@ -300,14 +307,14 @@ class WebSocketClient {
 								return;
 						}
 
-						if (count)
-							return void this.#onReadable(count);	// more data to read - run "connected"
+						if (readable)
+							return void this.#onReadable(readable);	// more data to read - run "connected"
 						break;
 					}
 					else {
 						const position = this.#line.indexOf(":");
-						const name = this.#line.substring(0, position).trim().toLowerCase();
-						const data = this.#line.substring(position + 1).trim();
+						const name = this.#line.slice(0, position).trim().toLowerCase();
+						const data = this.#line.slice(position + 1).trim();
 
 						if (("connection" === name) && ("upgrade" === data.toLowerCase()))
 							this.#options.flags |= 1;
@@ -330,11 +337,11 @@ class WebSocketClient {
 				if (this.#data)
 					return;
 
-				while (count) {
+				while (readable) {
 					if (undefined === options.tag) {
 						this.#socket.format = NumberFormat;
 						let tag = options.tag = this.#socket.read();
-						count--;
+						readable--;
 
 						if (tag & 0x70)
 							return void this.#onError();
@@ -352,7 +359,7 @@ class WebSocketClient {
 					}
 					if (undefined === options.length) {
 						let length = this.#socket.read();
-						count--;
+						readable--;
 						if (length & 0x80) {
 							length &= 0x7F;
 							options.mask = [];
@@ -366,18 +373,18 @@ class WebSocketClient {
 					}
 					if ((126 === options.length[0]) && (options.length.length < 3)) {
 						options.length.push(this.#socket.read());
-						count--;
+						readable--;
 						continue;
 					}
 					if ((127 === options.length[0]) && (options.length.length < 9)) {
 						options.length.push(this.#socket.read());
-						count--;
+						readable--;
 						continue;
 					}
 					if (options.mask && options.mask.length < 4) {
 						//@@ it is an error for client to receieve a mask. this code applies to future server. client should fail here.
 						options.mask.push(this.#socket.read());
-						count--;
+						readable--;
 						if (4 !== options.mask.length)
 							continue;
 
@@ -394,9 +401,9 @@ class WebSocketClient {
 							options.control.position = 0;
 						}
 						const control = options.control;
-						while (count && (control.position < options.length)) {
+						while (readable && (control.position < options.length)) {
 							control[control.position++] = this.#socket.read();
-							count--;
+							readable--;
 						}
 						if (control.position !== options.length)
 							return;
@@ -470,7 +477,7 @@ class WebSocketClient {
 					}
 
 					let read, more, binary = options.binary;
-					if (options.length <= count) {
+					if (options.length <= readable) {
 						more = !(options.tag & 0x80);
 						this.#data = read = options.length;
 						delete options.ready;
@@ -481,19 +488,20 @@ class WebSocketClient {
 					}
 					else {
 						more = true;
-						this.#data = read = count;
-						options.length -= count;
+						this.#data = read = readable;
+						options.length -= readable;
 					}
-					delete options.unread;
+
 					options.onReadable?.call(this, this.#data, {more, binary});
 					if (!this.#socket)
 						break;
 					
-					count -= (read - this.#data);
-					if (this.#data) {
-						options.unread = count;
+					if (this.#data) {		// pause parser because current message hasn't been fully read
+						options.unread = readable - read;
 						break;
 					}
+
+					readable -= read;
 				}
 				} break;
 
