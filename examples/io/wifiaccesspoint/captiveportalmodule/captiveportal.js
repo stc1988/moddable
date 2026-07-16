@@ -77,7 +77,7 @@ class CaptivePortal {
 	}
 
 	#prescan() {
-		this.#setPhase("scanning");
+		this.#setPhase("initializing");
 		const found = new Map;
 		try {
 			this.#wifi.scan({
