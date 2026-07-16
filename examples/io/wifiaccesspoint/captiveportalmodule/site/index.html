@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<body>
+<header>Welcome to provisioning!</header>
+
+<pre id="log"></pre>
+
+<script>
+function log(...args) {
+	document.getElementById("log").textContent += args.join(" ") + "\n";
+}
+const socket = new WebSocket("ws://" + location.host + "/ws");
+log("WebSocket Created");
+socket.addEventListener("open", () => {
+	log("Connected");
+	socket.send(JSON.stringify({event: "scan"}));
+});
+socket.addEventListener("message", event => {
+	const msg = JSON.parse(event.data);
+	log("Received:", JSON.stringify(msg, undefined, "  "));
+	if ("scan" === msg.event) {
+		socket.send(JSON.stringify({
+			event: "connect",
+			SSID: "12 Paul Revere",
+			password: "allegra07"
+		}));
+	}
+	else if (("status" === msg.event) && ("provisioned" === msg.phase)) {
+		log("Provisioning complete!");
+		socket.send(JSON.stringify({event: "terminate"}));
+	}
+});
+socket.addEventListener("close", event => {
+	log("Disconnected:", event.code);
+});
+socket.addEventListener("error", event => {
+	log("Error:", event.type);
+});
+</script>
+</body>
+</html>

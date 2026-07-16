@@ -1,0 +1,15 @@
+{
+	"include": [
+		"$(MODDABLE)/examples/manifest_base.json",
+		"$(MODDABLE)/examples/manifest_net.json",
+		"./manifest_captiveportal.json"
+	],
+	"modules": {
+		"*": "./main"
+	},
+	"data": {
+		"*": [
+			"./site/*"
+		]
+	}
+}
