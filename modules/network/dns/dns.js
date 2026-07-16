@@ -25,8 +25,11 @@ const DNS = {
 		TXT: 16,
 		AAAA: 28,
 		SRV: 33,
+		NAPTR: 35,
 		OPT: 41,
 		NSEC: 47,
+		SVCB: 64,
+		HTTPS: 65,
 		ANY: 255,
 	},
 	OPCODE: {
@@ -37,6 +40,14 @@ const DNS = {
 		IN: 1,
 		NONE: 254,
 		ANY: 255,
+	},
+	RCODE: {
+		NOERROR: 0,
+		FORMERR: 1,
+		SERVFAIL: 2,
+		NXDOMAIN: 3,
+		NOTIMP: 4,
+		REFUSED: 5,
 	},
 	SECTION: {
 		QUESTION: 0,

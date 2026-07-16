@@ -36,6 +36,8 @@ class Serializer {
 		this.opcode = opcode;
 		if (dictionary.id)
 			this.id = dictionary.id;
+		if (dictionary.responseCode)
+			this.responseCode = dictionary.responseCode;
 	}
 	splitName(name) {
 		if (!name)
@@ -243,7 +245,7 @@ class Serializer {
 
 		const result = new Uint8Array(this.state.position);
 		const id = this.id ?? 0;
-		result.set(Uint8Array.of(id >> 8, id, this.opcode, 0, 0, sections[0].length, 0, sections[1].length, 0, sections[2].length, 0, sections[3].length), 0);		// header
+		result.set(Uint8Array.of(id >> 8, id, this.opcode, this.responseCode ?? 0, 0, sections[0].length, 0, sections[1].length, 0, sections[2].length, 0, sections[3].length), 0);		// header
 
 		this.state = {position: 12, nameOffsets: new Map, result};
 		this.writeSections();
