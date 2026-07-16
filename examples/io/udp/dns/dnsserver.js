@@ -33,9 +33,10 @@ class Server {
 		if (!this.#onResolve)
 			throw new Error("onResolve required");
 
+		const port = options.port ?? 53;
 		this.#socket = new (options.socket.io)({
 			target: this,
-			port: options.port ?? 53,
+			port,
 			onReadable(count) {
 				while (count--) {
 					const buffer = this.read();
@@ -49,20 +50,27 @@ class Server {
 		this.#socket = this.#onResolve = undefined;
 	}
 	#receive(buffer) {
-		const packet = new Parser(buffer);
-		const question = packet.question(0);
-		if (!question || (DNS.CLASS.IN !== question.qclass) || (DNS.RR.A !== question.qtype))
-			return;
+		try {
+			const packet = new Parser(buffer);
+			const question = packet.question(0);
+			if (!question || ((DNS.CLASS.IN !== question.qclass) && (DNS.CLASS.ANY !== question.qclass)))
+				return;
 
-		const name = question.qname.join(".");
-		const resolved = this.#onResolve?.(name);
-		if (!resolved)
-			return;
+			const name = question.qname.join(".");
+			const resolved = this.#onResolve?.(name);		// name resolution is type-independent
+			const response = new Serializer({query: false, authoritative: true, id: packet.id});
+			response.add(DNS.SECTION.QUESTION, name, question.qtype, question.qclass);		// echo the question as asked
 
-		const response = new Serializer({query: false, authoritative: true, id: packet.id});
-		response.add(DNS.SECTION.QUESTION, name, DNS.RR.A, DNS.CLASS.IN);
-		response.add(DNS.SECTION.ANSWER, name, DNS.RR.A, DNS.CLASS.IN, this.#ttl, resolved);
-		this.#socket.write(response.build(), buffer.address, buffer.port);
+			if (!resolved)
+				response.responseCode = DNS.RCODE.NXDOMAIN;		// name not served
+			else if ((DNS.RR.A === question.qtype) || (DNS.RR.ANY === question.qtype))
+				response.add(DNS.SECTION.ANSWER, name, DNS.RR.A, DNS.CLASS.IN, this.#ttl, resolved);
+
+			this.#socket.write(response.build(), buffer.address, buffer.port);
+		}
+		catch (e) {
+			/* ignore bad packets */
+		}
 	}
 
 	static {
