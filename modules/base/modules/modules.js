@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2025  Moddable Tech, Inc.
+ * Copyright (c) 2018-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -21,7 +21,7 @@
 class Modules {
 	static get host() { return native("xs_modules_host").call(this); }
 	static get archive() { return native("xs_modules_archive").call(this); }
-	static importNow(name) { return native("xs_modules_importNow").call(this, name); }
+	static importNow(name, namespace) { return native("xs_modules_importNow").call(this, name, namespace); }
 	static has(name) { return native("xs_modules_has").call(this, name); }
 }
 
