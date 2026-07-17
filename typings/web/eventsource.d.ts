@@ -34,7 +34,7 @@ declare module "web/eventsource" {
   interface EventSourceMessageEvent extends EventSourceEvent {
     data: string;
     origin: string;
-    lastEventID: string;
+    lastEventId: string;
   }
 
   interface EventSourceErrorEvent extends EventSourceEvent {
