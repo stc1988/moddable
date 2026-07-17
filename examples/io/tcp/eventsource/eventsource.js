@@ -39,7 +39,7 @@ class EventSource {
 	#eventListeners = {};
 	#eventType = "";
 	#host;
-	#lastEventID = "";
+	#lastEventId = "";
 	#origin;
 	#path;
 	#port;
@@ -275,7 +275,7 @@ class EventSource {
 		let type = this.#eventType;
 		let data = this.#data;
 		const origin = this.#origin;
-		const lastEventID = this.#lastEventID;
+		const lastEventId = this.#lastEventId;
 		this.#data = "";
 		this.#eventType = "";
 		if (data != "") {
@@ -283,7 +283,7 @@ class EventSource {
 				type = "message";
 			if (data.endsWith("\n"))
 				data = data.slice(0, -1);
-			const event = { type, data, origin, lastEventID };
+			const event = { type, data, origin, lastEventId };
 			this.#callEventListeners(event);
 		}
 	}
@@ -303,7 +303,7 @@ class EventSource {
 			break;
 		case "id":
 			if (value.indexOf("\0") < 0)
-				this.#lastEventID = value;
+				this.#lastEventId = value;
 			break;
 		case "retry":
 			if (value.match(/^[0-9]+$/) != null)
