@@ -24,12 +24,37 @@ import WebPage from "embedded:network/http/server/options/webpage";
 import WebSocketHandshake from "embedded:network/http/server/options/websocket";
 import WebSocket from "WebSocket";
 
-const ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";		// unambiguous; QR-safe
+const ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
 function randomText(length) {
 	let out = "";
 	for (let i = 0; i < length; i++)
 		out += ALPHABET[(Math.random() * ALPHABET.length) | 0];
 	return out;
+}
+
+function clearestChannel(scan) {
+	const load = {1: 0, 6: 0, 11: 0};
+	for (const ap of scan.values()) {
+		let nearest = 1, distance = Infinity;
+		for (const c of [1, 6, 11]) {
+			if (ap.channel) {
+				const d = Math.abs(c - ap.channel);
+				if (d < distance) {
+					distance = d;
+					nearest = c;
+				}
+			}
+		}
+		load[nearest] += 1;
+	}
+	let choice = 1, min = Infinity;
+	for (const c of [1, 6, 11]) {
+		if (load[c] < min) {
+			min = load[c];
+			choice = c;
+		}
+	}
+	return choice;
 }
 
 class CaptivePortal {
@@ -47,7 +72,6 @@ class CaptivePortal {
 	#phase = "";
 	#credentials;
 	#ssid;
-	#ssidPrefix;
 	#password;
 	#scan;
 
@@ -62,65 +86,58 @@ class CaptivePortal {
 		this.#onStatus = options.onStatus;
 		this.#port = options.port ?? 80;
 		this.#channel = options.channel;
-		this.#ssid = options.SSID;						// used as-is when provided
-		this.#ssidPrefix = options.SSIDPrefix ?? "Moddable-";
-		this.#password = options.password;				// generated when absent
+		this.#ssid = options.SSID ?? "Moddable";
+		this.#password = options.password ?? randomText(10);
 
 		this.#wifi = new WiFi({
 			onChanged: property => this.#onWiFiChanged(property, this.#wifi[property])
 		});
-		this.#prescan();
+
+		this.#setPhase("initializing");
+		this.#wifi.scan({
+			onFound: ap => {
+				if (!ap.SSID) return;
+				this.#wifi.found ??= new Map;
+				const prev = this.#wifi.found.get(ap.SSID);
+				if (!prev || (prev.RSSI < ap.RSSI)) {
+					const {BSSID, ...entry} = ap;
+					this.#wifi.found.set(ap.SSID, entry);
+				}
+			},
+			onComplete: () => {
+				const found = this.#wifi.found;
+				delete this.#wifi.found;
+				if (found)
+					this.#scan = Array.from(found.values());
+
+				let SSID;
+				do {
+					SSID = `${this.#ssid}-${randomText(6)}`;
+				} while (found?.has(SSID));
+
+				const options = {
+					SSID,
+					max: 1,
+					onChanged: name => this.#onAPChanged(name),
+					onConnect: station => this.#setPhase("connected"),
+					onDisconnect: station => {
+						this.#ws?.close();
+						this.#ws = undefined;
+						this.#setPhase("waiting");
+					}
+				};
+				if (this.#channel)
+					options.channel = this.#channel;
+				else if (found?.size)
+					options.channel = clearestChannel(found);
+				if (this.#password) options.password = this.#password;
+				this.#ap = new WiFiAccessPoint(options);
+			}
+		});
 	}
 
 	get SSID() {
 		return this.#ap?.SSID;
-	}
-
-	#prescan() {
-		this.#setPhase("initializing");
-		const found = new Map;
-		try {
-			this.#wifi.scan({
-				onFound: ap => {
-					if (!ap.SSID) return;
-					const prev = found.get(ap.SSID);
-					if (!prev || (prev.RSSI < ap.RSSI)) {
-						const {BSSID, ...entry} = ap;
-						found.set(ap.SSID, entry);
-					}
-				},
-				onComplete: () => this.#startAccessPoint(found)
-			});
-		}
-		catch (e) {
-			this.#fail(e);
-		}
-	}
-
-	#startAccessPoint(found) {
-		this.#scan = Array.from(found.values());		// cached for the portal page
-
-		if (!this.#ssid) {
-			do {
-				this.#ssid = this.#ssidPrefix + randomText(6);
-			} while (found.has(this.#ssid));
-		}
-		this.#password ??= randomText(10);
-
-		const options = {
-			SSID: this.#ssid,
-			max: 4,
-			onChanged: name => this.#onAPChanged(name),
-			onConnect: station => this.#setPhase("connected"),
-			onDisconnect: station => {
-				this.#ws?.close();
-				this.#ws = undefined;
-				this.#setPhase("waiting");
-			}
-		};
-		if (this.#channel) options.channel = this.#channel;
-		if (this.#password) options.password = this.#password;
-		this.#ap = new WiFiAccessPoint(options);
 	}
 
 	close() {
@@ -137,9 +154,7 @@ class CaptivePortal {
 		if (this.#ap.connection >= 400) {
 			this.#dnsServer ??= this.#initializeDNSServer();
 			this.#httpServer ??= this.#initializeHTTPServer();
-			// AP is up: report the finalized credentials so the caller can show
-			// them (e.g. render the QR). Subsequent no-station states use "waiting".
-			this.#setPhase("ready", {SSID: this.#ssid, password: this.#password});
+			this.#setPhase("ready", {SSID: this.#ap.SSID, password: this.#password});
 		}
 	}
 
