@@ -52,16 +52,19 @@ ifeq ("$(ESP32_SUBCLASS)","esp32h2")
 	ESP32_TARGET = 6
 	ESP_ARCH = riscv
 	GXX_PREFIX = riscv32-esp
+	MACHINE_FLAGS = -march=rv32imac
 else
 	ifeq ("$(ESP32_SUBCLASS)","esp32c6")
 		ESP32_TARGET = 5
 		ESP_ARCH = riscv
 		GXX_PREFIX = riscv32-esp
+		MACHINE_FLAGS = -march=rv32imac
 	else
 		ifeq ("$(ESP32_SUBCLASS)","esp32c3")
 			ESP32_TARGET = 4
 			ESP_ARCH = riscv
 			GXX_PREFIX = riscv32-esp
+			MACHINE_FLAGS = -march=rv32imc
 		else
 			ifeq ("$(ESP32_SUBCLASS)","esp32s3")
 				ESP32_BT_SUBCLASS = esp32
@@ -391,7 +394,7 @@ C_COMMON_FLAGS ?= -c -Os -g \
 
 ifeq ("$(ESP_ARCH)","riscv")
 C_COMMON_FLAGS +=	\
-	-march=rv32imc
+	$(MACHINE_FLAGS)
 else
 C_COMMON_FLAGS +=	\
  	-mlongcalls \
