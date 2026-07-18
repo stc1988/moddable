@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025  Moddable Tech, Inc.
+ * Copyright (c) 2021-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -74,7 +74,7 @@ export class Client {
 		}
 		else
 			throw new URIError("only mqtt or mqtts");
-		let keepalive = 60_000;
+		let keepAlive = 60_000;
 		let id = "mqttxs_"  + Math.random().toString(16).substr(2, 8);
 		let user = undefined;
 		let password = undefined;
@@ -82,8 +82,8 @@ export class Client {
 		if (options) {
 			if ("clientId" in options)
 				id = options.clientId
-			if ("keepalive" in options)
-				keepalive = 1000 * options.keepalive
+			if ("keepAlive" in options)
+				keepAlive = 1000 * options.keepAlive
 			if ("password" in options)
 				password = options.password
 			if ("username" in options)
@@ -104,7 +104,7 @@ export class Client {
 		this.#options = {
 			...config,
 			host: url.hostname, port,
-			keepalive, id, user, password, will,
+			keepAlive, id, user, password, will,
 			onControl: (msg) => {
 				if (msg.operation == device.network.mqtt.io.CONNACK) {
 					this.#state = CONNECTED;

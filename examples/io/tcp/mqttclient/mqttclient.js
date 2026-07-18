@@ -74,7 +74,7 @@ class MQTTClient {
 			port: options.port,
 			id: options.id ?? "",
 			clean: options.clean ?? true,
-			keepalive: options.keepAlive ?? options.keepalive ?? 0,		// for compatibilty. should eventually be removed
+			keepalive: options.keepAlive ?? 0,
 			/** @type {any[] & {timer?: Timer}} */
 			pending: []
 		};

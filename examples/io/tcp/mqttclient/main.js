@@ -18,7 +18,7 @@ new MQTTClient({
 	host: "test.mosquitto.org",
 	port: 1883,
 	id: "ecma-419 mqtt test",
-	keepalive: 60_000,		// keepalive is optional for MQTT, but a non-zero value is required by test.mosquitto.org!
+	keepAlive: 60_000,		// keepAlive is optional for MQTT, but a non-zero value is required by test.mosquitto.org!
 	will: {
 		topic: "foo/bar/will",
 		message: ArrayBuffer.fromString("born @ " + Date()),
