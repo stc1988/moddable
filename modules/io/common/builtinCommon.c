@@ -61,11 +61,16 @@
 
 	static uint8_t builtinInitialized = 0;
 	static uint32_t gDigitalAvailable[kPinBanks] = {
+#if PICO_RP2350
+		0xFFFFFFFF,
+		0x0000FFFF
+#else
 		0x3FFFFFFF,		//@@
 #if CYW43_LWIP
 		0x00000001		//@@
 #else
 		0x00000000		//@@
+#endif
 #endif
 	};
 #elif __ZEPHYR__
