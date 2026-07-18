@@ -171,6 +171,13 @@ export class Client {
 				else {
 					this.#moreMessage = null;
 					this.#moreTopic = null;
+
+					Object.defineProperty(message, "toString", {			// for compatibility with calls that expects this to be a Node Buffer
+						enumerable: true,
+						configurable: true,
+						value: toString
+					});
+
 					this.#eventListeners.message.forEach(listener => listener.call(null, topic, message));
 				}
 			},
@@ -570,6 +577,10 @@ export class Client {
 }
 Client.prototype.off = Client.prototype.removeEventListener;
 Client.prototype.on = Client.prototype.addEventListener;
+
+function toString() {
+	return String.fromArrayBuffer(this);
+}
 
 export function connect(url, options) {
 	return new Client(url, options);

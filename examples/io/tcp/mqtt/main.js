@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024  Moddable Tech, Inc.
+ * Copyright (c) 2021-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK.
  * 
@@ -12,15 +12,14 @@
  *
  */
 
-import * as mqtt from "mqtt/js";
+import { connect } from "mqtt/js";
 import data from "data";
 
 function print(...args) {
-	args = args.map(item => item instanceof ArrayBuffer ? String.fromArrayBuffer(item) : String(item));
 	trace(args.join(" ") + "\n");
 }
 
-const client = mqtt.connect('mqtt://broker.hivemq.com')
+const client = connect('mqtt://broker.hivemq.com')
 client.subscribe( "xs/test", { qos: 2 }, (err, granted) => { 
 	print("subscribed", err, granted[0].topic, granted[0].qos);
 	client.publish('xs/test', "zero", { qos:0 }, err => { print("published zero", err) });
