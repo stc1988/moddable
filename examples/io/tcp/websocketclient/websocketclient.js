@@ -262,7 +262,7 @@ class WebSocketClient {
 		return result;
 	}
 	#onReadable(readable) {
-		if (this.#options.unread) {
+		if (this.#data) {
 			this.#options.unread = readable - this.#data;
 			return;
 		}
