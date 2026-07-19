@@ -10,7 +10,7 @@
 	"modules": {
 		"*": [
 			"./main",
-			"..//modules/sensorstream"
+			"../modules/sensorstream"
 		]
 	},
 	"preload": [
