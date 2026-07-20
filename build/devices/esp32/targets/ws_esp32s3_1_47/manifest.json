@@ -1,0 +1,55 @@
+{
+	"build": {
+		"ESP32_SUBCLASS": "esp32s3",
+		"USE_USB": "2"
+	},
+	"include": [
+		"$(MODDABLE)/modules/io/manifest.json",
+		"$(MODULES)/drivers/st7789/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/backlight/manifest.json"
+	],
+	"config": {
+		"screen": "st7789",
+		"brightness": 50
+	},
+	"defines": {
+		"spi": {
+			"mosi_pin": 45,
+			"sck_pin": 40
+		},
+		"ili9341": {
+			"hz": 40000000,
+			"width": 172,
+			"height": 320,
+			"cs_pin": 42,
+			"dc_pin": 41,
+			"rst_pin": 39,
+			"column_offset": 34,
+			"row_offset": 0,
+			"backlight": 48,
+			"baklight_on" : 1,
+			"spi_port": "SPI3_HOST",
+			"spi_mode": "0"
+		}
+	},
+	"modules": {
+		"setup/target": "./setup-target"
+	},
+	"preload": [
+		"setup/target"
+	],
+	"creation": {
+		"static": 0,
+		"chunk": {
+			"initial": 78848,
+			"incremental": 0
+		},
+		"heap": {
+			"initial": 4928,
+			"incremental": 0
+		},
+		"stack": 512
+	}
+}
+
