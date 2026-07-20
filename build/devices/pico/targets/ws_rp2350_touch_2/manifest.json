@@ -1,0 +1,76 @@
+{
+	"build": {
+		"PICO_SUBCLASS": "rp2350"
+	},
+	"include": [
+		"$(MODULES)/drivers/st7789/manifest.json",
+		"$(MODULES)/drivers/sensors/qmi8658/manifest.json",
+		"$(MODULES)/drivers/sensors/cst816s/manifest.json",
+		"$(MODULES)/drivers/led/manifest.json",
+		"$(MODULES)/drivers/button/manifest.json",
+		"$(MODULES)/pins/pwm/manifest.json"
+	],
+	"modules": {
+		"setup/target": "./setup-target"
+	},
+	"preload": "setup/target",
+	"config": {
+		"screen": "st7789",
+		"backlight": 15,
+		"brightness": 50
+	},
+	"defines": {
+		"i2c": {
+			"sda_pin": 12,
+			"scl_pin": 13,
+			"port": 0
+		},
+		"spi": {
+			"mosi_pin": 19,
+			"miso_pin": -1,
+			"sck_pin": 18,
+			"xbuffersize": 540
+		},
+		"ili9341": {
+			"hz": 15000000,
+			"width": 240,
+			"height": 320,
+			"cs_pin": 17,
+			"dc_pin": 16,
+			"rst_pin": 20,
+			"spi_port": 0,
+			"backlight_pin": 15,
+			"backlight_on": 1,
+			"column_offset": 0,
+			"row_offset": 0,
+			"spi_mode": 0,
+			"registers": [
+				"0x11, 0,",
+				"kDelayMS, 120,",
+				"0x36, 1, 0x48,",
+				"0x3A, 1, 0x05,",
+				"0xF0, 1, 0xC3,",
+				"0xF0, 1, 0x96,",
+				"0xB4, 1, 0x01,",
+				"0xB7, 1, 0xC6,",
+				"0xC0, 2, 0x80, 0x45,",
+				"0xC1, 1, 0x13,",
+				"0xC2, 1, 0xA7,",
+				"0xC5, 1, 0x0A,",
+				"0xE8, 8, 0x40, 0x8A, 0x00, 0x00, 0x29, 0x19, 0xA5, 0x33,",
+				"0xE0, 14, 0xD0, 0x08, 0x0F, 0x06, 0x06, 0x33, 0x30, 0x33, 0x47, 0x17, 0x13, 0x13, 0x2B, 0x31,",
+				"0xE1, 14, 0xD0, 0x0A, 0x11, 0x0B, 0x09, 0x07, 0x2F, 0x33, 0x47, 0x38, 0x15, 0x16, 0x2C, 0x32,",
+				"0xF0, 1, 0x3C,",
+				"0xF0, 1, 0x69,",
+				"kDelayMS, 120,",
+				"0x21, 0,",
+				"0x29, 0,",
+                 "0x2A, 4, 0x00, 0x00, 0x00, 0xEF,",
+                 "0x2B, 4, 0x00, 0x00, 0x01, 0x3F,",
+				"0x2C, 0,",
+
+				"kDelayMS, 0,"
+			]
+		}
+	}
+}
