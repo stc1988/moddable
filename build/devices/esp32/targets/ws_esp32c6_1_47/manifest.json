@@ -1,0 +1,58 @@
+{
+	"include": [
+		"$(MODULES)/io/manifest.json",
+		"$(MODULES)/drivers/button/manifest.json",
+		"$(MODULES)/drivers/neopixel/manifest.json",
+		"$(MODULES)/drivers/st7789/manifest.json"
+	],
+	"build":{
+		"ESP32_SUBCLASS": "esp32c6",
+		"USE_USB": "2",
+		"PROGRAMMING_MODE_MESSAGE": "INSTRUCTIONS: Hold the BOOT button and press then release the RST button.",
+		"BEFORE_DEBUGGING_MESSAGE": "Press and release the RST button.",
+		"ESP32_USB_SERIAL_JTAG": "y"
+	},
+	"modules": {
+		"setup/target": "./setup-target"
+	},
+	"preload": [
+		"setup/target",
+		"neopixel"
+	],
+	"config": {
+		"screen": "st7789",
+		"backlight": 22,
+			"brightness": 50,
+		"led": {
+			"pin": 8,
+			"rainbow": true,
+			"brightness": 32
+		}
+	},
+	"defines": {
+		"i2c": {
+			"sda_pin": 2,
+			"scl_pin": 3
+		},
+		"spi": {
+			"miso_pin":5,
+			"mosi_pin":6,
+			"sck_pin": 7
+		},
+		"ili9341": {
+			"width": 172,
+			"height": 320,
+			"hz": 40000000,
+			"cs_pin": 14,
+			"dc_pin": 15,
+			"rst_pin": 21,
+			"spi_port": "SPI2_HOST",
+			"row_offset": 0,
+			"column_offset": 34,
+			"backlight": 22,
+			"backlight_on": 1,
+			"spi_mode": "0"
+		}
+	}
+}
+
