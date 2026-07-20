@@ -1,0 +1,37 @@
+{
+	"build": {
+		"ESP32_SUBCLASS": "esp32c3",
+		"USE_USB": "2",
+		"SDKCONFIGPATH": "./sdkconfig",
+		"PROGRAMMING_MODE_MESSAGE": "INSTRUCTIONS: Hold the BOOT button and press then release the RST button.",
+		"BEFORE_DEBUGGING_MESSAGE": "Press and release the RST button."
+	},
+	"include": [
+		"$(MODDABLE)/modules/io/manifest.json",
+		"$(MODDABLE)/modules/drivers/gc9a01/manifest.json",
+		"$(MODULES)/drivers/sensors/cst816/manifest.json"
+	],
+	"modules": {
+		"setup/target": "./setup-target"
+	},
+	"preload": [
+		"setup/target"
+	],
+	"config": {
+		"screen": "gc9a01"
+	},
+	"defines": {
+		"spi": {
+			"mosi_pin": 7,
+			"sck_pin": 6
+		},
+		"ili9341": {
+			"cs_pin": 10,
+			"dc_pin": 2,
+			"spi_port": 1,
+			"backlight_pin": 3,
+			"backlight_on": 1,
+			"flipx": true
+		}
+	}
+}
