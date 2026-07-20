@@ -28,7 +28,7 @@ import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 import Touch from "embedded:sensor/Touch/CST328";
 import RTC from "embedded:RTC/PCF85063";
-import IMU from "embedded:sensor/Accelerometer-Gyroscope/QMI8658";
+import QMI8658 from "embedded:sensor/Accelerometer-Gyroscope/QMI8658";
 
 class Backlight {
 	#io;
@@ -123,9 +123,9 @@ const device = {
 				return result;
 			}
 		},
-		IMU: class {
+		IMU: class extends QMI8658 {
 			constructor(options) {
-				return new IMU({
+				super({
 					...options,
 					sensor: {
 						...device.I2C.default,
@@ -133,6 +133,22 @@ const device = {
 						io: device.io.SMBus
 					}
 				});
+			}
+			sample() {
+				const sample = super.sample();
+				return {
+					thermometer: sample.thermometer,
+					accelerometer: {
+						x: sample.accelerometer.y * -1,
+						y: sample.accelerometer.x * -1,
+						z: sample.accelerometer.z
+					},
+					gyroscope: {
+						x: sample.gyroscope.y * -1,
+						y: sample.gyroscope.x * -1,
+						z: sample.gyroscope.z
+					}
+				}
 			}
 		}
 	}
