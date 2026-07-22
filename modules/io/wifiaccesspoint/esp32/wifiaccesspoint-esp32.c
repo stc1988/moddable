@@ -220,7 +220,7 @@ void xs_wifiaccesspoint(xsMachine *the)
 		config.ap.authmode = mode;
 	}
 
-	config.ap.channel = 1;
+	config.ap.channel = 0;
 	if (xsmcGet(xsVar(0), xsArg(0), xsID_channel)) {
 		int channel = xsmcToInteger(xsVar(0));
 		if ((channel < 1) || (channel > 13))
