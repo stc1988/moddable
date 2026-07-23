@@ -1891,9 +1891,10 @@ void fx_TypedArray_prototype_copyWithin(txMachine* the)
 		txInteger offset = view->value.dataView.offset;
 		if (fxIsDataViewOutOfBound(the, view, buffer))
 			mxTypeError("out of bound buffer");
+		txInteger size = fxCheckDataViewSize(the, view, buffer, XS_MUTABLE) & ~(delta - 1);
 		target = offset + (target * delta);
 		start = offset + (start * delta);
-		end = offset + fxCheckDataViewSize(the, view, buffer, XS_MUTABLE);
+		end = offset + size;
 		count = count * delta;
 		if (count > end - target)
 			count = end - target;
@@ -1944,16 +1945,19 @@ void fx_TypedArray_prototype_fill(txMachine* the)
 	txInteger delta = dispatch->value.typedArray.dispatch->size;
 	txInteger start = fxArgToIndexInteger(the, 1, 0, length);
 	txInteger end = fxArgToIndexInteger(the, 2, length, length);
+	txInteger offset = view->value.dataView.offset;
 	start *= delta;
 	end *= delta;
-	start += view->value.dataView.offset;
-	end += view->value.dataView.offset;
+	start += offset;
+	end += offset;
 	if (mxArgc > 0)
 		mxPushSlot(mxArgv(0));
 	else
 		mxPushUndefined();
 	(*dispatch->value.typedArray.dispatch->coerce)(the, the->stack);
-	fxCheckDataViewSize(the, view, buffer, XS_MUTABLE);
+	txInteger size = fxCheckDataViewSize(the, view, buffer, XS_MUTABLE) & ~(delta - 1);
+	if (end > offset + size)
+		end = offset + size;
 	while (start < end) {
 		(*dispatch->value.typedArray.dispatch->setter)(the, buffer->value.reference->next, start, the->stack, EndianNative);
 		start += delta;
@@ -2345,6 +2349,7 @@ void fx_TypedArray_prototype_set(txMachine* the)
 	txSlot* source = fxArgToInstance(the, 0);
 	txInteger target = fxArgToByteLength(the, 1, 0);
 	txInteger offset = view->value.dataView.offset + (target * delta);	
+	length = fxCheckDataViewSize(the, view, buffer, XS_MUTABLE) >> dispatch->value.typedArray.dispatch->shift;
 	if (source->next && (source->next->kind == XS_TYPED_ARRAY_KIND)) {
 		txSlot* sourceDispatch = source->next;
 		txSlot* sourceView = sourceDispatch->next;
