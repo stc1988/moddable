@@ -1,4 +1,5 @@
-/* * Copyright (c) 2019-2026  Moddable Tech, Inc.
+/*
+ * Copyright (c) 2019-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -71,8 +72,8 @@ typedef struct PWMRecord *PWM;
 #define LOW_RES	8
 #define HI_RES	14
 
-#if (ESP32 == 1) || (ESP32 == 2) || (ESP32 == 5) || (ESP32 == 6)
-	// esp32, esp32s2, esp32c6, esp32h2
+#if (ESP32 == 1) || (ESP32 == 2) || (ESP32 == 5) || (ESP32 == 6) || (ESP32 == 7) || (ESP32 == 8)
+	// esp32, esp32s2, esp32c6, esp32h2, esp32p4, esp32c5
 	static uint8_t MIN_HZ[HI_RES - LOW_RES + 1] = { 65, 33, 17, 9, 5, 3, 2 };
 #elif (ESP32 == 4)
 	// esp32c3

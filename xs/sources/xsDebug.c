@@ -3047,7 +3047,7 @@ void fxVReportWarning(void* console, txString thePath, txInteger theLine, txStri
 }
 
 #ifdef mxInstrument	
-#if kCPUESP32C6 || kCPUESP32H2
+#if kCPUESP32C6 || kCPUESP32H2 || kCPUESP32P4 || kCPUESP32C5
 #define ICACHE_XS6STRING_ATTR
 #endif
 #define xsInstrumentCount 12

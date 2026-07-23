@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2025  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -71,6 +71,14 @@
 	#define USE_UART	UART_NUM_0
 	#define USE_UART_TX	24
 	#define USE_UART_RX	23
+#elif ESP32 == 7		// esp32p4
+	#define USE_UART	UART_NUM_0
+	#define USE_UART_TX	37
+	#define USE_UART_RX	38
+#elif ESP32 == 8		// esp32c5
+	#define USE_UART	UART_NUM_0
+	#define USE_UART_TX	11
+	#define USE_UART_RX	12
 #endif
 
 

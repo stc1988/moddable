@@ -123,8 +123,10 @@ void xs_spi_constructor(xsMachine *the)
 	tmp = builtinGetSignedInteger(the, &xsVar(0));
 #if kCPUESP32C6 || kCPUESP32C3 || kCPUESP32H2
 	if ((SPI1_HOST != tmp) && (SPI2_HOST != tmp))
-#elif kCPUESP32S3
+#elif kCPUESP32S3 || kCPUESP32P4
 	if ((SPI1_HOST != tmp) && (SPI2_HOST != tmp) && (SPI3_HOST != tmp))
+#elif kCPUESP32C5
+	if (SPI2_HOST != tmp)
 #else
 	if ((SPI1_HOST != tmp) && (SPI2_HOST != tmp)
 #if !defined( kCPUESP32S2 )

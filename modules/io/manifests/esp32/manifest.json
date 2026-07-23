@@ -15,7 +15,8 @@
 	],
 	"modules": {
 		"*": [
-			"$(IO)/common/builtinCommon"
+			"$(IO)/common/builtinCommon",
+			"$(MODULES)/pins/digital/esp32/modGPIO"
 		],
 		"commodetto/Bitmap": "$(COMMODETTO)/commodettoBitmap",
 

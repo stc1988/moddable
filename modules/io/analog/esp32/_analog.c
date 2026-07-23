@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2025 Moddable Tech, Inc.
+ * Copyright (c) 2019-2026 Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -132,33 +132,42 @@ typedef struct AnalogRecord *Analog;
 		20
 	};
 
-#else
+#elif kCPUESP32P4
 	#define ADC_PORTS		(2)
 	#define ADC_RESOLUTION (12)
 	#define ADC_WIDTH 		ADC_BITWIDTH_12
 
 	static const uint8_t gADCMap[SOC_ADC_CHANNEL_NUM(0)] = {		// ADC1 channel to GPIO
-		36,
-		37,
-		38,
-		39,
-		32,
-		33,
-		34,
-		35
+		16,
+		17,
+		18,
+		19,
+		20,
+		21,
+		22,
+		23
 	};
 
 	static const uint8_t gADC2Map[SOC_ADC_CHANNEL_NUM(1)] = {		// ADC2 channel to GPIO
-		4,
-		0,
+		49,
+		50,
+		51,
+		52,
+		53,
+		54
+	};
+#elif kCPUESP32C5
+	#define ADC_PORTS		(1)
+	#define ADC_RESOLUTION (12)
+	#define ADC_WIDTH 		ADC_BITWIDTH_12
+
+	static const uint8_t gADCMap[SOC_ADC_CHANNEL_NUM(0)] = {		// ADC1 channel to GPIO
+		1,
 		2,
-		15,
-		13,
-		12,
-		14,
-		27,
-		25,
-		26
+		3,
+		4,
+		5,
+		6
 	};
 #endif
 

@@ -44,38 +44,59 @@ PROGRAMMING_PID ?= 1001
 ESP32_SUBCLASS ?= esp32
 # $(warning ESP32_SUBCLASS $(ESP32_SUBCLASS))
 
-ESP_ARCH = xtensa
-GXX_PREFIX = xtensa-$(ESP32_SUBCLASS)
 ESP32_BT_SUBCLASS = $(ESP32_SUBCLASS)
 
-ifeq ("$(ESP32_SUBCLASS)","esp32h2")
-	ESP32_TARGET = 6
+ifeq ("$(ESP32_SUBCLASS)","esp32c5")
+	ESP32_TARGET = 8
 	ESP_ARCH = riscv
 	GXX_PREFIX = riscv32-esp
-	MACHINE_FLAGS = -march=rv32imac
+	MACHINE_FLAGS = -mabi=ilp32 -march=rv32imac_zicsr_zifencei
 else
-	ifeq ("$(ESP32_SUBCLASS)","esp32c6")
-		ESP32_TARGET = 5
+	ifeq ("$(ESP32_SUBCLASS)","esp32p4")
+		ESP32_TARGET = 7
 		ESP_ARCH = riscv
 		GXX_PREFIX = riscv32-esp
-		MACHINE_FLAGS = -march=rv32imac
+		MACHINE_FLAGS = -mabi=ilp32f -march=rv32imafc_zicsr_zifencei_zaamo_zalrsc_xesploop_xespv2p1 -mtune=esp-base -specs=picolibc.specs
 	else
-		ifeq ("$(ESP32_SUBCLASS)","esp32c3")
-			ESP32_TARGET = 4
+		ifeq ("$(ESP32_SUBCLASS)","esp32h2")
+			ESP32_TARGET = 6
 			ESP_ARCH = riscv
 			GXX_PREFIX = riscv32-esp
-			MACHINE_FLAGS = -march=rv32imc
+			MACHINE_FLAGS = -march=rv32imac
 		else
-			ifeq ("$(ESP32_SUBCLASS)","esp32s3")
-				ESP32_BT_SUBCLASS = esp32
-				ESP32_TARGET = 3
+			ifeq ("$(ESP32_SUBCLASS)","esp32c6")
+				ESP32_TARGET = 5
+				ESP_ARCH = riscv
+				GXX_PREFIX = riscv32-esp
+				MACHINE_FLAGS = -march=rv32imac
 			else
-				ifeq ("$(ESP32_SUBCLASS)","esp32s2")
-					# esp32s2 doesn't support BlueTooth
-					ESP32_TARGET = 2
+				ifeq ("$(ESP32_SUBCLASS)","esp32c3")
+				ESP32_TARGET = 4
+					ESP_ARCH = riscv
+					GXX_PREFIX = riscv32-esp
+					MACHINE_FLAGS = -march=rv32imc
 				else
-					# basic esp32 doesn't support USB
-					ESP32_TARGET = 1
+					ifeq ("$(ESP32_SUBCLASS)","esp32s3")
+						ESP32_TARGET = 3
+						ESP32_BT_SUBCLASS = esp32
+						ESP_ARCH = xtensa
+						MACHINE_FLAGS = -march=xtensa --machine-fix-esp32-psram-cache-issue --machine-fix-esp32-psram-cache-strategy=memw
+						GXX_PREFIX = xtensa-$(ESP32_SUBCLASS)
+					else
+						ifeq ("$(ESP32_SUBCLASS)","esp32s2")
+							# esp32s2 doesn't support BlueTooth
+							ESP32_TARGET = 2
+							ESP_ARCH = xtensa
+							MACHINE_FLAGS = -march=xtensa
+							GXX_PREFIX = xtensa-$(ESP32_SUBCLASS)
+						else
+							# basic esp32 doesn't support USB
+							ESP32_TARGET = 1
+							ESP_ARCH = xtensa
+							MACHINE_FLAGS = -march=xtensa
+							GXX_PREFIX = xtensa-$(ESP32_SUBCLASS)
+						endif
+					endif
 				endif
 			endif
 		endif
@@ -270,6 +291,11 @@ INC_DIRS = \
 	$(IDF_PATH)/components/tcpip_adapter \
  	$(IDF_PATH)/components/tinyusb/additions/include
 
+ifeq ("$(ESP32_SUBCLASS)","esp32p4")
+INC_DIRS += \
+	$(IDF_PATH)/components/soc/$(ESP32_SUBCLASS)/register/$(ESP32P4_HWVER)
+endif
+
 # paths for prior idf
 INC_DIRS += \
 	$(IDF_PATH)/components/freertos/port/$(ESP_ARCH)/include \
@@ -392,9 +418,10 @@ C_COMMON_FLAGS ?= -c -Os -g \
 	-DESP_PLATFORM \
 	-MP
 
-ifeq ("$(ESP_ARCH)","riscv")
 C_COMMON_FLAGS +=	\
 	$(MACHINE_FLAGS)
+
+ifeq ("$(ESP_ARCH)","riscv")
 else
 C_COMMON_FLAGS +=	\
  	-mlongcalls \

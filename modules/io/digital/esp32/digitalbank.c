@@ -414,7 +414,7 @@ uint32_t modDigitalBankRead(void *instanceData)
 
 #if kCPUESP32C3
 	return (hw->in.data & digital->pins) ^ digital->activeLow;
-#elif kCPUESP32C6 || kCPUESP32H2
+#elif kCPUESP32C6 || kCPUESP32H2 || kCPUESP32P4 || kCPUESP32C5
 	return (hw->in.val & digital->pins) ^ digital->activeLow;
 #else
 	if (digital->bank)
@@ -433,7 +433,7 @@ void modDigitalBankWrite(void *instanceData, uint32_t value)
 	if (digital->isInput)
 		return;
 
-#if kCPUESP32C3 || kCPUESP32H2
+#if kCPUESP32C3 || kCPUESP32H2 || kCPUESP32P4 || kCPUESP32C5
 	hw->out_w1ts.out_w1ts = value;
 	hw->out_w1tc.out_w1tc = ~value & digital->pins;
 #else

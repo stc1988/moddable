@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2025 Moddable Tech, Inc.
+ * Copyright (c) 2019-2026 Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -24,7 +24,7 @@
 #if ESP32
 	#include "freertos/FreeRTOS.h"
 
-	#if kCPUESP32C3 || kCPUESP32C6 || kCPUESP32H2
+	#if kCPUESP32C3 || kCPUESP32C6 || kCPUESP32H2 || kCPUESP32C5
 		#define kPinBanks (1)
 	#else
 		#define kPinBanks (2)
