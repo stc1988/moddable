@@ -720,11 +720,13 @@ class MQTTClient {
 
 		const onControl = this.#options.onControl;
 		if (onControl) {
+			const operation = msg.operation;
+			delete msg.operation;
 			delete msg.length;
 			delete msg.flags;
 			delete msg.state;
 			delete msg.remaining;
-			onControl.call(this, msg);
+			onControl.call(this, operation, msg);
 		}
 
 		if ((MQTTClient.CONNACK === operation) && (this.#writable > Overhead))

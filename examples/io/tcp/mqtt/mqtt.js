@@ -105,8 +105,8 @@ export class Client {
 			...config,
 			host: url.hostname, port,
 			keepAlive, id, user, password, will,
-			onControl: (msg) => {
-				if (msg.operation == device.network.mqtt.io.CONNACK) {
+			onControl: (operation, msg) => {
+				if (operation == device.network.mqtt.io.CONNACK) {
 					this.#state = CONNECTED;
 					this.#wait = true;
 					this.#acks.forEach(ack => {
@@ -119,8 +119,9 @@ export class Client {
 				else {
 					let acks = this.#acks;
 					this.#acks = [];
+					msg.operation = operation;
 					acks = acks.filter(ack => {
-						if ((ack.operation == msg.operation) && (ack.id == msg.id)) {
+						if ((ack.operation == operation) && (ack.id == msg.id)) {
 							if (ack.operation == device.network.mqtt.io.PUBREC) {
 								ack.operation = device.network.mqtt.io.PUBCOMP;
 								delete ack.data;
