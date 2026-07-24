@@ -93,9 +93,9 @@ class Serializer {
 						}
 					}
 					else {
-						for (const [property, value] in data) {
+						for (const [property, value] of data) {
 							if (undefined === value) continue;
-							d += property.length + 1 + ArrayBuffer.fromString(value.toString()).byteLength + 1;
+							d += 1 + ArrayBuffer.fromString(property + "=").byteLength + txtValue(value).byteLength;
 						}
 					}
 					if (d) {
@@ -113,13 +113,16 @@ class Serializer {
 							}
 						}
 						else {
-							for (let [property, value] in data) {
+							for (let [property, value] of data) {
 								if (undefined === value) continue;
-								value = ArrayBuffer.fromString(property + "=" + value.toString());
-								binary[offset] = value.byteLength;
+								const key = new Uint8Array(ArrayBuffer.fromString(property + "="));
+								const bytes = txtValue(value);
+								binary[offset] = key.byteLength + bytes.byteLength;
 								offset += 1;
-								binary.set(new Uint8Array(value), offset);
-								offset += value.byteLength;
+								binary.set(key, offset);
+								offset += key.byteLength;
+								binary.set(bytes, offset);
+								offset += bytes.byteLength;
 							}
 						}
 						data = binary;
@@ -252,6 +255,16 @@ class Serializer {
 		delete this.state;
 		return result.buffer;
 	}
+}
+
+function txtValue(value) {
+	if ("string" === typeof value)
+		return new Uint8Array(ArrayBuffer.fromString(value));
+	if (value instanceof ArrayBuffer)
+		return new Uint8Array(value);
+	if (!ArrayBuffer.isView(value) || (value.BYTES_PER_ELEMENT > 1))
+		throw new TypeError("invalid TXT value");
+	return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
 }
 
 export default Serializer;
