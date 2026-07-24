@@ -80,20 +80,20 @@ else
 						ESP32_TARGET = 3
 						ESP32_BT_SUBCLASS = esp32
 						ESP_ARCH = xtensa
-						MACHINE_FLAGS = -march=xtensa --machine-fix-esp32-psram-cache-issue --machine-fix-esp32-psram-cache-strategy=memw
+						MACHINE_FLAGS = --machine-fix-esp32-psram-cache-issue --machine-fix-esp32-psram-cache-strategy=memw
 						GXX_PREFIX = xtensa-$(ESP32_SUBCLASS)
 					else
 						ifeq ("$(ESP32_SUBCLASS)","esp32s2")
 							# esp32s2 doesn't support BlueTooth
 							ESP32_TARGET = 2
 							ESP_ARCH = xtensa
-							MACHINE_FLAGS = -march=xtensa
+							MACHINE_FLAGS = 
 							GXX_PREFIX = xtensa-$(ESP32_SUBCLASS)
 						else
 							# basic esp32 doesn't support USB
 							ESP32_TARGET = 1
 							ESP_ARCH = xtensa
-							MACHINE_FLAGS = -march=xtensa
+							MACHINE_FLAGS =
 							GXX_PREFIX = xtensa-$(ESP32_SUBCLASS)
 						endif
 					endif
