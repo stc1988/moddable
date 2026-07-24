@@ -49,6 +49,15 @@ class DebugMachine extends Machine {
 	exceptionsMode = 'off';
 	breakOnStart = false;
 
+	// Timestamps on device traces: 'off', 'time', 'delta', 'elapsed', 'iso', 'epoch'
+	timestamps = 'off';
+
+	// Reference points for 'delta' and 'elapsed' (host arrival times, in ms). Shared by every
+	// thread: traces from all threads interleave in one console, so the timeline must be one
+	// timeline — a per-thread delta would hide the time for events to travel between threads.
+	static sessionTime = null;
+	static lastLogTime = null;
+
 	// User breakpoints: array of { path, line }
 	breakpoints = [];
 
@@ -301,7 +310,7 @@ class DebugMachine extends Machine {
 
 		if (cmd === 'set') {
 			if (argCount === 2) {
-				const subcmds = ['exceptions', 'output', 'mcsim', 'start'];
+				const subcmds = ['exceptions', 'output', 'mcsim', 'start', 'timestamps'];
 				const hits = subcmds.filter(c => c.startsWith(prefix));
 				return [hits.map(h => `${cmd} ${h}`), line];
 			}
@@ -309,6 +318,7 @@ class DebugMachine extends Machine {
 				let options = [];
 				if (args[1] === 'exceptions') options = ['on', 'off', 'silent'];
 				else if (args[1] === 'output') options = ['json', 'text'];
+				else if (args[1] === 'timestamps') options = ['on', 'off', 'time', 'delta', 'elapsed', 'iso', 'epoch'];
 				else if (args[1] === 'mcsim' || args[1] === 'start') options = ['on', 'off'];
 				
 				const hits = options.filter(c => c.startsWith(prefix));
@@ -389,18 +399,56 @@ class DebugMachine extends Machine {
 		}
 	}
 
-	print(text, path, line, eventType = 'print') {
+	print(text, path, line, eventType = 'print', time) {
 		const payload = { text };
 		if (path !== undefined && path !== null) payload.path = path;
 		if (line !== undefined && line !== null) payload.line = parseInt(line);
+		// Only traces from the device are timestamped. The time is when the host received
+		// the trace, so it trails the moment the device emitted it by the transport latency.
+		let stamp = '';
+		if (eventType === 'log') {
+			payload.time = time ?? Date.now();
+			stamp = this.formatTimestamp(payload.time);
+		}
 		this.report(eventType, payload, undefined, (data) => {
 			this.clearLine();
 			let out = data.text;
 			if (data.path) out = `${data.path} (${data.line}) ${out}`;
 			if (this.id !== undefined) out = `[Thread ${this.id}] ${out}`;
+			if (stamp) out = `${stamp} ${out}`;
 			console.log(out);
 			this.showPrompt();
 		});
+	}
+
+	// Returns the display prefix for a trace received at `time` (empty when timestamps are off).
+	// Always advances the reference points, so switching modes mid-session gives a sane first value.
+	formatTimestamp(time) {
+		const previous = DebugMachine.lastLogTime;
+		DebugMachine.lastLogTime = time;
+		DebugMachine.sessionTime ??= time;
+
+		switch (this.timestamps) {
+			case 'time': {
+				const d = new Date(time);
+				const pad = (value, count = 2) => String(value).padStart(count, '0');
+				return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
+			}
+			case 'iso':
+				return new Date(time).toISOString();
+			case 'epoch':
+				return String(time);
+			case 'delta':
+				return this.formatSeconds((previous === null) ? 0 : time - previous);
+			case 'elapsed':
+				return this.formatSeconds(time - DebugMachine.sessionTime);
+			default:
+				return '';
+		}
+	}
+
+	formatSeconds(ms) {
+		return `+${(ms / 1000).toFixed(3)}`.padStart(8);
 	}
 
 	commandError(message) {
@@ -432,6 +480,7 @@ class DebugMachine extends Machine {
 		this.tag = tag;
 		this.title = title;
 		this.connected = true;
+		DebugMachine.sessionTime ??= Date.now();		// first connection anchors "set timestamps elapsed"
 		this.interactive = (title !== "mcsim");
 		this.once = true;
 
@@ -600,6 +649,8 @@ class DebugMachine extends Machine {
 
 	onLogged(path, line, data) {
 		this.log += data;
+		// Stamp when the first fragment arrives: a trace may be delivered in several pieces.
+		this.logTime ??= Date.now();
 		if (!this.logPath && path) {
 			this.logPath = path;
 			this.logLine = line;
@@ -640,15 +691,16 @@ class DebugMachine extends Machine {
 				if (this.exceptionsMode !== 'silent') {
 					// Show exception with file/line like xsbug does
 					const msg = this.log.slice(0, this.log.length - 1);
-					this.print(msg, this.logPath, this.logLine, 'log');
+					this.print(msg, this.logPath, this.logLine, 'log', this.logTime);
 				}
 			}
 			else {
-				this.print(this.log.slice(0, this.log.length - 1), this.logPath, this.logLine, 'log');
+				this.print(this.log.slice(0, this.log.length - 1), this.logPath, this.logLine, 'log', this.logTime);
 			}
 			this.log = "";
 			this.logPath = null;
 			this.logLine = null;
+			this.logTime = null;
 		}
 	}
 
@@ -2517,8 +2569,13 @@ class DebugMachine extends Machine {
 				this.print(`Break on start: ${this.breakOnStart ? 'on' : 'off'}`);
 				this.showPrompt();
 				break;
+			case 'timestamps':
+			case 'timestamp':
+				this.print(`Trace timestamps: ${this.timestamps}`);
+				this.showPrompt();
+				break;
 			default:
-				this.commandError('Syntax: info breakpoints | locals | globals | modules[.name.path] | exceptions');
+				this.commandError('Syntax: info breakpoints | locals | globals | modules[.name.path] | exceptions | start | timestamps');
 				break;
 		}
 	}
@@ -2777,6 +2834,21 @@ class DebugMachine extends Machine {
 				this.commandError('Syntax: set exceptions on|off|silent');
 			}
 		}
+		else if (args[0] === 'timestamps' || args[0] === 'timestamp') {
+			const value = (args[1] === 'on') ? 'time' : args[1];
+			if (['off', 'time', 'delta', 'elapsed', 'iso', 'epoch'].includes(value)) {
+				this.timestamps = value;
+				if (value !== 'off')
+					DebugMachine.sessionTime ??= Date.now();
+				this.report('set', { timestamps: value }, undefined, () => {
+					console.log(`Trace timestamps: ${value}`);
+					this.showPrompt();
+				});
+			}
+			else {
+				this.commandError('Syntax: set timestamps on|off|time|delta|elapsed|iso|epoch');
+			}
+		}
 		else if (args[0] === 'start') {
 			const value = args[1];
 			if (value === 'on') {
@@ -2800,7 +2872,7 @@ class DebugMachine extends Machine {
 			}
 		}
 		else {
-			this.commandError('Syntax: set output [json|text] | set exceptions on|off|silent | set start on|off | set mcsim on|off');
+			this.commandError('Syntax: set output [json|text] | set exceptions on|off|silent | set start on|off | set mcsim on|off | set timestamps on|off|time|delta|elapsed|iso|epoch');
 		}
 	}
 
@@ -2855,6 +2927,8 @@ class DebugMachine extends Machine {
 						{ keys: "info exceptions", desc: "Show break-on-exceptions setting" },
 						{ keys: "set start on|off", desc: "Toggle break-on-start" },
 						{ keys: "info start", desc: "Show break-on-start setting" },
+						{ keys: "set timestamps <mode>", desc: "Timestamp device traces (off|on|time|delta|elapsed|iso|epoch)" },
+						{ keys: "info timestamps", desc: "Show trace timestamp setting" },
 						{ keys: "set output json|text", desc: "Switch output format to JSON or text" },
 						{ keys: "set mcsim on|off", desc: "Show/hide mcsim thread (hidden by default)" }
 					]

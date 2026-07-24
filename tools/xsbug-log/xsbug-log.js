@@ -100,6 +100,7 @@ const xsdbRouter = {
 				if (data.outputFormat !== undefined) this.globalOutputFormat = data.outputFormat;
 				if (data.exceptionsMode !== undefined) this.globalExceptionsMode = data.exceptionsMode;
 				if (data.breakOnStart !== undefined) this.globalBreakOnStart = data.breakOnStart;
+				if (data.timestamps !== undefined) this.globalTimestamps = data.timestamps;
 				if (Array.isArray(data.breakpoints)) this.globalBreakpoints = data.breakpoints;
 				if (data.breakpointIdCounter !== undefined) this.globalBreakpointIdCounter = data.breakpointIdCounter;
 			}
@@ -107,6 +108,7 @@ const xsdbRouter = {
 		this.globalBreakOnStart = this.globalBreakOnStart ?? false;
 		this.globalExceptionsMode = this.globalExceptionsMode ?? 'off';
 		this.globalOutputFormat = this.globalOutputFormat ?? 'text';
+		this.globalTimestamps = this.globalTimestamps ?? 'off';
 		this.globalBreakpoints = this.globalBreakpoints ?? [];
 		if (this.globalBreakpointIdCounter === undefined) {
 			this.globalBreakpointIdCounter = 0;
@@ -128,6 +130,7 @@ const xsdbRouter = {
 					outputFormat: this.globalOutputFormat,
 					exceptionsMode: this.globalExceptionsMode,
 					breakOnStart: this.globalBreakOnStart,
+					timestamps: this.globalTimestamps,
 					breakpoints: this.globalBreakpoints,
 					breakpointIdCounter: this.globalBreakpointIdCounter
 				}));
@@ -390,6 +393,7 @@ const xsdbRouter = {
 		m.outputFormat = this.globalOutputFormat;
 		m.exceptionsMode = this.globalExceptionsMode;
 		m.breakOnStart = this.globalBreakOnStart;
+		m.timestamps = this.globalTimestamps;
 		const originalCmdSet = m.cmdSet.bind(m);
 		m.cmdSet = (args) => {
 			originalCmdSet(args);
@@ -397,12 +401,14 @@ const xsdbRouter = {
 			if (args[0] === 'output') { this.globalOutputFormat = m.outputFormat; save = true; }
 			if (args[0] === 'exceptions') { this.globalExceptionsMode = m.exceptionsMode; save = true; }
 			if (args[0] === 'start') { this.globalBreakOnStart = m.breakOnStart; save = true; }
+			if (args[0] === 'timestamps' || args[0] === 'timestamp') { this.globalTimestamps = m.timestamps; save = true; }
 			if (save) {
 				this.machines.forEach(mach => {
 					if (mach && mach !== m) {
 						mach.outputFormat = this.globalOutputFormat;
 						mach.exceptionsMode = this.globalExceptionsMode;
 						mach.breakOnStart = this.globalBreakOnStart;
+						mach.timestamps = this.globalTimestamps;
 					}
 				});
 				this.savePrefs();
