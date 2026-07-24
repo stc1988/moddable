@@ -21,7 +21,7 @@
 /*
 	To do:
 		Proper TTL on Answer
-		Refresh / expire monitored records
+		Refresh monitored records before expire
 		unicast reponse only to addresses on same subnet
 */
 
@@ -154,8 +154,14 @@ class DNSSD {
 				if (callback < 0) throw new Error("callback not found");
 				this.monitors[service].callbacks.splice(callback, 1);
 				if (0 === this.monitors[service].callbacks.length) {
-					this.monitors[service].close = true;
+					this.monitors[service].closed = true;
 					Timer.clear(this.monitors[service].timer);
+					this.monitors[service].forEach(instance => {
+						Timer.clear(instance.expire);
+						delete instance.expire;
+						Timer.clear(instance.poof);
+						delete instance.poof;
+					});
 					this.monitors.splice(service, 1);
 				}
 			}
@@ -265,7 +271,7 @@ class DNSSD {
 					instance.changed = changed = true;
 				}
 			}
-			instance.ttl = record.ttl;
+			this.updateTTL(monitor, instance, record.ttl, record.qtype);
 		});
 
 		records.forEach(record => {
@@ -281,7 +287,7 @@ class DNSSD {
 				monitor.push(instance);
 				instance.changed = changed = true;
 			}
-			instance.ttl = record.ttl
+			this.updateTTL(monitor, instance, record.ttl, record.qtype);
 		});
 
 		records.forEach(record => {
@@ -299,8 +305,10 @@ class DNSSD {
 			name = name.join(".").toLowerCase();
 			this.monitors.forEach(monitor => {
 				monitor.forEach(instance => {
-					if (instance.target?.toLowerCase() === name)
+					if (instance.target?.toLowerCase() === name) {
 						instance.address = record.rdata;
+						this.updateTTL(monitor, instance, record.ttl, record.qtype);
+					}
 				});
 			});
 		});
@@ -317,6 +325,7 @@ class DNSSD {
 					continue;
 				delete instance.changed;
 				if (instance.name && instance.txt && instance.target && instance.address) {
+					instance.reported = true;
 					const callbacks = Array.from(monitor.callbacks);
 					for (let k = 0; k < callbacks.length; k++) {
 						const callback = callbacks[k];
@@ -345,6 +354,123 @@ class DNSSD {
 			}
 		}
 	}
+	updateTTL(monitor, instance, ttl, qtype) {
+		const reach = (DNS.RR.SRV === qtype) || (DNS.RR.A === qtype);
+		const goodbye = 0 === ttl;
+		instance.ttl = ttl;
+
+		delete instance.misses;
+		Timer.clear(instance.poof);
+		delete instance.poof;
+
+		if (goodbye)
+			ttl = 1000;
+		else if (reach || !instance.target)
+			ttl *= 1000;
+		else
+			return;
+
+		instance.expire ??= Timer.set(() => this.expireInstance(monitor, instance), ttl);
+		Timer.schedule(instance.expire, ttl);
+	}
+	expireInstance(monitor, instance) {
+		Timer.clear(instance.expire);
+		delete instance.expire;
+		Timer.clear(instance.poof);
+		delete instance.poof;
+
+		const index = monitor.indexOf(instance);
+		if (index >= 0)
+			monitor.splice(index, 1);
+
+		if (!instance.reported || monitor.closed) {
+			// trace(`dnssd: "${instance.name}" removed (never reported)\n`);
+			return;
+		}
+
+		// trace(`dnssd: "${instance.name}" lost — onLost\n`);
+		instance.lost = true;
+		const service = monitor.service.slice(0, -6);
+		const callbacks = Array.from(monitor.callbacks);
+		for (let k = 0; k < callbacks.length; k++) {
+			const callback = callbacks[k];
+			if (monitor.callbacks.indexOf(callback) >= 0) {
+				try {
+					callback.call(this, service, instance);
+				}
+				catch {
+					/* this space intentionally left blank */
+				}
+			}
+		}
+	}
+	poof(packet) {	// RFC 6762 10.5 Passive Observation Of Failures
+		for (let i = 0; i < packet.questions; i++) {
+			const question = packet.question(i);
+			if (question.qclass & DNSSD.UNICAST)
+				continue;
+
+			const qtype = question.qtype;
+			const qname = question.qname.join(".").toLowerCase();
+
+			this.monitors.forEach(monitor => {
+				const browse = ((DNS.RR.PTR === qtype) || (DNS.RR.ANY === qtype)) && (qname === monitor.service.toLowerCase());
+
+				monitor.forEach(instance => {
+					if (!instance.reported)
+						return;
+
+					let match = browse;
+					if (!match && ((DNS.RR.SRV === qtype) || (DNS.RR.TXT === qtype) || (DNS.RR.ANY === qtype)))
+						match = qname === (instance.name + "." + monitor.service).toLowerCase();
+					if (!match && instance.target && ((DNS.RR.A === qtype) || (DNS.RR.AAAA === qtype) || (DNS.RR.ANY === qtype)))
+						match = qname === instance.target.toLowerCase();
+					if (!match)
+						return;
+
+					if (instance.poof)
+						return;
+					if (this.poofKnown(packet, monitor, instance))
+						return;
+
+					instance.poof = Timer.set(() => {
+						delete instance.poof;
+						instance.misses = (instance.misses ?? 0) + 1;
+						// trace(`dnssd: "${instance.name}" POOF miss ${instance.misses}/2\n`);
+						if (instance.misses >= 2)
+							this.expireInstance(monitor, instance);
+					}, DNSSD.POOF);
+				});
+			});
+		}
+	}
+	poofKnown(packet, monitor, instance) {	// Known-Answer Suppression (7.1)
+		const service = monitor.service.toLowerCase();
+		const iname = (instance.name + "." + monitor.service).toLowerCase();
+		const label = instance.name.toLowerCase();
+		const target = instance.target?.toLowerCase();
+		for (let i = 0; i < packet.answers; i++) {
+			const answer = packet.answer(i);
+			const aname = answer.qname.join(".").toLowerCase();
+			switch (answer.qtype) {
+				case DNS.RR.PTR:
+					if ((aname === service) && Array.isArray(answer.rdata) && answer.rdata[0] && (answer.rdata[0].toLowerCase() === label))
+						return true;
+					break;
+				case DNS.RR.SRV:
+				case DNS.RR.TXT:
+					if (aname === iname)
+						return true;
+					break;
+				case DNS.RR.A:
+				case DNS.RR.AAAA:
+					if (target && (aname === target))
+						return true;
+					break;
+			}
+		}
+		return false;
+	}
 
 	#onPacket(packet, address, port) {
 		packet = new Parser(packet)
@@ -354,6 +480,9 @@ class DNSSD {
 
 		if (packet.answers || packet.additionals)
 			this.scanPacket(packet);
+
+		if (packet.questions)
+			this.poof(packet);		// RFC 6762 10.5
 
 		this.claims.forEach(claim => {
 			if (claim.probing < 0) return;
@@ -365,7 +494,7 @@ class DNSSD {
 				if ((claim.hostLower !== question.qname[0].toLowerCase()) || (2 !== question.qname.length) || (LOCAL !== question.qname[1].toLowerCase()))
 					continue;
 
-				trace(`probe tie-break with ${address}\n`);
+				// trace(`probe tie-break with ${address}\n`);
 				for (let j = 0; j < packet.authorities; j++) {
 					const authority = packet.authority(j);
 					if (DNS.RR.A !== authority.qtype)
@@ -374,15 +503,15 @@ class DNSSD {
 						continue;
 					const rdata = authority.rdata.split(".");
 					const ip = Net.get("IP", address).split(".");
-					trace(`  compare ${rdata} with ${ip}\n`);
+					// trace(`  compare ${rdata} with ${ip}\n`);
 					for (let k = 0; k < 4; k++) {
 						if (parseInt(ip[k]) < parseInt(rdata[k])) {
-							trace(`  we lose\n`);
+							// trace(`  we lose\n`);
 							claim.probing = -1000;	// try again in one second
 							return;
 						}
 					}
-					trace(`  we win\n`);		// we are lexicographically same or later, so can ignore
+					// trace(`  we win\n`);		// we are lexicographically same or later, so can ignore
 				}
 			}
 		});
@@ -552,7 +681,7 @@ class DNSSD {
 	*/
 	probe(claim) {
 		delete claim.initial;
-		trace(`probe for ${claim.host}\n`);
+		// trace(`probe for ${claim.host}\n`);
 		claim.timer = Timer.repeat(id => {
 			if (claim.probing < 0) {
 				claim?.onError();
@@ -561,7 +690,7 @@ class DNSSD {
 			}
 
 			if (4 === claim.probing) {
-				trace(`probe claimed ${claim.host}\n`);
+				// trace(`probe claimed ${claim.host}\n`);
 
 				Timer.clear(id);
 				delete claim.timer;
@@ -572,7 +701,7 @@ class DNSSD {
 				return;
 			}
 
-			trace(`probe ${claim.probing}\n`);
+			// trace(`probe ${claim.probing}\n`);
 			const reply = new Serializer({query: true, opcode: DNS.OPCODE.QUERY, authoritative: true});
 			reply.add(DNS.SECTION.QUESTION, claim.host + "." + LOCAL, DNS.RR.ANY, DNS.CLASS.IN | DNSSD.UNICAST);	// question for DNS.RR.A, unicast response requested
 			reply.add(DNS.SECTION.ANSWER, claim.host + "." + LOCAL, DNS.RR.A, DNS.CLASS.IN | DNSSD.FLUSH, 120, Net.get("IP"));	// authoritative answer for DNS.RR.A
@@ -589,10 +718,7 @@ DNSSD.IP = "224.0.0.251";
 DNSSD.PORT = 5353;
 DNSSD.FLUSH = 0x8000;
 DNSSD.UNICAST = 0x8000;
-
-DNSSD.hostName = 1;
-DNSSD.retry = 2;
-DNSSD.error = -1;
+DNSSD.POOF = 2000;
 
 /*
 function dumpPacket(packet, address)
@@ -674,7 +800,7 @@ class Advertise {
 		list.push(this);
 	}
 	close() {
-		if (!this.#service) return
+		if (!this.#service) return;
 		dnssd.remove(this.#service);
 		this.#service = undefined;
 		this.#list.splice(this.#list.indexOf(this), 1);
@@ -698,36 +824,38 @@ class Discover {
 	#list;
 	#onFound;
 	#onUpdate;
-//@@	#onLost;
-	
+	#onLost;
+
 	constructor(options, list) {
 		this.#onFound = options.onFound;
 		this.#onUpdate = options.onUpdate;
-//@@		this.#onLost = options.onLost;
+		this.#onLost = options.onLost;
 		this.#serviceType = options.serviceType;
 
-		this.#callback = (service, instance) => {
-			const found = {
+		this.#callback = (s /* unused */, instance) => {
+			const service = {
 				name: instance.name,
 				host: instance.target,
 				address: instance.address,
 				port: instance.port
 			};
 			if (instance.txt?.length) {
-				found.txt = new Map;
+				service.txt = new Map;
 				for (let i = 0, txt = instance.txt, length = txt.length; i < length; i++) {
 					const equal = txt[i].indexOf("=");
 					if (equal < 0)
-						found.txt.set(txt[i], undefined);
+						service.txt.set(txt[i], undefined);
 					else
-						found.txt.set(txt[i].slice(0, equal), txt[i].slice(equal + 1));
+						service.txt.set(txt[i].slice(0, equal), txt[i].slice(equal + 1));
 				}
 			}
-			if (instance.found)
-				this.#onUpdate?.(found);
+			if (instance.lost)
+				this.#onLost?.(service);
+			else if (instance.found)
+				this.#onUpdate?.(service);
 			else {
 				instance.found = true;
-				this.#onFound?.(found);
+				this.#onFound?.(service);
 			}
 		};
 		dnssd.monitor(options.serviceType, this.#callback);
