@@ -22,6 +22,7 @@
 /// <reference path="./web/fetch.d.ts" />
 /// <reference path="./web/headers.d.ts" />
 /// <reference path="./web/structuredClone.d.ts" />
+/// <reference path="./web/timers.d.ts" />
 /// <reference path="./web/url.d.ts" />
 /// <reference path="./web/worker.d.ts" />
 /// <reference path="./web/websocket.d.ts" />
@@ -29,7 +30,7 @@
 /// <reference path="./text/decoder.d.ts" />
 /// <reference path="./text/encoder.d.ts" />
 
-import type Timer from "timer";
+export {};
 
 interface Console {
 	log(...log: (string | number | boolean)[]):void;
@@ -37,12 +38,6 @@ interface Console {
 
 declare global {
 	const console: Console;
-	const clearImmediate: (timer: Timer) => void;
-	const clearInterval: (timer: Timer) => void;
-	const clearTimeout: (timer: Timer) => void;
-	const setImmediate: (handler: Function) => Timer;
-	const setInterval: (handler: Function, timeout?: number) => Timer;
-	const setTimeout: (handler: Function, timeout?: number) => Timer;
 
 	const EventSource: typeof import("web/eventsource").default;
 	type EventSource = import("web/eventsource").default;

@@ -88,13 +88,10 @@ globalThis.TextEncoder = TextEncoder;
 `	
 };
 const timerGlobal = {
+	include: "$(MODDABLE)/modules/web/timers/manifest.json",
 	snippet: `
-import Timer from "timer";
-globalThis.clearImmediate = globalThis.clearInterval = globalThis.clearTimeout = function(id) { return Timer.clear(id) };
-globalThis.setImmediate = function(callback) { return Timer.set(callback) };
-globalThis.setInterval = function(callback, delay) { return Timer.repeat(callback, delay) };
-globalThis.setTimeout = function(callback, delay) { return Timer.set(callback, delay) };
-`	
+import "web/timers";
+`
 };
 const urlGlobal = {
 	include: "$(MODDABLE)/modules/data/url/manifest.json",

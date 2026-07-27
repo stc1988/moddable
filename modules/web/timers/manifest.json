@@ -1,0 +1,8 @@
+{
+	"modules": {
+		"web/timers": "./timers"
+	},
+	"preload": [
+		"web/timers"
+	]
+}
