@@ -85,3 +85,125 @@ The decompress example also runs on the simulator:
 mcconfig -d -m
 ```
 
+<a id="websocket"></a>
+## `websocket`
+
+This example exercises the `WebSocketStream` class.
+
+The `WebSocketStream` class implements the 
+[WebSocketStream proposal](https://developer.mozilla.org/en-US/docs/Web/API/WebSocketStream) with the [ECMA-419 WebSocket Client](https://419.ecma-international.org/#websocket-client).
+
+To build:
+
+```shell
+cd $MODDABLE/examples/web/streams/websocket
+mcconfig -d -m -p esp32/moddable_six ssid=<SSID> password=<PASSWORD>
+```
+
+The fetch example also runs on the simulator:
+
+```shell
+mcconfig -d -m
+```
+
+The write loop uses promises to wait for data to be sent:
+
+```javascript
+const data = new Uint8Array(1024);
+for (let i = 0; i < 4; i++) {
+	await writer.write(data);
+}
+```
+Without `await`, the writable stream would buffer the data.
+
+The read loop uses a delay to simulate a slow consumer and to take advantage of the back pressure mechanism.
+
+```javascript
+while (true) {
+	await delay(100);
+	const { value, done } = await reader.read();
+	if (done)
+		break;
+}
+```
+
+<a id="websocket"></a>
+## `touch-websocket`
+
+This example combines sensor and WebSocket streams in order to show how the stream infrastructure can be used to propagate sensor data.
+
+This example requires a simple WebSocket server to receive sensor data from the device and send sensor data to a browser.
+
+Launch the server:
+
+```shell
+cd $MODDABLE/examples/web/streams/touch-websocket/server
+npm install
+node server.js
+```
+Open `localhost:8081/index.html` in your browser.
+
+Then build and run the example:
+
+```shell
+cd $MODDABLE/examples/web/streams/touch-websocket
+mcconfig -d -m -p esp32/moddable_six ssid=<SSID> password=<PASSWORD> server=<IP_ADDRESS>
+```
+
+where `<IP_ADDRESS>` is the IP address of your computer on your local network. You can get it for instance with:
+
+```shell
+ipconfig getifaddr en0
+```
+
+When you touch the screen of your device, you will see fingerprints in the browser.
+
+![browser](touch-websocket/browser.jpg)
+
+Firstly there is a readable stream that enqueues touch samples:
+
+```javascript
+const touchStream = new ReadableStream({
+	start(controller) {
+		function onSample() {
+			const points = touch.sample();
+			if (points)
+				controller.enqueue(points);
+		}
+		const touch = new device.sensor.Touch({ onSample });
+		if (!touch.configuration?.interrupt)
+			touch.timer = Timer.repeat(onSample, 16);
+	}
+});
+```
+To run on both Moddable Two and Six, the stream use a timer or an interrupt.
+
+Then there is a `TransformStream` to convert samples into `JSON` with `pipeThrough`.
+```javascript	
+const transformStream = new TransformStream({
+	transform(points, controller) {
+		controller.enqueue(JSON.stringify(points));
+	},
+});
+const jsonStream = touchStream.pipeThrough(transformStream);
+```
+That demonstrates the flexibility of the stream architecture. You could of course directly enqueue samples in `JSON`.
+
+Eventually, the `JSON` stream pipes to the writable stream of a `WebSocketStream`
+```javascript	
+const wss = new WebSocketStream(`ws://${config.server}:8081`);
+const { writable } = await wss.opened;
+jsonStream.pipeTo(writable);	
+```
+
+
+
+
+
+
+
+
+
+
+
+

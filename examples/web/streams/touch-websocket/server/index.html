@@ -1,0 +1,170 @@
+<!-- 
+
+   Copyright (c) 2019-2024  Moddable Tech, Inc.
+
+   This file is part of the Moddable SDK Tools.
+
+   The Moddable SDK Tools is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   The Moddable SDK Tools is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with the Moddable SDK Tools.  If not, see <http://www.gnu.org/licenses/>.
+
+ -->
+
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="Description" content="M4 TEST">
+	<title>touch-ws</title>
+<style>
+html, body, div, pre {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	outline: 0;
+}
+html, body, div {
+	font-size: 100%;
+	font-family: sans-serif;
+	font-weight: normal;
+	font-style: normal;
+}
+
+#header {
+  background-color: #062f87;
+  width: 100%;
+  height: 56px;
+}
+	
+#header img {
+	height: 46px;
+	padding-top: 5px;
+	padding-left: 10px;
+}
+#body {
+	clear: both;
+  	position: fixed;
+	overflow-y: scroll;
+	width: 100%;
+	top:56px; bottom:42px;
+}
+	
+#footer {
+	position: fixed;
+	width: 100%;
+	bottom:0; height:42px;
+}
+#footer .copyright {
+  border-top: 1px solid #999;
+  width: 100%;
+  font-size: .8rem;
+  color: #999;
+  padding-left: 10px;
+}
+
+#pane-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap:wrap;
+}
+.pane {
+	position:relative;
+	width:390px;
+	height:580px;
+}
+#device-image {
+	position:absolute;
+	left:0px; right:0px;
+	top:0px; bottom:0px;
+	pointer-events: none;
+}
+
+#device-canvas {
+	position:absolute;
+	left:74px; width:240px;
+	top:127px; height:320px;
+	pointer-events: none;
+}
+
+</style>
+</head>
+<body>
+	<div id="header">
+		<img src="https://moddable.com/assets/images/white-moddable.svg" alt="Moddable logo"/> 
+	</div>
+	<div id="body">
+		<div id="pane-container">
+			<div class="pane">
+				<img id="device-image" src="./device.png"/>
+				<canvas id="device-canvas" width="240" height="320"></canvas>
+			</div>
+		</div>
+	</div>
+	<div id="footer">
+		<div class="copyright">
+			<p>Copyright &copy; <script>document.write(new Date().getFullYear())</script>, Moddable Tech, Inc.</p>
+		</div>
+	</div>
+
+<script>
+
+class View {
+	constructor() {
+		this.deviceCanvas = document.getElementById('device-canvas');
+		this.image = new Image();
+		this.image.onload = function(){
+		};
+		this.image.src = "./fingerprint.png";
+		this.touches = [
+			{ state:0, x:0, y:0 },
+			{ state:0, x:0, y:0 },
+		];
+		this.draw();
+		
+		window.location.host
+		let url = `ws://${window.location.host}/get`;
+		const ws = new WebSocket(url);		
+		ws.addEventListener("message", (event) => {
+			const points = JSON.parse(event.data);
+			this.touches.forEach(touch => {
+				touch.state = 0;
+			});
+			points.forEach(point => {
+				const id = point.id;
+				if ((0 <= id) && (id < this.touches.length)) {
+					const touch = this.touches[id];
+					touch.state = 1;
+					touch.x = point.x;
+					touch.y = point.y;
+				}
+			});
+			this.draw();
+		});		
+	}
+	draw() {
+		let ctx = this.deviceCanvas.getContext("2d");
+		ctx.fillStyle = "#062f87";
+		ctx.strokeStyle = "white";
+		ctx.fillRect(0, 0, 240, 320);
+    	this.touches.forEach(touch => {
+    		if (touch.state) {
+				ctx.drawImage(this.image, touch.x - 25, touch.y - 25);
+			}
+    	});
+	}
+}
+
+window.gxView = new View();
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+	"include": [
+		"$(MODDABLE)/examples/manifest_base.json",
+		"$(MODULES)/web/streams/all/manifest.json",
+		"$(MODULES)/web/streams/websocket/manifest.json"
+	],
+	"creation": {
+		"stack": 1024
+	},
+	"modules": {
+		"*": [
+			"./main"
+		]
+	}
+}
