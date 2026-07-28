@@ -88,11 +88,17 @@
 		"web/abortsignal": [
 			"$(TYPINGS)/web/abortsignal"
 		],
+		"web/console": [
+			"$(TYPINGS)/web/console"
+		],
 		"web/eventsource": [
 			"$(TYPINGS)/web/eventsource"
 		],
 		"web/streams": [
 			"$(TYPINGS)/web/streams"
+		],
+		"web/timer": [
+			"$(TYPINGS)/web/timers"
 		],
 		"web/websocket": [
 			"$(TYPINGS)/web/websocket"

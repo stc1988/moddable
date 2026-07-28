@@ -24,13 +24,9 @@ import { URL } from "url";
 const defaultConditions = ["moddable", "import"];
 
 const consoleGlobal = {
+	include: "$(MODDABLE)/modules/web/console/manifest.json",
 	snippet: `
-globalThis.console = Object.freeze({
-	log(...args) {
-		trace(...args);
-		trace("\\n");
-	}
-});
+import "web/console";
 `
 };
 const eventSourceGlobal = {

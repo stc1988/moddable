@@ -1,0 +1,8 @@
+{
+	"modules": {
+		"web/console": "./console"
+	},
+	"preload": [
+		"web/console"
+	]
+}

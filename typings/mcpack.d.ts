@@ -19,6 +19,7 @@
  */
 
 /// <reference path="./web/abortsignal.d.ts" />
+/// <reference path="./web/console.d.ts" />
 /// <reference path="./web/decompressionstream.d.ts" />
 /// <reference path="./web/domexception.d.ts" />
 /// <reference path="./web/eventsource.d.ts" />
@@ -39,13 +40,7 @@
 
 export {};
 
-interface Console {
-	log(...log: (string | number | boolean)[]):void;
-}
-
 declare global {
-	const console: Console;
-
 	const EventSource: typeof import("web/eventsource").default;
 	type EventSource = import("web/eventsource").default;
 
