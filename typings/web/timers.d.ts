@@ -24,9 +24,9 @@ declare module "web/timers" {
 }
 
 declare global {
-	const clearImmediate: (timer: Timer) => void;
-	const clearInterval: (timer: Timer) => void;
-	const clearTimeout: (timer: Timer) => void;
+	const clearImmediate: (timer: Timer | undefined | null) => void;
+	const clearInterval: (timer: Timer | undefined | null) => void;
+	const clearTimeout: (timer: Timer | undefined | null) => void;
 	const setImmediate: (handler: Function) => Timer;
 	const setInterval: (handler: Function, timeout?: number) => Timer;
 	const setTimeout: (handler: Function, timeout?: number) => Timer;
