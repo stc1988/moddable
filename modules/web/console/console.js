@@ -50,11 +50,16 @@ function emit(prefix, args) {
 
 globalThis.console = Object.freeze({
 	log(...args) { return emit(prefixes.none, args); },
-	info(...args) { return emit(prefixes.none, args); },
+	info(...args) { return emit(prefixes.info, args); },
 	debug(...args) { return emit(prefixes.none, args); },
 	warn(...args) { return emit(prefixes.warn, args); },
 	error(...args) { return emit(prefixes.error, args); },
-	trace(...args) { return emit(prefixes.trace, args); },
+	trace(...args) {
+		const lines = (new Error).stack.split("\n");
+		lines.shift();		// Error
+		lines.shift();		// at trace
+		return emit(prefixes.none, [...args, "\n", lines.join("\n"), ]);
+	},
 	dir(item) { return emit(prefixes.none, [item]); },
 	dirxml(...args) { return emit(prefixes.none, args); },
 	assert(condition, ...args) {
