@@ -115,7 +115,69 @@ import Worker from "worker";
 globalThis.Worker = Worker;
 import {SharedWorker} from "worker";
 globalThis.SharedWorker = SharedWorker;
-`	
+`
+};
+const abortSignalGlobal = {
+	include: "$(MODDABLE)/modules/web/abortsignal/manifest.json",
+	snippet: `
+import { AbortSignal, AbortController } from "web/abortsignal";
+globalThis.AbortSignal = AbortSignal;
+globalThis.AbortController = AbortController;
+`
+};
+const domExceptionGlobal = {
+	include: "$(MODDABLE)/modules/web/domexception/manifest.json",
+	snippet: `
+import { DOMException } from "web/domexception";
+globalThis.DOMException = DOMException;
+`
+};
+const streamsGlobal = {
+	include: "$(MODDABLE)/modules/web/streams/all/manifest.json",
+	snippet: `
+import { ReadableStream, ReadableStreamDefaultReader, ReadableStreamBYOBReader, ReadableStreamDefaultController, ReadableByteStreamController, ReadableStreamBYOBRequest, WritableStream, WritableStreamDefaultWriter, WritableStreamDefaultController, TransformStream, TransformStreamDefaultController, ByteLengthQueuingStrategy, CountQueuingStrategy } from "web/streams";
+globalThis.ReadableStream = ReadableStream;
+globalThis.ReadableStreamDefaultReader = ReadableStreamDefaultReader;
+globalThis.ReadableStreamBYOBReader = ReadableStreamBYOBReader;
+globalThis.ReadableStreamDefaultController = ReadableStreamDefaultController;
+globalThis.ReadableByteStreamController = ReadableByteStreamController;
+globalThis.ReadableStreamBYOBRequest = ReadableStreamBYOBRequest;
+globalThis.WritableStream = WritableStream;
+globalThis.WritableStreamDefaultWriter = WritableStreamDefaultWriter;
+globalThis.WritableStreamDefaultController = WritableStreamDefaultController;
+globalThis.TransformStream = TransformStream;
+globalThis.TransformStreamDefaultController = TransformStreamDefaultController;
+globalThis.ByteLengthQueuingStrategy = ByteLengthQueuingStrategy;
+globalThis.CountQueuingStrategy = CountQueuingStrategy;
+`
+};
+const decompressionStreamGlobal = {
+	include: "$(MODDABLE)/modules/web/streams/decompression/manifest.json",
+	snippet: `
+import DecompressionStream from "web/decompressionstream";
+globalThis.DecompressionStream = DecompressionStream;
+`
+};
+const textDecoderStreamGlobal = {
+	include: "$(MODDABLE)/modules/web/streams/text/decoder/manifest.json",
+	snippet: `
+import TextDecoderStream from "web/textdecoderstream";
+globalThis.TextDecoderStream = TextDecoderStream;
+`
+};
+const textEncoderStreamGlobal = {
+	include: "$(MODDABLE)/modules/web/streams/text/encoder/manifest.json",
+	snippet: `
+import TextEncoderStream from "web/textencoderstream";
+globalThis.TextEncoderStream = TextEncoderStream;
+`
+};
+const webSocketStreamGlobal = {
+	include: "$(MODDABLE)/modules/web/streams/websocket/manifest.json",
+	snippet: `
+import WebSocketStream from "web/websocketstream";
+globalThis.WebSocketStream = WebSocketStream;
+`
 };
 
 export default class extends TOOL {
@@ -309,6 +371,26 @@ export default class extends TOOL {
 			"WebSocket": websocketGlobal,
 			"Worker": workerGlobal,
 			"SharedWorker": workerGlobal,
+			"AbortController": abortSignalGlobal,
+			"AbortSignal": abortSignalGlobal,
+			"DOMException": domExceptionGlobal,
+			"ReadableStream": streamsGlobal,
+			"ReadableStreamDefaultReader": streamsGlobal,
+			"ReadableStreamBYOBReader": streamsGlobal,
+			"ReadableStreamDefaultController": streamsGlobal,
+			"ReadableByteStreamController": streamsGlobal,
+			"ReadableStreamBYOBRequest": streamsGlobal,
+			"WritableStream": streamsGlobal,
+			"WritableStreamDefaultWriter": streamsGlobal,
+			"WritableStreamDefaultController": streamsGlobal,
+			"TransformStream": streamsGlobal,
+			"TransformStreamDefaultController": streamsGlobal,
+			"ByteLengthQueuingStrategy": streamsGlobal,
+			"CountQueuingStrategy": streamsGlobal,
+			"DecompressionStream": decompressionStreamGlobal,
+			"TextDecoderStream": textDecoderStreamGlobal,
+			"TextEncoderStream": textEncoderStreamGlobal,
+			"WebSocketStream": webSocketStreamGlobal,
 		}
 		this.snippets = [];
 	}
