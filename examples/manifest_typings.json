@@ -85,11 +85,20 @@
 		"webstorage": [
 			"$(TYPINGS)/web/webstorage"
 		],
+		"web/abortsignal": [
+			"$(TYPINGS)/web/abortsignal"
+		],
 		"web/eventsource": [
 			"$(TYPINGS)/web/eventsource"
 		],
+		"web/streams": [
+			"$(TYPINGS)/web/streams"
+		],
 		"web/websocket": [
 			"$(TYPINGS)/web/websocket"
+		],
+		"web/websocketstream": [
+			"$(TYPINGS)/web/websocketstream"
 		],
 		"worker": [
 			"$(TYPINGS)/web/worker"
