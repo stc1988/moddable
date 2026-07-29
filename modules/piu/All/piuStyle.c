@@ -660,7 +660,7 @@ void PiuStyle_get_weight(xsMachine* the)
 		xsResult = xsInteger((*self)->weight * 100);
 	}
 	else if ((*self)->flags & piuStyleRelativeWeight) {
-		if ((*self)->size < 0)
+		if ((*self)->weight < 0)
 			xsResult = xsStringX("lighter");
 		else
 			xsResult = xsStringX("bolder");
