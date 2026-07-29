@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2025  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -100,7 +100,7 @@ void PiuApplicationAdjust(PiuApplication* self)
 
 void PiuApplicationCaptureTouch(PiuApplication* self, PiuContent* it, xsIntegerValue index, PiuCoordinate x,  PiuCoordinate y, double ticks)
 {
-	if (index < (*self)->touchLinkCount) {
+	if ((0 <= index) && (index < (*self)->touchLinkCount)) {
 		PiuTouchLink* link = (*self)->touchLinks[index];
 		PiuContent* content = (*link)->content;
 		if (content) {
@@ -317,7 +317,7 @@ void PiuApplicationStopContent(PiuApplication* self, void* it)
 
 void PiuApplicationTouchBegan(PiuApplication* self, xsIntegerValue index, PiuCoordinate x, PiuCoordinate y, xsNumberValue ticks)
 {
-	if (index < (*self)->touchLinkCount) {
+	if ((index >= 0) && (index < (*self)->touchLinkCount)) {
 		PiuFlags touchFlag = 1 << index;
 		PiuTouchLink* link;
 		PiuContent* content;
@@ -351,7 +351,7 @@ void PiuApplicationTouchBegan(PiuApplication* self, xsIntegerValue index, PiuCoo
 
 void PiuApplicationTouchEnded(PiuApplication* self, xsIntegerValue index, PiuCoordinate x, PiuCoordinate y, xsNumberValue ticks)
 {
-	if (index < (*self)->touchLinkCount) {
+	if ((0 <= index) && (index < (*self)->touchLinkCount)) {
 		PiuTouchLink* link = (*self)->touchLinks[index];
 		PiuContent* content = (*link)->content;
 		if (content) {
@@ -395,7 +395,7 @@ void PiuApplicationTouchIdle(PiuApplication* self)
 
 void PiuApplicationTouchMoved(PiuApplication* self, xsIntegerValue index, PiuCoordinate x, PiuCoordinate y, xsNumberValue ticks)
 {
-	if (index < (*self)->touchLinkCount) {
+	if ((0 <= index) && (index < (*self)->touchLinkCount)) {
 		PiuTouchLink* link = (*self)->touchLinks[index];
 		PiuContent* content = (*link)->content;
 		if (content) {
