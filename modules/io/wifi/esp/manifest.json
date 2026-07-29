@@ -1,9 +1,13 @@
 {
-	"modules": {
-		"embedded:network/interface/wifi": "./wifi-esp",
-		"*": "./wifi-esp-events"
-	},
-	"preload": [
-		"embedded:network/interface/wifi"
-	]
+	"platforms": {
+		"esp": {
+			"modules": {
+				"embedded:network/interface/wifi": "./wifi-esp",
+				"*": "./wifi-esp-events"
+			},
+			"preload": [
+				"embedded:network/interface/wifi"
+			]
+		}
+	}
 }
