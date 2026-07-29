@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2025  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -1332,7 +1332,7 @@ void PiuContent_captureTouch(xsMachine *the)
 		xsIntegerValue id = xsToInteger(xsArg(0));
 		PiuCoordinate x = xsToPiuCoordinate(xsArg(1));
 		PiuCoordinate y = xsToPiuCoordinate(xsArg(2));
-		xsNumberValue ticks = xsToNumber(xsArg(2));
+		xsNumberValue ticks = xsToNumber(xsArg(3));
 		PiuApplicationCaptureTouch((*self)->application, self, id, x, y, ticks);
 	}
 }
