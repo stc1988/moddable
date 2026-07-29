@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2025  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -260,6 +260,7 @@ void PiuViewCombine(PiuView* self, PiuRectangle area, PiuCoordinate op)
 				(pixelsOutDispatch->doAdaptInvalid)(poco->outputRefcon, cr);
 			else
 				xsCallFunction1((*self)->_adaptInvalid, xsReference((*self)->screen), xsReference((*self)->rectangle));
+			cr = xsGetHostChunk(xsReference((*self)->rectangle));
 			x = cr->x;
 			y = cr->y;
 			w = cr->w; 
@@ -331,6 +332,7 @@ void PiuViewCombineRegion(PiuView* self, PiuRegion* region, PiuCoordinate op)
 					(pixelsOutDispatch->doAdaptInvalid)(poco->outputRefcon, cr);
 				else
 					xsCallFunction1((*self)->_adaptInvalid, xsReference((*self)->screen), xsReference((*self)->rectangle));
+				cr = xsGetHostChunk(xsReference((*self)->rectangle));
 				x = cr->x;
 				y = cr->y;
 				w = cr->w; 
