@@ -1,7 +1,8 @@
 # Moddable SDK
 
 Copyright 2017-2026 Moddable Tech, Inc.<BR>
-Revised: January 12, 2026
+Revised: July 29, 2026
+Moddable SDK: Version 8.3.1
 
 ## Modern software development for microcontrollers
 
