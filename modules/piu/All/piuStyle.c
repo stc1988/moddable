@@ -461,7 +461,8 @@ void PiuStyleOverride(PiuStyle* self, PiuStyle* result)
 	else if (flags & piuStyleRelativeWeight) {
 		int16_t weight = (*result)->weight + (*self)->weight;
 		if (weight < 1) weight = 1;
-		else if (weight > 9) weight = 0;
+		else if (weight > 9) weight = 9;
+		(*result)->weight = weight;
 	}
 	if (flags & piuStyleHorizontal)
 		(*result)->horizontal = (*self)->horizontal;
