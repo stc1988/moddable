@@ -5,7 +5,6 @@
     "rootDir": "src",
     "outDir": "dist",
     "sourceMap": true,
-    "ignoreDeprecations": "6.0",
     "types": [
       "./node_modules/@moddable/typings/xs",
       "./node_modules/@moddable/typings/mcpack"

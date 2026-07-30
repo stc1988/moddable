@@ -26,7 +26,7 @@ declare module "web/textdecoderstream" {
     ignoreBOM?: boolean;
   }
 
-  class TextDecoderStream extends TransformStream<BufferSource, string> {
+  class TextDecoderStream extends TransformStream<ArrayBuffer | ArrayBufferView, string> {
     constructor(label?: string, options?: TextDecoderStreamInit);
     readonly encoding: string;
     readonly fatal: boolean;

@@ -2,7 +2,6 @@
   "extends": "@moddable/typings/tsconfig.base.json",
   "compilerOptions": {
     "incremental": true,
-    "ignoreDeprecations": "6.0",
     "rootDir": "src",
     "outDir": "dist",
     "sourceMap": true,
