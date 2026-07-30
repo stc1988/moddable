@@ -208,6 +208,7 @@ void StreamIteratorReturnStepsRejected(xsMachine* the)
 {
 	ReadableStreamAsyncIterator* iterator = (ReadableStreamAsyncIterator*)fxGetHostFunctionHandle(the);
 	(*iterator)->ongoingPromise = NULL;
+	ShiftSlotQueue(the, (*iterator)->returnQueue);
 	mxPushSlot(mxArgv(0));
 	mxPull(mxException);
 	fxJump(the);

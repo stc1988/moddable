@@ -637,11 +637,8 @@ void ReadableByteStreamControllerPullInto(xsMachine* the, ReadableByteStreamCont
 	ViewInfoRecord info;
 	GetViewInfo(the, view, &info);
 
-	mxPushSlot(view);
-	mxGetID(xsID_constructor);
-	(*pullInto)->ViewConstructor = fxToReference(the, the->stack);
-	mxPop();
-	
+	(*pullInto)->ViewConstructor = info.ViewConstructor->value.reference;
+
 	(*pullInto)->bufferByteLength = info.bufferByteLength;
 	(*pullInto)->byteLength = info.byteLength;
 	(*pullInto)->byteOffset = info.byteOffset;
@@ -893,16 +890,24 @@ void ReadableStreamBYOBRequest_respond(xsMachine* the)
 	ReadableStreamBYOBRequest* request = mxStreamHandle(ReadableStreamBYOBRequest, mxThis);
 	if ((*request)->controller == NULL)
 		xsTypeError("no controller");
-	mxPushReference((*request)->view);
-	mxGetID(xsID_buffer);
-	if (IsArrayBufferDetached(the))
-		xsTypeError("detached buffer");
-	mxPop();
+	{
+		ViewInfoRecord info;
+		mxPushReference((*request)->view);
+		GetViewInfo(the, the->stack, &info);
+		mxPushSlot(info.buffer);
+		if (IsArrayBufferDetached(the))
+			xsTypeError("detached buffer");
+		mxPop();
+		mxPop();
+	}
 	if (mxArgc > 0)
 		mxPushSlot(mxArgv(0));
 	else
 		mxPushUndefined();
-	ReadableByteStreamControllerRespond(the, (*request)->controller, fxToInteger(the, the->stack));
+	xsNumberValue bytesWritten = fxToNumber(the, the->stack);
+	if (c_isnan(bytesWritten) || (bytesWritten < 0) || (bytesWritten > (xsNumberValue)0x7fffffff))
+		xsTypeError("invalid bytesWritten");
+	ReadableByteStreamControllerRespond(the, (*request)->controller, (txInteger)bytesWritten);
 	mxPop();
 }
 void ReadableStreamBYOBRequest_respondWithNewView(xsMachine* the)
@@ -914,11 +919,14 @@ void ReadableStreamBYOBRequest_respondWithNewView(xsMachine* the)
 		mxPushSlot(mxArgv(0));
 	else
 		mxPushUndefined();
-	mxDub();
-	mxGetID(xsID_buffer);
-	if (IsArrayBufferDetached(the))
-		xsTypeError("detached buffer");
-	mxPop();	
+	{
+		ViewInfoRecord info;
+		GetViewInfo(the, the->stack, &info);
+		mxPushSlot(info.buffer);
+		if (IsArrayBufferDetached(the))
+			xsTypeError("detached buffer");
+		mxPop();
+	}
 	ReadableByteStreamControllerRespondWithNewView(the, (*request)->controller, the->stack);
 	mxPop();
 }
@@ -1051,10 +1059,13 @@ void GetViewInfo(xsMachine* the, xsSlot* view, ViewInfo info)
 		if (slot && (slot->flag & XS_INTERNAL_FLAG)) {
 			if (slot->kind == XS_TYPED_ARRAY_KIND) {
 				info->elementSize = slot->value.typedArray.dispatch->size;
+				info->ViewConstructor = &the->stackIntrinsics[-1 - (txInteger)slot->value.typedArray.dispatch->constructorID];
 				slot = slot->next;
 			}
-			else
+			else {
 				info->elementSize = 1;
+				info->ViewConstructor = &mxDataViewConstructor;
+			}
 			if (slot->kind == XS_DATA_VIEW_KIND) {
 				info->byteOffset = slot->value.dataView.offset;
 				info->byteLength = slot->value.dataView.size;
@@ -1127,6 +1138,7 @@ void DestroyPullInto(void* it)
 void MarkPullInto(xsMachine* the, void* it, xsMarkRoot markRoot)
 {
 	PullInto self = it;
+	StreamMarkReference(the, self->ViewConstructor);
 	StreamMarkReference(the, self->buffer);
 }
 static PullInto* ToPullIntoHandle(xsMachine* the, txSlot* it)

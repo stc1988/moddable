@@ -343,6 +343,7 @@ extern void WritableStreamDefaultWriterWrite(xsMachine* the, WritableStreamDefau
 
 
 typedef struct {
+	txSlot* ViewConstructor;
 	txSlot* buffer;
 	txSize bufferByteLength;
 	txSize byteLength;
