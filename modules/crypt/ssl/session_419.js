@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2025  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -58,14 +58,6 @@ class SSLSession {
 			if ((options.protocolVersion < minProtocolVersion) || (options.protocolVersion > maxProtocolVersion))
 				throw new TLSError("protocolVersion: not supported");
 		}
-		if ('serverName' in options) {
-			options.tls_server_name = options.serverName;
-			delete options.serverName;
-		}
-		if ('applicationLayerProtocolNegotiation' in options) {
-			options.tls_application_layer_protocol_negotiation = options.applicationLayerProtocolNegotiation;
-			delete options.applicationLayerProtocolNegotiation;
-		}
 		this.options = options;
 		this.packetBuffer = null;
 		this.handshakeMessages = undefined;
@@ -78,14 +70,22 @@ class SSLSession {
 		this.clientCipher = null;
 		this.serverCipher = null;
 		this.alert = undefined;
-		this.protocolVersion = this.options.protocolVersion || protocolVersion;
-		this.minProtocolVersion = this.options.protocolVersion || minProtocolVersion;	// only for the server side
-		this.maxProtocolVersion = maxProtocolVersion;	// ditto
+		this.protocolVersion = options.protocolVersion ?? protocolVersion;
+		this.minProtocolVersion = options.minProtocolVersion ?? options.protocolVersion ?? minProtocolVersion;
+		this.maxProtocolVersion = options.maxProtocolVersion ?? maxProtocolVersion;
 		if (this.options.trace)
 			this.traceLevel = 0;
 //		this.applicationData = undefined;
 		this.cacheManager = (this.options.cache === undefined || this.options.cache) && cacheManager;
+
+		const certificates = options.certificate;		// may be a single certificate or an array of them
+		if (Array.isArray(certificates))
+			delete options.certificate;
 		this.certificateManager = new CertificateManager(options);
+		if (Array.isArray(certificates)) {
+			for (let i = 0; i < certificates.length; i++)
+				this.certificateManager.register(certificates[i]);
+		}
 	}
 	initiateHandshake() {
 		this.connectionEnd = true;

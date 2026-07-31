@@ -85,7 +85,7 @@ class WebSocketClient {
 					this.#socket = new options.socket.io({
 						...options.socket,
 						address,
-						host,
+						...(options.socket.tls && {tls: {host, ...options.socket.tls}}),
 						port: this.#options.port,
 						onReadable: count => this.#onReadable(count),
 						onWritable: count => this.#onWritable(count),

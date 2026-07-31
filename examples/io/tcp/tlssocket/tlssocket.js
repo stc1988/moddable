@@ -15,43 +15,97 @@
 import Session from "ssl/session";
 import Timer from "timer";
 
+const maximumSupportedVersion = 0x303;
+const defaultMinimumVersion = 0x303;
+
+function toProtocolVersion(value) {
+	switch (value) {
+		case "TLSv1.1": return 0x302;
+		case "TLSv1.2": return 0x303;
+		case "TLSv1.3": return 0x304;
+	}
+	throw new RangeError(`${value}: unsupported`);
+}
+
 class TLSSocket {
 	#socket;
 	#ready = false;
 	#session;
 	#callbacks;
 	#data;
-	#format = true;		// true == buffer, false = number
+	#format;		// true == buffer, false = number
 	#doRead;
 
-/*
-	host (TLS server name indication extension)
-	ALPNProtocols
-	enableTrace
-	minVersion - 'TLSv1.3', 'TLSv1.2', 'TLSv1.1', or 'TLSv1'
-	macVersion - same (IGNORE?)
-	ca: [PEM!!]
-	certificate: [DER!],
-	clientKey
-	clientCertificates
- */
+	constructor(options) {
+		const {TCP, tls, format, target, onReadable, onWritable, onError, ...tcp} = options;
 
-	constructor(options) {		
-		this.#callbacks = {
-			onReadable: options.onReadable,
-			onWritable: options.onWritable,
-			onError: options.onError
-		}; 
+		if (!tls)
+			throw new Error("tls required");
+		const host = tls.host;
+		if (!host)
+			throw new Error("tls.host required");
 
-		this.#session = new Session({
-			serverName: options.host,		// serverName for SNI. This defaults it to host. Caller can override with options.secure.serverName
-			...options.secure,
-			protocolVersion: 0x303,
-		});
+		let maximumVersion = maximumSupportedVersion;
+		if (undefined !== tls.maximumVersion) {
+			maximumVersion = toProtocolVersion(tls.maximumVersion);
+			if (maximumVersion > maximumSupportedVersion)
+				maximumVersion = maximumSupportedVersion;
+		}
+		let minimumVersion = (maximumVersion < defaultMinimumVersion) ? maximumVersion : defaultMinimumVersion;
+		if (undefined !== tls.minimumVersion) {
+			minimumVersion = toProtocolVersion(tls.minimumVersion);
+			if (minimumVersion > maximumSupportedVersion)
+				throw new RangeError("tls.minimumVersion: unsupported");
+			if (minimumVersion > maximumVersion)
+				throw new RangeError("tls.minimumVersion: greater than tls.maximumVersion");
+		}
+
+		const session = {
+			tls_server_name: String(host),
+			protocolVersion: maximumVersion,
+			minProtocolVersion: minimumVersion,
+			maxProtocolVersion: maximumVersion
+		};
+		for (const name in tls) {
+			const value = tls[name];
+			switch (name) {
+				case "host":
+				case "minimumVersion":
+				case "maximumVersion":
+					break;		// applied above
+				case "applicationLayerProtocol":
+					session.tls_application_layer_protocol_negotiation = value;
+					break;
+				case "maximumFragmentLength":
+					session.tls_max_fragment_length = value;
+					break;
+				case "ca":
+					session.certificate = value;
+					break;
+				case "clientCertificate":
+					session.clientCertificates = Array.isArray(value) ? value : [value];
+					break;
+				case "clientKey":
+					session.clientKey = Array.isArray(value) ? value[0] : value;		// one client key supported
+					break;
+				case "trace":
+				case "verify":
+					session[name] = value;
+					break;
+			}
+		}
+
+		this.#callbacks = {onReadable, onWritable, onError};
+		if (undefined !== target)
+			this.target = target;
+		this.format = format ?? "buffer";
+
+		this.#session = new Session(session);
 		this.#session.initiateHandshake();
 
-		this.#socket = new options.TCP.io({
-			...options,
+		this.#socket = new TCP.io({
+			...TCP,
+			...tcp,
 			onReadable: count => this.#onReadable(count),
 			onWritable: count => this.#onWritable(count),
 			onError: () => this.#onError()
@@ -133,7 +187,7 @@ class TLSSocket {
 		if (!this.#ready)
 			this.#messageHandler();
 		else if (count > 96)			// 96 is an estimate of TLS overhead
-			this.#callbacks.onWritable?.(count - 96);
+			this.#callbacks.onWritable?.call(this, count - 96);
 	}
 	#onReadable(count) {
 		this.#socket.readable = count;
@@ -145,7 +199,7 @@ class TLSSocket {
 			this.#messageHandler();
 	}
 	#onError() {
-		this.#callbacks.onError?.();
+		this.#callbacks.onError?.call(this);
 	}
 	#messageHandler(read) {
 		if (!this.#ready) {
@@ -169,7 +223,7 @@ class TLSSocket {
 			return;
 		this.#data = data;
 
-		this.#callbacks.onReadable?.(readable);
+		this.#callbacks.onReadable?.call(this, readable);
 	}
 
 	static {

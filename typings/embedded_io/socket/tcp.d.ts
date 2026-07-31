@@ -19,11 +19,8 @@
 */
 
 declare module "embedded:io/socket/tcp" {
-  export type Options = ((({
+  export type Options = (({
     address: string;
-  } | {
-    host: string;
-  }) & {
     port: number;
   }) | {
     from: TCP;
@@ -40,9 +37,10 @@ declare module "embedded:io/socket/tcp" {
     constructor(options: Options)
     readonly remoteAddress: string | undefined;
     readonly remotePort: number | undefined;
-    read(byteLength?: number): number | ArrayBuffer;
-    read(buffer: ByteBuffer): void;
-    write(value: number | ByteBuffer): void;
+    read(): number | ArrayBuffer;
+    read(byteLength: number): ArrayBuffer;
+    read(buffer: ByteBuffer): number;
+    write(value: number | ByteBuffer): number;
     close(): void;
     get format(): "number" | "buffer"
     set format(value: "number" | "buffer")

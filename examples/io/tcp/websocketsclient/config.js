@@ -24,7 +24,10 @@ globalThis.device = Object.freeze({
 			dns,
 			socket: {
 				io: TLSSocket,
-				TCP: device.network.ws.socket
+				TCP: device.network.ws.socket,
+				tls: {
+					applicationLayerProtocol: "http/1.1"	// handshake is HTTP/1.1 upgrade
+				}
 			}
 		},
 	},

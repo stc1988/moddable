@@ -34,8 +34,8 @@ globalThis.device = Object.freeze({
 			socket: {
 				io: TLSSocket,
 				TCP: device.network.http.socket,
-				secure: {
-					applicationLayerProtocolNegotiation: "http/1.1"
+				tls: {
+					applicationLayerProtocol: "http/1.1"
 				}
 			}
 		}

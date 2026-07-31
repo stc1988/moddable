@@ -101,7 +101,7 @@ class MQTTClient {
 					this.#socket = new options.socket.io({
 						...options.socket,
 						address,
-						host,
+						...(options.socket.tls && {tls: {host, ...options.socket.tls}}),
 						port: this.#options.port ?? 1883,
 						onReadable: count => this.#onReadable(count),
 						onWritable: count => this.#onWritable(count),

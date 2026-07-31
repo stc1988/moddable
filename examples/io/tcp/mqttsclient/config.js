@@ -27,8 +27,11 @@ globalThis.device = Object.freeze({
 				io: TLSSocket,
 				TCP: {
 					io: TCP
+				},
+				tls: {
+					applicationLayerProtocol: "mqtt"
 				}
-			},		
+			},
 		},
 	},
 }, true);

@@ -1,17 +1,54 @@
 declare module "embedded:io/socket/tcp/tls" {
-  import { Options as TCPOptions } from "embedded:io/socket/tcp"
-  export type Options = TCPOptions & {
+  import TCP, { Options as TCPOptions } from "embedded:io/socket/tcp"
+
+  export type TLSVersion = "TLSv1.1" | "TLSv1.2" | "TLSv1.3"
+
+  export type TLSOptions = {
+    /** Server Name Indication (SNI) and the name certificates are validated against. */
     host: string
-    secure: Record<string, any> // should be called "tls" according to std?
+    minimumVersion?: TLSVersion
+    maximumVersion?: TLSVersion
+    /** Application-Layer Protocol Negotiation (ALPN). */
+    applicationLayerProtocol?: string | ByteBuffer | Array<string | ByteBuffer>
+    maximumFragmentLength?: number
+    ca?: ByteBuffer | ByteBuffer[]
+    clientKey?: ByteBuffer | ByteBuffer[]
+    clientCertificate?: ByteBuffer | ByteBuffer[]
+
+    // Moddable SDK extensions
+    /** Trace TLS protocol activity. Defaults to `false`. */
+    trace?: boolean
+    /** Verify the server's certificate chain. Defaults to `true`. Never disable in production. */
+    verify?: boolean
   }
-  export default class TLSSocket {
+
+  /** Extends the TCP socket's options object. Listed explicitly so the callbacks
+      can be typed with `this` as the TLS socket rather than the TCP socket. */
+  export type Options = {
+    address: string
+    port: number
+    nodelay?: boolean
+    format?: "number" | "buffer"
+    target?: any
+    onReadable?: (this: TLSSocket, bytes: number) => void
+    onWritable?: (this: TLSSocket, bytes: number) => void
+    onError?: (this: TLSSocket) => void
+
+    tls: TLSOptions
+    /** The TCP socket this TLS socket runs over. A Moddable SDK extension. */
+    TCP: { io: new (options: TCPOptions) => TCP } & Partial<TCPOptions>
+  }
+
+  class TLSSocket {
     constructor(options: Options)
     close(): void
-    read(count: number|ArrayBufferLike) : undefined|ArrayBufferLike
-    write(buffer: ArrayBufferLike) : number
-    set format(format: string)
-    get format() : string
+    read(): number | ArrayBuffer
+    read(byteLength: number): ArrayBuffer
+    read(buffer: ByteBuffer): number
+    write(buffer: ByteBuffer, options?: { more?: boolean, byteLength?: number }): number
+    get format(): "number" | "buffer"
+    set format(value: "number" | "buffer")
   }
   interface TLSSocket extends Disposable {}
+  export default TLSSocket;
 }
-

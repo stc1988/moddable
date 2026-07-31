@@ -162,7 +162,7 @@ class HTTPClient {
 					this.#socket = new options.socket.io({
 						...options.socket,
 						address,
-						host,
+						...(options.socket.tls && {tls: {host, ...options.socket.tls}}),
 						port: port ?? 80,
 						onReadable: count => this.#onReadable(count),
 						onWritable: count => this.#onWritable(count),
