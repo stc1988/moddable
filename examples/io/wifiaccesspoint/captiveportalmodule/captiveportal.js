@@ -28,7 +28,7 @@ const ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
 function randomText(length) {
 	let out = "";
 	for (let i = 0; i < length; i++)
-		out += ALPHABET[(Math.random() * ALPHABET.length) | 0];
+		out += ALPHABET[Math.irandom(ALPHABET.length)];
 	return out;
 }
 
@@ -100,7 +100,7 @@ class CaptivePortal {
 				this.#wifi.found ??= new Map;
 				const prev = this.#wifi.found.get(ap.SSID);
 				if (!prev || (prev.RSSI < ap.RSSI)) {
-					const {BSSID, ...entry} = ap;
+					const {BSSID, ...entry} = ap;		// remove BSSID
 					this.#wifi.found.set(ap.SSID, entry);
 				}
 			},
@@ -119,8 +119,8 @@ class CaptivePortal {
 					SSID,
 					max: 1,
 					onChanged: name => this.#onAPChanged(name),
-					onConnect: station => this.#setPhase("connected"),
-					onDisconnect: station => {
+					onConnect: () => this.#setPhase("connected"),
+					onDisconnect: () => {
 						this.#ws?.close();
 						this.#ws = undefined;
 						this.#setPhase("waiting");
@@ -163,7 +163,7 @@ class CaptivePortal {
 
 		if (value >= 500)
 			this.#setPhase("provisioned", this.#credentials);
-		else if (300 >= value)
+		else if (value >= 300)
 			this.#setPhase("connecting");
 		else if ((value <= 200) && ("connecting" === this.#phase))
 			this.#setPhase("failed");
@@ -227,14 +227,15 @@ class CaptivePortal {
 							};
 						}
 						else {
+							const dest = `http://${portal.#ap.address}`;
 							this.route = {
 								...WebPage,
-								data: ArrayBuffer.fromString("redirecting to captive portal"),
-								status: 302,
+								data: ArrayBuffer.fromString(`<HTML><HEAD><META http-equiv="refresh" content="0; URL=${dest}"></HEAD></HTML>`),
+								status: 200,
 								headers: new Map([
-									["location", `http://${portal.#ap.address}/`],
-									["content-type", "text/plain"],
-									["cache-control", "no-store"],
+									["location", dest],
+									["content-type", "text/html"],
+									// ["cache-control", "no-store"],
 									["connection", "close"]
 								])
 							};
@@ -296,7 +297,7 @@ class CaptivePortal {
 					if (ap.SSID === this.#ap.SSID) return;
 					const prev = scan.get(ap.SSID);
 					if (!prev || (prev.RSSI < ap.RSSI)) {
-						const {BSSID, ...entry} = ap;
+						const {BSSID, ...entry} = ap;		// remove BSSID
 						scan.set(ap.SSID, entry);
 					}
 				},
