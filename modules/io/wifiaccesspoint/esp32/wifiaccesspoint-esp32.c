@@ -479,8 +479,19 @@ void xs_wifiaccesspoint_close(xsMachine *the)
 
 void xs_wifiaccesspoint_configure(xsMachine *the)
 {
-	xsmcGetHostDataValidate(xsThis, (void *)&xsAPHooks);
-	xsUnknownError("configure requires restart");
+	xsAP ap = xsmcGetHostDataValidate(xsThis, (void *)&xsAPHooks);
+
+	xsmcVars(1);
+	if (xsmcGet(xsVar(0), xsArg(0), xsID_portal)) {
+		char *url = xsmcToString(xsVar(0));
+		esp_netif_dhcps_stop(gAP);
+		esp_err_t err = esp_netif_dhcps_option(gAP, ESP_NETIF_OP_SET, ESP_NETIF_CAPTIVEPORTAL_URI, url, c_strlen(url));
+		if (err != ESP_OK)
+			xsUnknownError("can't set portal %d", (int)err);
+		err = esp_netif_dhcps_start(gAP);
+		if (err != ESP_OK)
+			xsUnknownError("can't restart dhcp %d", (int)err);
+	}
 }
 
 void xs_wifiaccesspoint_connection_get(xsMachine *the)

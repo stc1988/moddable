@@ -132,6 +132,9 @@ class CaptivePortal {
 					options.channel = clearestChannel(found);
 				if (this.#password) options.password = this.#password;
 				this.#ap = new WiFiAccessPoint(options);
+				this.#ap.configure({
+					portal: `http://${this.#ap.address}`
+				});
 			}
 		});
 	}
@@ -164,7 +167,7 @@ class CaptivePortal {
 		if (value >= 500)
 			this.#setPhase("provisioned", this.#credentials);
 		else if (value >= 300)
-			this.#setPhase("connecting");
+			this.#setPhase("connecting", this.#credentials);
 		else if ((value <= 200) && ("connecting" === this.#phase))
 			this.#setPhase("failed");
 	}
