@@ -229,7 +229,7 @@ class SSLSession {
 	}
 	close(s) {
 		this.startTrace("packetize");
-		const packet = SSLAlert.packetize(this, 0, SSLAlert.close_notify);
+		const packet = SSLAlert.packetize(this, 1, SSLAlert.close_notify);
 		s.writable = s.write(packet);
 	}
 	doProtocol(s, protocol, param1, param2) {

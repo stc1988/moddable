@@ -114,6 +114,14 @@ class TLSSocket {
 		this.#socket.writable = 0;
 	}
 	close() {
+		if (this.#ready) {
+			try {
+				this.#session?.close(this.#socket);
+			}
+			catch {
+				/* this space intentionally left blank */
+			}
+		}
 		this.#socket?.close();
 		Timer.clear(this.#doRead);
 
