@@ -113,7 +113,7 @@ void xs_tcp_constructor(xsMachine *the)
 		if (onError)
 			triggerable |= kTCPError;
 
-		if (xsmcGet(xsVar(0), xsArg(0), xsID_nodelay))
+		if (xsmcGet(xsVar(0), xsArg(0), xsID_noDelay))
 			nodelay = xsmcToBoolean(xsVar(0)) ? 2 : 1;
 
 		if (xsmcGet(xsVar(0), xsArg(0), xsID_from)) {

@@ -27,7 +27,7 @@ declare module "embedded:io/socket/tcp/tls" {
   export type Options = {
     address: string
     port: number
-    nodelay?: boolean
+    noDelay?: boolean
     format?: "number" | "buffer"
     target?: any
     onReadable?: (this: TLSSocket, bytes: number) => void

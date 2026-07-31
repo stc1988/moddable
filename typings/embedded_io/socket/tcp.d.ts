@@ -25,7 +25,7 @@ declare module "embedded:io/socket/tcp" {
   }) | {
     from: TCP;
   }) & {
-    nodelay?: boolean;
+    noDelay?: boolean;
     onReadable?: (this: TCP, bytes: number) => void;
     onWritable?: (this: TCP, bytes: number) => void;
     onError?: (this: TCP) => void;

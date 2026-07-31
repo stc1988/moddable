@@ -622,7 +622,7 @@ export class FirmataTCPClient extends Firmata {
 		this.transport = new TCP({
 			address: dictionary.address,
 			port: dictionary.port || 3030,
-			nodelay: true,
+			noDelay: true,
 			onReadable: count => this.onReadable(count),
 			onWritable: () => {
 				if (!this.first)
@@ -641,7 +641,6 @@ export class FirmataTCPServer extends Firmata {
 		this.transport = undefined;
 		this.listener = new Listener({
 			port: dictionary.port || 3030,
-			nodelay: true,
 			onReadable: count => {
 				while (count--) {
 					if (this.transport) {
