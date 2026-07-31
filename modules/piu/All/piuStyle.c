@@ -240,8 +240,11 @@ void PiuStyleCreate(xsMachine* the)
 							state = 4;
 					}
 				}
-				if (state > 3)
+				if (state > 3) {
+					if ((c_strlen(buffer) + (size_t)(q - p)) >= sizeof(buffer))
+						xsRangeError("font family overflow");
 					c_strncat(buffer, p, q - p);
+				}
 				p = q;
 				state++;
 			}
