@@ -325,6 +325,7 @@ class CaptivePortal {
 		this.#credentials = options;
 		try {
 			this.#wifi.connect(options);
+		   this.#setPhase("connecting", options);
 		}
 		catch (e) {
 			this.#fail(e);
