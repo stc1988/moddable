@@ -210,6 +210,9 @@ struct PiuViewStruct {
 	uint8_t dirty;
 	uint8_t ready;
 #else
+#ifdef MODDEF_PIU_DISPLAY_READY
+	uint8_t displayReady;
+#endif
 	PiuRegion* dirty;
 	PiuRegion* swap;
 	uint32_t current;

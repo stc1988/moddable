@@ -1039,9 +1039,16 @@ void PiuViewUpdate(PiuView* self, PiuApplication* application)
 		(*self)->dirty = 0;
 		(*self)->ready = 0;
 #else
+#ifdef MODDEF_PIU_DISPLAY_READY
+	if (!(*self)->displayReady)
+		return;
+#endif
 	PiuCoordinate* data = (*((*self)->dirty))->data;
 	PiuRectangleSet(&area, data[1], data[2], data[3], data[4]);
 	if (!PiuRectangleIsEmpty(&area)) {
+#ifdef MODDEF_PIU_DISPLAY_READY
+		(*self)->displayReady = 0;
+#endif
 #endif
 	#if mxPiuSloMo
 		static PiuTick former = 0;
@@ -1507,6 +1514,9 @@ void PiuView_create(xsMachine* the)
 	(*self)->dirty = 0;
 	(*self)->ready = 1;
 #else
+#ifdef MODDEF_PIU_DISPLAY_READY
+	(*self)->displayReady = 1;
+#endif
 	PiuRegionNew(the, (PiuCoordinate)regionLength);
 	(*self)->dirty = PIU(Region, xsResult);
 	PiuRegionNew(the, (PiuCoordinate)regionLength);
@@ -1546,6 +1556,12 @@ void PiuView_onDisplayReady(xsMachine* the)
 	(*self)->ready = 1;
 	PiuView_onIdle(the);
 // 	PiuViewUpdate(self, application);
+#endif		
+#ifdef MODDEF_PIU_DISPLAY_READY
+	PiuView* self = PIU(View, xsThis);
+	PiuApplication* application = (*self)->application;
+	(*self)->displayReady = 1;
+	PiuViewUpdate(self, application);
 #endif		
 }
 
