@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025  Moddable Tech, Inc.
+ * Copyright (c) 2021-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -18,13 +18,10 @@
  *
  */
 
- 
-import * as streams from "web/streams";
-for (let key in streams)
-	globalThis[key] = streams[key];
- 
+  
 import Headers from "headers";
 import URL from "url";
+import { ReadableStream } from "web/streams";
 import DecompressionStream from "web/decompressionstream";
 
 const statusTexts = {
