@@ -10,5 +10,6 @@
 	"preload": [
 		"httpclient/config",
 		"embedded:network/http/client"
-	]
+	],
+	"mcpack": true
 }

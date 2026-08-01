@@ -5,11 +5,7 @@
 		"$(MODDABLE)/modules/crypt/tls_419.json"
 	],
 	"modules": {
-		"httpsclient/config": "./config",
-		"embedded:network/http/client": "./../httpclient/httpclient"
+		"httpsclient/config": "./config"
 	},
-	"preload": [
-		"httpsclient/config",
-		"embedded:network/http/client"
-	]
+	"preload": "httpsclient/config"
 }

@@ -1,16 +1,13 @@
 {
 	"include": [
 		"$(MODDABLE)/examples/manifest_net.json",
+		"$(MODULES)/data/logical/manifest.json",
 		"$(MODULES)/crypt/digest/manifest.json"
 	],
 	"modules": {
 		"*": [
-			"./websocket",
-			"$(MODULES)/data/logical/*"
+			"./websocket"
 		]
 	},
-	"preload": [
-		"websocket",
-		"logical"
-	]
+	"preload": "websocket"
 }

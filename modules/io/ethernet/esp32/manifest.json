@@ -1,8 +1,12 @@
 {
-	"modules": {
-		"embedded:network/interface/ethernet": "./ethernet-esp32"
-	},
-	"preload": [
-		"embedded:network/interface/ethernet"
-	]
+	"platforms": {
+		"esp32": {
+			"modules": {
+				"embedded:network/interface/ethernet": "./ethernet-esp32"
+			},
+			"preload": [
+				"embedded:network/interface/ethernet"
+			]
+		}
+	}
 }

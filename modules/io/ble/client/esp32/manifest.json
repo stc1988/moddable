@@ -1,17 +1,21 @@
 {
-	"defines": {
-		"ble": {
-			"client": true
+	"platforms": {
+		"esp32": {
+			"defines": {
+				"ble": {
+					"client": true
+				}
+			},
+			"modules": {
+				"embedded:io/bluetoothle/central": "./bleclient",
+				"*": [
+					"$(MODULES)/io/common/builtinCommon"
+				]
+			},
+			"dependency": [
+				{ "idf": "bt" }
+			],
+			"preload": "embedded:io/bluetoothle/central"
 		}
-	},
-	"modules": {
-		"embedded:io/bluetoothle/central": "./bleclient",
-		"*": [
-			"$(MODULES)/io/common/builtinCommon"
-		]
-	},
-	"dependency": [
-		{ "idf": "bt" }
-	],
-	"preload": "embedded:io/bluetoothle/central"
+	}
 }

@@ -7,7 +7,6 @@
 	"modules": {
 		"*": "./eventsource"
 	},
-	"preload": [
-		"eventsource"
-	]
+	"preload": "eventsource",
+	"mcpack": true
 }

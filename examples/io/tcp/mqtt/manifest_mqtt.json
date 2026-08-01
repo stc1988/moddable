@@ -8,5 +8,6 @@
 	},
 	"preload": [
 		"mqtt/js"
-	]
+	],
+	"mcpack": true
 }

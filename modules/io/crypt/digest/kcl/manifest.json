@@ -1,13 +1,19 @@
 {
-	"modules": {
-		"embedded:io/crypt/digest": "./digest",
-		"*": [
-			"$(MODULES)/crypt/digest/kcl/fips180",
-			"$(MODULES)/crypt/digest/kcl/rfc1321",
-			"$(MODULES)/crypt/digest/kcl/ghash"
-		]
-	},
-	"preload": [
-		"embedded:io/crypt/digest"
-	]
+	"platforms": {
+		"esp32": {
+		},
+		"...": {
+			"modules": {
+				"embedded:io/crypt/digest": "./digest",
+				"*": [
+					"$(MODULES)/crypt/digest/kcl/fips180",
+					"$(MODULES)/crypt/digest/kcl/rfc1321",
+					"$(MODULES)/crypt/digest/kcl/ghash"
+				]
+			},
+			"preload": [
+				"embedded:io/crypt/digest"
+			]
+		}
+	}
 }

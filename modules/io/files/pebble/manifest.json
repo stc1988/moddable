@@ -1,9 +1,13 @@
 {
-	"modules": {
-		"embedded:x-files-implementation": "./files-pebble",
-		"embedded:storage/files": "./files"
-	},
-	"preload": [
-		"embedded:x-files-implementation"
-	]
+	"platforms": {
+		"pebble": {
+			"modules": {
+				"embedded:x-files-implementation": "./files-pebble",
+				"embedded:storage/files": "./files"
+			},
+			"preload": [
+				"embedded:x-files-implementation"
+			]
+		}
+	}
 }

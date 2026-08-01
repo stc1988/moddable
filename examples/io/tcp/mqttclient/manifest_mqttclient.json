@@ -10,5 +10,6 @@
 	"preload": [
 		"mqttclient/config",
 		"embedded:network/mqtt/client"
-	]
+	],
+	"mcpack": true
 }

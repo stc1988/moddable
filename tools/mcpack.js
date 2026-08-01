@@ -197,7 +197,8 @@ export default class extends TOOL {
 			MODULES:this.modulesPath,
 			COMMODETTO:this.modulesPath + this.slash + "commodetto",
 		};
-		
+		this.mcpackDefault = true;
+
 		let name, path;
 		let argc = argv.length;
 		let argi = 1;
@@ -1165,6 +1166,9 @@ export default class extends TOOL {
 		for (let base of bases)
 			this.parseManifest(base, base);
 		this.recurseDirectory(this.modulesPath, this.filterManifestFile, this.parseManifest);
+		this.mcpackDefault = false;
+		this.recurseDirectory(this.examplesPath, this.filterManifestFile, this.parseManifest);
+		this.mcpackDefault = true;
 		const builtins = this.getBuiltins(this.manifests);
 		this.currentDirectory = currentDirectory;
 		
@@ -1249,6 +1253,8 @@ export default class extends TOOL {
 		this.currentDirectory = parts.directory;
 		this.currentPath = path;
 		const manifest = this.readFileJSON(path);
+		if (!(manifest.mcpack ?? this.mcpackDefault))
+			return;
 		manifest.directory = parts.directory;
 		manifest.path = path;
 		manifest.from = from ?? path;
