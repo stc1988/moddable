@@ -1,0 +1,8 @@
+{
+	"modules": {
+		"embedded:sensor/Barometer-Humidity-Temperature/BME280": "$(MODDABLE)/modules/drivers/sensors/bme280/bme280"
+	},
+	"preload": [
+		"embedded:sensor/Barometer-Humidity-Temperature/BME280"
+	]
+}
