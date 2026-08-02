@@ -445,8 +445,8 @@ export default class BER {
 			let s = String.fromArrayBuffer(b.getChunk(len));
 			let prefix = ""
 			if (tag == 0x18) {
-				prefix = s.substring(0, 2);
-				s = s.substring(2);
+				prefix = s.slice(0, 2);
+				s = s.slice(2);
 			}
 			let ymd = /(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)(\d*)[\.]*(\d*)([Z\+\-].*)/.exec(s);
 			if (tag == 0x18)
