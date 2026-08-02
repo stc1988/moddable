@@ -43,6 +43,7 @@
 #include "esp_nimble_hci.h"
 #include "ble.h"
 #include "ble_hs_hci_priv.h"
+#include "esp_timer.h"
 
 static void xs_ble_ready(void);
 static void xs_ble_nimble_task(void *param);
@@ -57,6 +58,7 @@ struct BLEGATTServerConnectionRecord {
 	xsSlot	*obj;
 	uint16_t conn_handle;
 	uint16_t maximumWrite;
+	uint8_t secured;
 };
 typedef struct BLEGATTServerConnectionRecord BLEGATTServerConnectionRecord;
 typedef struct BLEGATTServerConnectionRecord *BLEGATTServerConnection;
@@ -156,10 +158,13 @@ struct BLEServerRecord {
 
 	uint8_t		ready:1;
 	uint8_t		advertising:1;
+	uint8_t		secure:1;
+	uint8_t		immediate:1;
 	uint8_t		addressType;
-	uint8_t		secure;
-	uint8_t		immediate;
-	uint16_t		mtu;
+	uint8_t		connectionCount;
+	uint16_t	mtu;
+
+	esp_timer_handle_t	advertisingRetryTimer;
 };
 typedef struct BLEServerRecord BLEServerRecord;
 typedef struct BLEServerRecord *BLEServer;
@@ -191,6 +196,11 @@ void xs_gattserver_destructor(void *data)
 
 	//@@ notifications
 	//@@ connections
+
+	if (server->advertisingRetryTimer) {
+		esp_timer_stop(server->advertisingRetryTimer);
+		esp_timer_delete(server->advertisingRetryTimer);
+	}
 
 //@@
 	c_free(server);
@@ -348,6 +358,10 @@ void xs_gattserver_build(xsMachine *the)
 			ble_hs_cfg.sm_io_cap = display ? BLE_HS_IO_DISPLAY_ONLY : BLE_HS_IO_NO_INPUT_OUTPUT;
 		ble_hs_cfg.sm_bonding = bond;
 		ble_hs_cfg.sm_mitm = authenticate;
+		if (bond) {
+			ble_hs_cfg.sm_our_key_dist  = BLE_SM_PAIR_KEY_DIST_ENC | BLE_SM_PAIR_KEY_DIST_ID;
+			ble_hs_cfg.sm_their_key_dist = BLE_SM_PAIR_KEY_DIST_ENC | BLE_SM_PAIR_KEY_DIST_ID;
+		}
 	}
 
 	if (0 == gNimBLEInititalized++) {
@@ -589,15 +603,37 @@ void xs_gattserver_deleteService(xsMachine *the)
 	//@@
 }
 
+static void retryAdvertising(void *arg);
+
 static void ensureAdvertising(BLEServer server)
 {
-	if (server->advertising && !ble_gap_adv_active()) {
-		struct ble_gap_adv_params advp = {0};
-		advp.conn_mode = BLE_GAP_CONN_MODE_UND;
-		advp.disc_mode = BLE_GAP_DISC_MODE_GEN;
-		ble_gap_adv_start(server->addressType, NULL, BLE_HS_FOREVER, &advp, handleGAPEvent, server);		// ignore error deliberately
+	if (!server->advertising || ble_gap_adv_active())
+		return;
+
+	if (server->connectionCount >= MYNEWT_VAL(BLE_MAX_CONNECTIONS))
+		return;
+
+	struct ble_gap_adv_params advp = {0};
+	advp.conn_mode = BLE_GAP_CONN_MODE_UND;
+	advp.disc_mode = BLE_GAP_DISC_MODE_GEN;
+	if (0 == ble_gap_adv_start(server->addressType, NULL, BLE_HS_FOREVER, &advp, handleGAPEvent, server))
+		return;
+
+	// work around NimBLE failure with deferred retry
+	if (!gServer->advertisingRetryTimer) {
+		const esp_timer_create_args_t args = {.callback = retryAdvertising, .name = "advertisingRetryTimer"};
+		esp_timer_create(&args, &gServer->advertisingRetryTimer);
 	}
+	esp_timer_stop(gServer->advertisingRetryTimer);
+	esp_timer_start_once(gServer->advertisingRetryTimer, 250000); // 250ms
 }
+
+void retryAdvertising(void *arg)
+{
+	if (gServer)
+		ensureAdvertising(gServer);
+}
+
 
 void xs_gattserver_startAdvertising(xsMachine *the)
 {
@@ -829,6 +865,8 @@ static void deliverReady(void *the, void *refcon, uint8_t *message, uint16_t mes
 	xsEndHost(the);
 }
 
+static void deliverOnSecured(void *theIn, void *refcon, uint8_t *message, uint16_t messageLength);
+
 static void deliverConnect(void *the, void *refcon, uint8_t *message, uint16_t messageLength)
 {
 	BLEServer server = refcon;
@@ -847,10 +885,17 @@ static void deliverConnect(void *the, void *refcon, uint8_t *message, uint16_t m
 		connection->maximumWrite = ble_att_mtu(conn_handle) - 3;
 		xsmcSetHostData(xsResult, connection);
 		server->connections = connection;
+		server->connectionCount += 1;
 
 		if (server->onConnect)
 			xsCallFunction1(xsReference(server->onConnect), server->obj, xsResult);
 	xsEndHost(the);
+
+	{
+		struct ble_gap_conn_desc desc;
+		if ((0 == ble_gap_conn_find(conn_handle, &desc)) && desc.sec_state.encrypted && server->onSecured)
+			modMessagePostToMachine(server->the, (uint8_t *)&conn_handle, sizeof(conn_handle), deliverOnSecured, server);
+	}
 
 	ensureAdvertising(server);	// NimBLE disables advertising on connection. the client still wants it, so reenable. This will fail if all NimBLE GATT connections are used but it is the best we can do
 
@@ -864,8 +909,10 @@ static void deliverDisconnect(void *theIn, void *refcon, uint8_t *message, uint1
 	BLEServer server = refcon;
 	struct ble_gap_conn_desc *conn = (struct ble_gap_conn_desc *)message;
 	BLEGATTServerConnection connection = findConnection(server, conn->conn_handle);
-	if (C_NULL == connection)
-		return;		// ready called close on connection instance
+	if (C_NULL == connection) {
+		ensureAdvertising(server);
+		return;
+	}
 
 	if (server->onDisconnect) {
 		xsBeginHost(the);
@@ -887,6 +934,7 @@ static void deliverDisconnect(void *theIn, void *refcon, uint8_t *message, uint1
 	the->scratch = xsReference(connection->obj);
 	xsmcSetHostData(the->scratch, C_NULL);
 	c_free(connection);
+	server->connectionCount -= 1;
 
 	ensureAdvertising(server);		// NimBLE disables advertising when all GATT connections used, so check about reenabling after dropping a connection
 }
@@ -899,6 +947,9 @@ static void deliverOnSecured(void *theIn, void *refcon, uint8_t *message, uint16
 	BLEGATTServerConnection connection = findConnection(server, conn_handle);
 	if (C_NULL == connection)
 		return;
+	if (connection->secured)
+		return;
+	connection->secured = 1;
 
 	struct ble_gap_conn_desc desc;
 	if (0 != ble_gap_conn_find(conn_handle, &desc))
@@ -1022,10 +1073,8 @@ int handleGAPEvent(struct ble_gap_event *event, void *arg)
 		case BLE_GAP_EVENT_CONNECT:
 			if (0 == event->connect.status)
 				modMessagePostToMachine(server->the, (void *)&event->connect.conn_handle, sizeof(event->connect.conn_handle), deliverConnect, server);
-			else {
-//				printf("CONNECTION FAILED\n");
-				//@@ connection failed... restart advertising or notify or ??
-			}
+			else
+				ensureAdvertising(server);
 			break;
 
 		case BLE_GAP_EVENT_DISCONNECT:
@@ -1035,12 +1084,25 @@ int handleGAPEvent(struct ble_gap_event *event, void *arg)
 		case BLE_GAP_EVENT_MTU: {
 			BLEGATTServerConnection connection = findConnection(server, event->mtu.conn_handle);
 			if (connection)
-				connection->maximumWrite = event->mtu.value - 3; 
+				connection->maximumWrite = event->mtu.value - 3;
 			} break;
 
 		case BLE_GAP_EVENT_PARING_COMPLETE:
-			if ((0 == event->enc_change.status) && server->onSecured)
-				modMessagePostToMachine(server->the, (uint8_t *)&event->enc_change.conn_handle, sizeof(event->enc_change.conn_handle), deliverOnSecured, server);
+			if (0 == event->pairing_complete.status) {
+				if (server->onSecured)
+					modMessagePostToMachine(server->the, (uint8_t *)&event->pairing_complete.conn_handle, sizeof(event->pairing_complete.conn_handle), deliverOnSecured, server);
+			}
+			else
+				ble_gap_terminate(event->pairing_complete.conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+			break;
+
+		case BLE_GAP_EVENT_ENC_CHANGE:
+			if (0 == event->enc_change.status) {
+				if (server->onSecured)
+					modMessagePostToMachine(server->the, (uint8_t *)&event->enc_change.conn_handle, sizeof(event->enc_change.conn_handle), deliverOnSecured, server);
+			}
+			else
+				ble_gap_terminate(event->enc_change.conn_handle, BLE_ERR_REM_USER_CONN_TERM);
 			break;
 
 		case BLE_GAP_EVENT_PASSKEY_ACTION:
@@ -1081,6 +1143,12 @@ void xs_gattserverconnection_destructor(void *data)
 {
 	if (!data) return;
 	c_free(data);
+}
+
+uint16_t xs_ble_server_get_conn_handle(xsMachine *the, xsSlot *slot)
+{
+	BLEGATTServerConnection connection = xsmcGetHostDataValidate(*slot, xs_gattserverconnection_destructor);
+	return connection->conn_handle;
 }
 
 void doNotification(void *the, void *refcon, uint8_t *message, uint16_t messageLength)
@@ -1149,12 +1217,13 @@ void xs_gattserverconnection_close(xsMachine *the)
 		server->connections = connection->next;
 	else {
 		BLEGATTServerConnection walker = server->connections;
-		while (walker->next)
+		while (walker->next != connection)
 			walker = walker->next;
 		walker->next = connection->next;
 	}
 
-	c_free(connection);		
+	c_free(connection);
+	server->connectionCount -= 1;
 }
 
 void xs_gattserverconnection_get_maximumWrite(xsMachine *the)
