@@ -293,6 +293,7 @@ function fetch(href, info = {}) {
 						reader.read().then(result => {
 							if (result.done) {
 								this.write();
+								reader.releaseLock();
 								return;
 							}
 							body = result.value;
