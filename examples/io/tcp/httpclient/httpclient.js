@@ -92,10 +92,16 @@ class HTTPClient {
 				if (true !== client.#requestBody)
 					throw new Error("bad data");
 
-//@@ this may not be always correct... if last chunk has already flushed and onWritable called, this will never go out
 				client.#pendingWrite = ArrayBuffer.fromString("0\r\n\r\n");
 				client.#writePosition = 0;
 				client.#requestBody = false;
+				if (client.#writable >= client.#pendingWrite.byteLength) {
+					client.#write(client.#pendingWrite);
+					client.#pendingWrite = undefined;
+					client.#state = "receiveResponseStatus";
+					client.#line = "";
+					client.#requestBody = false;
+				}
 				return 0;		// request done. can't write more. 
 			}
 
