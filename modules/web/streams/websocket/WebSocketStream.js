@@ -25,7 +25,7 @@ class WebSocketStream {
 	#writableLength = 0;
 
 	constructor(href, options) {
-		let keepalive, protocol, signal;
+		let protocol, signal;
 		let url = new URL(href);
 		let scheme = url.protocol;
 		let port, config;
@@ -72,8 +72,6 @@ class WebSocketStream {
 					case this.#client.constructor.ping:
 						break;
 					case this.#client.constructor.pong:
-// 						if (this.#keepalive)
-// 							this.#keepalive.pong = true;
 						break;
 				}
 			},
@@ -210,8 +208,6 @@ class WebSocketStream {
 		return this.#url;
 	}
 	close(options) {
-// 		Timer.clear(this.#keepalive);
-// 		this.#keepalive = undefined;
 		let code = options?.closeCode;
 		let reason = options?.reason;
 		if (code === undefined) {
