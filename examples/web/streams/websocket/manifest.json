@@ -4,9 +4,6 @@
 		"$(MODULES)/web/streams/all/manifest.json",
 		"$(MODULES)/web/streams/websocket/manifest.json"
 	],
-	"creation": {
-		"stack": 1024
-	},
 	"defines": {
 		"main": {
 			"async": 1

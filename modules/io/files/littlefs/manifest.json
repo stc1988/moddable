@@ -1,6 +1,6 @@
 {
 	"platforms": {
-		"mac": {
+		"mac-test": {
 			"modules": {
 				"embedded:x-files-implementation": "./files-littlefs",
 				"*": [
@@ -8,7 +8,8 @@
 					"./lfs"
 				],
 				"embedded:storage/files": "./files"
-			}
+			},
+			"preload": "embedded:x-files-implementation"
 		},
 		"esp32": {
 			"modules": {
@@ -23,12 +24,10 @@
 				"file": {
 					"partition": "#storage"
 				}
-			}
+			},
+			"preload": "embedded:x-files-implementation"
 		}
 	},
-	"preload": [
-		"embedded:x-files-implementation"
-	],
 	"defines": {
 		"file": {
 			"lfs": {

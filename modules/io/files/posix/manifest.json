@@ -4,16 +4,15 @@
 			"modules": {
 				"embedded:x-files-implementation": "./files-posix",
 				"embedded:storage/files": "./files"
-			}
+			},
+			"preload": "embedded:x-files-implementation"
 		},
 		"lin": {
 			"modules": {
 				"embedded:x-files-implementation": "./files-posix",
 				"embedded:storage/files": "./files"
-			}
+			},
+			"preload": "embedded:x-files-implementation"
 		}
-	},
-	"preload": [
-		"embedded:x-files-implementation"
-	]
+	}
 }
