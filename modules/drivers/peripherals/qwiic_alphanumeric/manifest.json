@@ -1,0 +1,8 @@
+{
+	"modules": {
+		"embedded:peripheral/Display/QwiicAlphanumeric": "./qwiic_alphanumeric"
+	},
+	"preload": [
+		"embedded:peripheral/Display/QwiicAlphanumeric"
+	]
+}
