@@ -57,17 +57,6 @@ async function fetchJson(label, url) {
 fetchJson("gzip",    "http://httpbin.org/gzip");
 fetchJson("deflate", "http://httpbin.org/deflate");
 
-fetch("http://httpbin.org/put", { method:"PUT", body:"This is no data!" })
-.then(response => {
-	trace(`\n${response.url} ${response.status} ${response.statusText}\n\n`);
-	response.headers.forEach((value, key) => trace(`${key}: ${value}\n`));
-	trace("\n");
-	return response.text();
-})
-.then(text => {
-	trace(`${text}\n`);
-})
-
 let count = 0;
 const stream = new ReadableStream({
 	pull(controller) {
