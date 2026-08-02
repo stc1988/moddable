@@ -190,6 +190,7 @@ function fetch(href, info = {}) {
 		if ((url.protocol != "http:") && (url.protocol != "https:"))
 			rejectResponse(new URIError("only http or https"));
 		let method = info.method;
+		let reader = null;
 		let body = info.body;
 		let length = 0;
 
@@ -208,12 +209,19 @@ function fetch(href, info = {}) {
 		if ((method == "POST") || (method == "PUT") || (method == "PATCH")) {
 			if (body == undefined)
 				rejectResponse(new URIError(method + " no body"));
-			else if (!(body instanceof ArrayBuffer)) {
-				body = body.toString();
-				body = ArrayBuffer.fromString(body);
+			else if (body instanceof ReadableStream) {
+				reader = body.getReader();
+				body = null;
+				headers.set("transfer-encoding", "chunked");
 			}
-			length = Number(headers.get("content-length") ?? body.byteLength);
-			headers.set("content-length", length);
+			else {
+				if (!(body instanceof ArrayBuffer)) {
+					body = body.toString();
+					body = ArrayBuffer.fromString(body);
+				}
+				length = Number(headers.get("content-length") ?? body.byteLength);
+				headers.set("content-length", length);
+			}
 		}
 
 		if (!headers.has("accept-encoding"))
@@ -262,7 +270,7 @@ function fetch(href, info = {}) {
 				resolveResponse(new Response(url, status, headers, body, redirected));
 			},
 			onWritable(count) {
-				if (body) {
+				const writeBody = () => {
 					let remain = length - offset;
 					if (remain > 0) {
 						if (count > remain)
@@ -271,8 +279,31 @@ function fetch(href, info = {}) {
 						this.write(view);
 						offset += count;
 					}
-					else
+					else if (!reader)
 						this.write();
+				}
+				if (body) {
+					writeBody()
+				}
+				if (offset == length) {
+					if (reader) {
+						body = null;
+						length = 0;
+						offset = 0;
+						reader.read().then(result => {
+							if (result.done) {
+								this.write();
+								return;
+							}
+							body = result.value;
+							if (!(body instanceof ArrayBuffer)) {
+								body = body.toString();
+								body = ArrayBuffer.fromString(body);
+							}
+							length = body.byteLength;
+							writeBody();
+						});
+					}
 				}
 			},
 			onReadable(count) {
