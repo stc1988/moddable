@@ -176,6 +176,48 @@ globalThis.WebSocketStream = WebSocketStream;
 `
 };
 
+const webSerialGlobal = {
+	include: "$(MODDABLE)/modules/web/serial/manifest.json",
+	snippet: `
+import { serial } from "web/serial";
+globalThis.navigator ??= {};
+globalThis.navigator.serial = serial;
+`
+};
+const webBluetoothGlobal = {
+	include: "$(MODDABLE)/modules/io/ble/web-bluetooth/manifest.json",
+	snippet: `
+import { bluetooth, BluetoothUUID } from "web-bluetooth";
+globalThis.navigator ??= {};
+globalThis.navigator.bluetooth = bluetooth;
+globalThis.BluetoothUUID = BluetoothUUID;
+`
+};
+const httpGlobal = {
+	include: "$(MODDABLE)/examples/io/tcp/httpclient/manifest_httpclient.json"
+};
+const httpsGlobal = {
+	include: "$(MODDABLE)/examples/io/tcp/httpsclient/manifest_httpsclient.json"
+};
+const wsGlobal = {
+	include: "$(MODDABLE)/examples/io/tcp/websocketclient/manifest_websocketclient.json"
+};
+const wssGlobal = {
+	include: "$(MODDABLE)/examples/io/tcp/websocketsclient/manifest_wssclient.json"
+};
+const mqttGlobal = {
+	include: "$(MODDABLE)/examples/io/tcp/mqttclient/manifest_mqttclient.json"
+};
+const mqttsGlobal = {
+	include: "$(MODDABLE)/examples/io/tcp/mqttsclient/manifest_mqttsclient.json"
+};
+const ntpGlobal = {
+	include: "$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json"
+};
+const dnssdGlobal = {
+	include: "$(MODDABLE)/modules/io/dnssd/manifest.json"
+};
+
 export default class extends TOOL {
 	constructor(argv) {
 		super(argv);
@@ -388,6 +430,16 @@ export default class extends TOOL {
 			"TextDecoderStream": textDecoderStreamGlobal,
 			"TextEncoderStream": textEncoderStreamGlobal,
 			"WebSocketStream": webSocketStreamGlobal,
+			"navigator.serial": webSerialGlobal,
+			"navigator.bluetooth": webBluetoothGlobal,
+			"device.network.http": httpGlobal,
+			"device.network.https": httpsGlobal,
+			"device.network.ws": wsGlobal,
+			"device.network.wss": wssGlobal,
+			"device.network.mqtt": mqttGlobal,
+			"device.network.mqtts": mqttsGlobal,
+			"device.network.ntp": ntpGlobal,
+			"device.network.dnssd": dnssdGlobal,
 		}
 		this.snippets = [];
 	}
@@ -468,6 +520,8 @@ export default class extends TOOL {
 				}
 			}
 			for (let string of infos.global) {
+				if (string.startsWith("globalThis."))
+					string = string.slice(11);
 				let global = this.globals[string];
 				if (global) {
 					let include = global.include;

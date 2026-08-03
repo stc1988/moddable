@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2023  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Tools.
  * 
@@ -51,6 +51,88 @@ static void Tool_prototype_listSpecifiersWarning(void* console, txString thePath
 	fprintf(stderr, "!\n");
 }
 
+#define mxGlobalPathDepth 5
+
+typedef struct {
+	txMachine* the;
+	txSlot* array;
+} txGlobalPathWalker;
+
+static void Tool_prototype_pushGlobal(txGlobalPathWalker* walker, txString string)
+{
+	txMachine* the = walker->the;
+	mxPushStringC(string);
+	fxArrayCacheItem(the, walker->array, the->stack);
+	mxPop();
+}
+
+static txNode* Tool_prototype_unwrapNode(txNode* node)
+{
+	while (node && ((node->description->token == XS_TOKEN_OPTION) || (node->description->token == XS_TOKEN_CHAIN)))
+		node = ((txUnaryExpressionNode*)node)->right;
+	return node;
+}
+
+static void Tool_prototype_reportGlobalPath(txNode* it, txGlobalPathWalker* walker)
+{
+	txString parts[mxGlobalPathDepth];
+	txInteger count = 0;
+	txNode* node = it;
+	char buffer[256];
+	txInteger i, length = 0;
+	while (node && (count < mxGlobalPathDepth)) {
+		if (node->description->token == XS_TOKEN_MEMBER) {
+			parts[count++] = ((txMemberNode*)node)->symbol->string;
+			node = Tool_prototype_unwrapNode(((txMemberNode*)node)->reference);
+		}
+		else if (node->description->token == XS_TOKEN_MEMBER_AT) {
+			txNode* at = ((txMemberAtNode*)node)->at;
+			if (!at || (at->description->token != XS_TOKEN_STRING))
+				return;
+			parts[count++] = ((txStringNode*)at)->value;
+			node = Tool_prototype_unwrapNode(((txMemberAtNode*)node)->reference);
+		}
+		else
+			break;
+	}
+	if (!node || (count == 0) || (count >= mxGlobalPathDepth))
+		return;
+	if (node->description->token != XS_TOKEN_ACCESS)
+		return;
+	if (((txAccessNode*)node)->declaration != C_NULL)
+		return;
+	length = c_strlen(((txAccessNode*)node)->symbol->string);
+	if (length >= (txInteger)sizeof(buffer))
+		return;
+	c_strcpy(buffer, ((txAccessNode*)node)->symbol->string);
+	for (i = count; i > 0; i--) {
+		txInteger part = c_strlen(parts[i - 1]);
+		if ((length + 1 + part) >= (txInteger)sizeof(buffer))
+			return;
+		buffer[length++] = '.';
+		c_strcpy(buffer + length, parts[i - 1]);
+		length += part;
+	}
+	Tool_prototype_pushGlobal(walker, buffer);
+}
+
+static void Tool_prototype_walkGlobals(void* it, void* param)
+{
+	txNode* node = it;
+	txToken token;
+	if (!node)
+		return;
+	token = node->description->token;
+	if ((token == XS_TOKEN_MEMBER) || (token == XS_TOKEN_MEMBER_AT))
+		Tool_prototype_reportGlobalPath(node, param);
+	else if (token == XS_TOKEN_ACCESS) {
+		txAccessNode* access = (txAccessNode*)node;
+		if (access->declaration == C_NULL)
+			Tool_prototype_pushGlobal(param, access->symbol->string);
+	}
+	(*node->description->dispatch->distribute)(node, Tool_prototype_walkGlobals, param);
+}
+
 void Tool_prototype_listSpecifiers(txMachine* the)
 {
 	char *path = fxToString(the, mxArgv(0));
@@ -77,8 +159,7 @@ void Tool_prototype_listSpecifiers(txMachine* the)
 			txDeclareNode* node = self->scope->firstDeclareNode;
 			txBoolean hasDefault = 0;
 			txBoolean isAsync = (self->flags & mxAwaitingFlag) ? 1 : 0;
-			txSize modulo;
-			
+
 			fxNewObject(the);
 			mxPullSlot(mxResult);
 
@@ -118,16 +199,9 @@ void Tool_prototype_listSpecifiers(txMachine* the)
 			mxPush(mxArrayPrototype);
 			fxNewArrayInstance(the);
 			fxArrayCacheBegin(the, the->stack);
-			for (modulo = 0; modulo < parser->symbolModulo; modulo++) {
-				txSymbol* symbol = parser->symbolTable[modulo];
-				while (symbol) {
-					if (symbol->usage & 2) {
-						mxPushStringC(symbol->string);
-						fxArrayCacheItem(the, the->stack + 1, the->stack);
-						mxPop();
-					}
-					symbol = symbol->next;
-				}
+			{
+				txGlobalPathWalker walker = { the, the->stack };
+				Tool_prototype_walkGlobals(parser->root, &walker);
 			}
 			fxArrayCacheEnd(the, the->stack);
 			mxPushSlot(mxResult);
