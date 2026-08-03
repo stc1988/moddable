@@ -1,3 +1,4 @@
+import {serial} from "web/serial";
 import TextDecoder from "text/decoder";
 import TextEncoder from "text/encoder";
 import Timer from "timer";
@@ -5,7 +6,7 @@ import Timer from "timer";
 trace("started\n");
 
 try {
-	const port = await navigator.serial.requestPort();
+	const port = await serial.requestPort();
 	await port.open({baudRate: 115200 * 1, bufferSize: 20});
 	let total = 0;
 	const reader = port.readable.getReader({ mode: "byob" });

@@ -1,5 +1,6 @@
 {
 	"include": [
+		"$(MODDABLE)/modules/io/manifest.json",
 		"$(MODDABLE)/modules/web/streams/all/manifest.json"
 	],
 	"modules": {

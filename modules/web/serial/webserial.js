@@ -280,5 +280,4 @@ class SerialPort {
 	}
 }
 
-globalThis.navigator ??= {};
-navigator.serial = WebSerial;
+export { WebSerial as serial };
