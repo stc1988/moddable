@@ -91,6 +91,9 @@
 		"web/console": [
 			"$(TYPINGS)/web/console"
 		],
+		"web/decompressionstream": [
+			"$(TYPINGS)/web/decompressionstream"
+		],
 		"web/eventsource": [
 			"$(TYPINGS)/web/eventsource"
 		],
@@ -99,6 +102,12 @@
 		],
 		"web/timer": [
 			"$(TYPINGS)/web/timers"
+		],
+		"web/textdecoderstream": [
+			"$(TYPINGS)/web/textdecoderstream"
+		],
+		"web/textencoderstream": [
+			"$(TYPINGS)/web/textencoderstream"
 		],
 		"web/websocket": [
 			"$(TYPINGS)/web/websocket"

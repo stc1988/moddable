@@ -12,14 +12,9 @@
  *
  */
 
-import * as streams from "web/streams";
-for (let key in streams)
-	globalThis[key] = streams[key];
-
+import {ReadableStream, TransformStream} from "web/streams";
 import DecompressionStream from "web/decompressionstream";
 import TextDecoderStream from "web/textdecoderstream";
-
-const ReadableStream = globalThis.ReadableStream;
 
 const expected = "The quick brown fox jumps over the lazy dog.\n";
 

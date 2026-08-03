@@ -12,8 +12,7 @@
  *
  */
 
-import { fetch, Headers } from "web/fetch/streams";
-import { URLSearchParams } from "url";
+import { fetch } from "web/fetch/streams";
 import { AbortController } from "web/abortsignal";
 import { ReadableStream } from "web/streams";
 import TextDecoderStream from "web/textdecoderstream";
