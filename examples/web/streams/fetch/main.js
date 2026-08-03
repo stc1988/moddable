@@ -12,7 +12,7 @@
  *
  */
 
-import { fetch, Headers } from "fetch";
+import { fetch, Headers } from "web/fetch/streams";
 import { URLSearchParams } from "url";
 import { AbortController } from "web/abortsignal";
 import { ReadableStream } from "web/streams";

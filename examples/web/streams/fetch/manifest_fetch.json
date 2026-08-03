@@ -7,11 +7,9 @@
 		"$(MODULES)/web/streams/decompression/manifest.json"
 	],
 	"modules": {
-		"*": [
-			"./fetch"
-		]
+		"web/fetch/streams": "./fetch"
 	},
 	"preload": [
-		"fetch"
+		"web/fetch/streams"
 	]
 }
