@@ -45,31 +45,51 @@ ESP_ARCH = xtensa
 GXX_PREFIX = xtensa-$(ESP32_SUBCLASS)
 ESP32_BT_SUBCLASS = $(ESP32_SUBCLASS)
 
+!IF "$(ESP32_SUBCLASS)"=="esp32c5"
+ESP32_TARGET = 8
+ESP_ARCH = riscv
+GXX_PREFIX = riscv32-esp
+MACHINE_FLAGS = -mabi=ilp32 -march=rv32imac_zicsr_zifencei
+!ELSE
+!IF "$(ESP32_SUBCLASS)"=="esp32p4"
+ESP32_TARGET = 7
+ESP_ARCH = riscv
+GXX_PREFIX = riscv32-esp
+MACHINE_FLAGS = -mabi=ilp32f -march=rv32imafc_zicsr_zifencei_zaamo_zalrsc_xesploop_xespv2p1 -mtune=esp-base -specs=picolibc.specs
+!ELSE
 !IF "$(ESP32_SUBCLASS)"=="esp32h2"
 ESP32_TARGET = 6
 ESP_ARCH = riscv
 GXX_PREFIX = riscv32-esp
+MACHINE_FLAGS = -march=rv32imac
 !ELSE
 !IF "$(ESP32_SUBCLASS)"=="esp32c6"
 ESP32_TARGET = 5
 ESP_ARCH = riscv
 GXX_PREFIX = riscv32-esp
+MACHINE_FLAGS = -march=rv32imac
 !ELSE
 !IF "$(ESP32_SUBCLASS)"=="esp32c3"
 ESP32_TARGET = 4
 ESP_ARCH = riscv
 GXX_PREFIX = riscv32-esp
+MACHINE_FLAGS = -march=rv32imc
 !ELSE
 !IF "$(ESP32_SUBCLASS)"=="esp32s3"
 ESP32_TARGET = 3
 ESP32_BT_SUBCLASS = esp32
+MACHINE_FLAGS = --machine-fix-esp32-psram-cache-issue --machine-fix-esp32-psram-cache-strategy=memw
 !ELSE
 !IF "$(ESP32_SUBCLASS)"=="esp32s2"
 ESP32_TARGET = 2
 # no BT on esp32s2
+MACHINE_FLAGS =
 !ELSE
 # regular esp32
 ESP32_TARGET = 1
+MACHINE_FLAGS =
+!ENDIF
+!ENDIF
 !ENDIF
 !ENDIF
 !ENDIF
@@ -319,6 +339,12 @@ INC_DIRS = \
 	-I$(IDF_PATH)\components\vfs\include \
 	-I$(IDF_PATH)\components\tinyusb\additions\include
 
+!IF "$(ESP32_SUBCLASS)"=="esp323p4"
+INC_DIRS = $(INC_DIRS) \
+	-I$(IDF_PATH)\components\soc\$(ESP32_SUBCLASS)\register\$(ESP32P4_HWVER)
+!ENDIF
+
+
 INC_DIRS = $(INC_DIRS) \
 	-I$(IDF_PATH)\components\freertos\port\$(ESP_ARCH)\include \
 	-I$(IDF_PATH)\components\freertos\FreeRTOS-Kernel\portable\$(ESP_ARCH)\include \
@@ -433,6 +459,7 @@ C_DEFINES = $(C_DEFINES) -DMODINSTRUMENTATION=1 -DmxInstrument=1
 C_INCLUDES = $(C_INCLUDES) $(DIRECTORIES) $(INC_DIRS) $(XS_DIRS) -I$(LIB_DIR) -I$(TMP_DIR)
 
 C_COMMON_FLAGS = -c -Os -g \
+	$(MACHINE_FLAGS) \
 	-Wno-unused-variable \
 	-Wpointer-arith \
 	-Wl,-EL \
@@ -450,10 +477,7 @@ C_COMMON_FLAGS = -c -Os -g \
 	-DESP_PLATFORM \
 	-MP
 
-!IF "$(ESP_ARCH)"=="riscv"
-C_COMMON_FLAGS = $(C_COMMON_FLAGS) \
-	-march=rv32imc
-!ELSE
+!IF "$(ESP_ARCH)"=="xtensa"
 C_COMMON_FLAGS = $(C_COMMON_FLAGS) \
 	-mlongcalls \
 	-mtext-section-literals \
