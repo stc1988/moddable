@@ -1,6 +1,6 @@
 # Using the Moddable SDK with ESP32
 Copyright 2016-2026 Moddable Tech, Inc.<BR>
-Revised: April 13, 2026
+Revised: August 3, 2026
 
 This document provides a guide to building apps for the ESP32 line of SoCs from Espressif. The Moddable SDK supports [ESP32](https://www.espressif.com/en/products/socs/esp32), [ESP32-S2](https://www.espressif.com/en/products/socs/esp32-s2), [ESP32-S3](https://www.espressif.com/en/products/socs/esp32-s3), [ESP32-C3](https://www.espressif.com/en/products/socs/esp32-c3), [ESP32-C6](https://www.espressif.com/en/products/socs/esp32-c6), and [ESP32-H2](https://www.espressif.com/en/products/socs/esp32-h2).
 
@@ -151,7 +151,8 @@ The Moddable SDK supports devices built on ESP32-S3. The following table lists e
 | <img src="./../assets/devices/lilygo-t-display-s3.png" width=100><BR>Lilygo T-Display-S3 | `esp32/lilygo_tdisplay_s3` | 1.9" LCD display<br>170 x 320 16 bit color<br>8-bit parallel display<br>Touch<br>2 buttons<br>Qwiic connector<br> | <li>[Product page](https://www.lilygo.cc/products/t-display-s3)</li>|
 | <img src="./../assets/devices/xiao-esp32c3.png" width=125><BR>Seeed Studio<BR>XIAO ESP32S3 | `esp32/xiao_esp32s3` | 1 button | <li>[Product page](https://www.seeedstudio.com/XIAO-ESP32S3-p-5627.html)</li>|
 | <img src="../assets/devices/xiao-qtpy-ili9341-thumbnail.png" width=140></a><BR>ili9341 | `esp32/qtpys3_ili9341`<br>`esp32/xiao_esp32s3_ili9341` | ili9341 QVGA display<BR>320 x 240<BR>16-bit color | <li>[Wiring Guide](../displays/images/xiao-qtpy-ili9341-wiring.png)</li> |
-| Waveshare<BR>ESP32-S3-Touch-AMOLED-2.06 | `esp32/waveshare_amoled_206` | 2.06" AMOLED display<BR>410 x 502<BR>16-bit color<BR>QSPI display bus<BR>Capacitive touch<BR>IMU<BR>RTC<BR>PMU | <li>[Product page](https://www.waveshare.com/esp32-s3-touch-amoled-2.06.htm)</li> |
+| <img src="../assets/devices/waveshare_s3_amoled_2.06.png" width=140></a>Waveshare<BR>ESP32-S3-Touch-AMOLED-2.06 | `esp32/waveshare_amoled_206` | 2.06" AMOLED display<BR>410 x 502<BR>16-bit color<BR>QSPI display bus<BR>Capacitive touch<BR>IMU<BR>RTC<BR>PMU | <li>[Product page](https://www.waveshare.com/esp32-s3-touch-amoled-2.06.htm)</li> |
+|  <img src="./../assets/devices/ws_c6_147.jpg" width=125><BR>Waveshare<br>ESP32-S3-LCD-1.47 | `esp32/ws_esp32s3_1_47` | 1.47" 172x320<br>Display<br>IMU, NeoPixel, Button | <li>[Product page](https://www.waveshare.com/product/arduino/boards-kits/esp32-s3/esp32-s3-lcd-1.47b.htm)</li> |
 
 <a id="platforms-esp32-s3-cameras"></a>
 ### ESP32-S3 Cameras
@@ -202,12 +203,13 @@ ESP32-C6 has the following features:
 - 512 KB RAM
 - 4 MB flash on popular modules
 
-The Moddable SDK supports three ESP32-C6 development kits:
+The Moddable SDK supports these ESP32-C6 development kits:
 
 | Name | Platform identifier | Key features | Links |
 | :---: | :--- | :--- | :--- |
 |  <img src="./../assets/devices/esp32-c6-devkitc.png" width=125><BR>ESP32-C6-DevKitC-1 | `esp32/esp32c6` | NeoPixel, Button | <li>[Product page](https://docs.espressif.com/projects/espressif-esp-dev-kits/en/latest/esp32c6/esp32-c6-devkitc-1/user_guide.html)</li> |
 |  <img src="./../assets/devices/m5nanoc6.png" width=125><BR>M5NanoC6 | `esp32/m5nanoc6` | LED, NeoPixel, Button | <li>[Product page](https://docs.m5stack.com/en/core/M5NanoC6)</li> |
+|  <img src="./../assets/devices/ws_c6_147.jpg" width=125><BR>Waveshare<br>ESP32-C6-LCD-1.47 | `esp32/ws_esp32c6_1_47` | 1.47" 172x320<br>Display<br>NeoPixel, Button | <li>[Product page](https://docs.waveshare.com/ESP32-C6-LCD-1.47)</li> |
 
 <a id="platforms-esp32-h2"></a>
 ### ESP32-H2
@@ -219,7 +221,7 @@ ESP32-H2 has the following features:
 - 320 KB RAM
 - 4 MB flash on popular modules
 
-The Moddable SDK supports three ESP32-H2 development kits:
+The Moddable SDK supports these ESP32-H2 development kits:
 
 | Name | Platform identifier | Key features | Links |
 | :---: | :--- | :--- | :--- |

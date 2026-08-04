@@ -1,6 +1,6 @@
 # Getting Started with Raspberry Pi Pico
 Copyright 2021-2026 Moddable Tech, Inc.<BR>
-Revised: May 4, 2026
+Revised: August 4, 2026
 
 This document describes how to start building Moddable applications for the Raspberry Pi Pico. It provides information on how to configure host build environments, how to build and deploy apps, and includes links to external development resources.
 
@@ -114,8 +114,11 @@ The Raspberry Pi Pico 2 has the following features:
 | <img src="../assets/devices/pico-pimoroni-tiny2350.png" width=220></a><br>Pimoroni<br>Tiny2350 | `pico/tiny2350` | Qwiic/STEMMA connector | <li>[Pimoroni product page](https://shop.pimoroni.com/products/tiny-2350)</li> |
 | <img src="../assets/devices/waveshare-rp2350-touch-128.png" width=220></a><br>Waveshare<br>RP2350 Touch LCD 1.28 | `pico/ws_rp2350_touch_1_28` | 1.28" IPS 240x240<br>Touch Display<br>QMI8658 IMU<br>expansion pins | <li>[Waveshare product page](https://www.waveshare.com/RP2350-Touch-LCD-1.28.htm)</li> |
 | <img src="../assets/devices/waveshare-rp2350-touch-169.png" width=220></a><br>Waveshare<br>RP2350 Touch LCD 1.69 | `pico/ws_rp2350_touch_1_69` | 1.69" IPS 240x280<br>Touch Display<br>QMI8658 IMU<br>Real Time Clock | <li>[Waveshare product page](https://www.waveshare.com/RP2350-Touch-LCD-1.69.htm)</li> |
-| <img src="../assets/devices/waveshare-rp2350-touch-2.8.png" width=220></a><br>Waveshare<br>RP2350 Touch LCD 2.8 | `pico/ws_rp2350_touch_2_8` | 2.8" IPS 240x320<br>Touch Display<br>QMI8658 IMU<br>Real Time Clock<br>Speakers<br>expansion pins | <li>[Waveshare product page](https://www.waveshare.com/RP2350-Touch-LCD-1.69.htm)</li> |
+| <img src="../assets/devices/waveshare-rp2350-touch-2.0.png" width=220></a><br>Waveshare<br>RP2350 Touch LCD 2.0 | `pico/ws_rp2350_touch_2` | 2.0" IPS 240x320<br>Touch Display<br>QMI8658 IMU<br>expansion pins | <li>[Waveshare product page](https://www.waveshare.com/rp2350-touch-lcd-2.htm)</li> |
+| <img src="../assets/devices/waveshare-rp2350-touch-2.8.png" width=220></a><br>Waveshare<br>RP2350 Touch LCD 2.8 | `pico/ws_rp2350_touch_2_8` | 2.8" IPS 240x320<br>Touch Display<br>QMI8658 IMU<br>Real Time Clock<br>Speakers<br>expansion pins | <li>[Waveshare product page](https://www.waveshare.com/rp2350-touch-lcd-2.8.htm)</li> |
+| <img src="../assets/devices/waveshare-rp2350-touch-3.5.png" width=220></a><br>Waveshare<br>RP2350 Touch LCD 3.5 | `pico/ws_rp2350_touch_3_5` | 3.5" IPS 320x480<br>Touch Display<br>QMI8658 IMU<br>Real Time Clock<br>Speaker, Microphone<br>expansion pins | <li>[Waveshare product page](https://docs.waveshare.com/RP2350-Touch-LCD-3.5)</li> |
 | <img src="../assets/devices/xiao-rp2350.png" width=150></a><br>Seeed Studio<br>XIAO RP2350 | `pico/xiao_rp2350` | Neopixel | <li>[Seeed Studio product page](https://www.seeedstudio.com/Seeed-XIAO-RP2350-p-5944.html)</li> |
+
 
 <a id="setup"></a>
 ## SDK and Host Environment Setup
