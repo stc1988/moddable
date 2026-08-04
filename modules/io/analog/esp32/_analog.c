@@ -169,6 +169,34 @@ typedef struct AnalogRecord *Analog;
 		5,
 		6
 	};
+#else
+	#define ADC_PORTS		(2)
+	#define ADC_RESOLUTION	(12)
+	#define ADC_WIDTH		ADC_BITWIDTH_12
+
+	static const uint8_t gADCMap[SOC_ADC_CHANNEL_NUM(0)] = {	// ADC1 channel to GPIO
+		36,
+		37,
+		38,
+		39,
+		32,
+		33,
+		34,
+		35
+	};
+
+	static const uint8_t gADC2Map[SOC_ADC_CHANNEL_NUM(1)] = {	// ADC2 channel to GPIO
+		4,
+		0,
+		2,
+		15,
+		13,
+		12,
+		14,
+		27,
+		25,
+		26
+	};
 #endif
 
 #if ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED || ADC_CALI_SCHEME_LINE_FITTING_SUPPORTED
