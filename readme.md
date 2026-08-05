@@ -1,7 +1,7 @@
 # Moddable SDK
 
 Copyright 2017-2026 Moddable Tech, Inc.<BR>
-Revised: July 29, 2026
+Revised: August 5, 2026
 Moddable SDK: [Version 8.3.1](https://github.com/Moddable-OpenSource/moddable/releases)
 
 ## Modern software development for microcontrollers
@@ -12,7 +12,7 @@ Microcontrollers are highly constrained devices compared to modern computers and
 
 <a href="https://tc39.es/ecma262/">![JS logo](./documentation/assets/moddable/js.png)</a>
 
-The primary programming language for development is JavaScript. The XS JavaScript engine at the center of the Moddable SDK implements the [2025 JavaScript language standard](https://262.ecma-international.org/16.0/) with better than 99% conformance.<sup>[[1](#footnotes)]</sup> The constraints of the target microcontroller may limit the number of language features that can be used in combination by a single application.
+The primary programming language for development is JavaScript. The XS JavaScript engine at the center of the Moddable SDK implements the [2026 JavaScript language standard](https://262.ecma-international.org/17.0/) with better than 99% conformance.<sup>[[1](#footnotes)]</sup> The constraints of the target microcontroller may limit the number of language features that can be used in combination by a single application.
 
 The JavaScript language implemented in the Moddable SDK is the same language used in web pages and Node.js. The microcontroller that the scripts run on, however, is very different from a personal computer, server, or mobile device. These differences often require a different approach to using JavaScript. The APIs and objects in the Moddable SDK are quite different, being designed with the goal of minimizing memory use. Bring your existing experience with JavaScript, but be prepared to think about performance, code size, and memory use in a different way.<sup>[[2](#footnotes)]</sup>
 
@@ -226,6 +226,8 @@ The Moddable SDK repository contains the following top level directories:
 - [**modules**](./modules): The software modules that make up the runtime of the Moddable SDK. These include networking, graphics, user interface, hardware access, cryptographic primitives, and device drivers. All modules have a JavaScript API. Many modules are implemented in part using C.
 - [**tools**](./tools): Tools to build applications using the Moddable SDK. These include command line tools for image format conversion, image compression, image rotation, font compression, processing localization strings, compiling resources, and building applications from JSON manifest files. In addition, xsbug, the XS source level debugger, is here.
 - [**xs**](./xs): The XS JavaScript engine including its compiler and linker, and the test262 execution shell.
+
+The [AGENTS.md](./AGENTS.md) document at the root of the repository is for LLM coding agents using the Moddable SDK. It describes the build tools, the manifest format, which APIs to use, and the SDK's conventions.
 
 ## API Documentation
 
