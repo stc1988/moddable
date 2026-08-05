@@ -1,8 +1,8 @@
 # Using the Moddable SDK with ESP32
 Copyright 2016-2026 Moddable Tech, Inc.<BR>
-Revised: August 3, 2026
+Revised: August 4, 2026
 
-This document provides a guide to building apps for the ESP32 line of SoCs from Espressif. The Moddable SDK supports [ESP32](https://www.espressif.com/en/products/socs/esp32), [ESP32-S2](https://www.espressif.com/en/products/socs/esp32-s2), [ESP32-S3](https://www.espressif.com/en/products/socs/esp32-s3), [ESP32-C3](https://www.espressif.com/en/products/socs/esp32-c3), [ESP32-C6](https://www.espressif.com/en/products/socs/esp32-c6), and [ESP32-H2](https://www.espressif.com/en/products/socs/esp32-h2).
+This document provides a guide to building apps for the ESP32 line of SoCs from Espressif. The Moddable SDK supports [ESP32](https://www.espressif.com/en/products/socs/esp32), [ESP32-S2](https://www.espressif.com/en/products/socs/esp32-s2), [ESP32-S3](https://www.espressif.com/en/products/socs/esp32-s3), [ESP32-C3](https://www.espressif.com/en/products/socs/esp32-c3), [ESP32-C5](https://www.espressif.com/en/products/socs/esp32-c5), [ESP32-C6](https://www.espressif.com/en/products/socs/esp32-c6), and [ESP32-H2](https://www.espressif.com/en/products/socs/esp32-h2).
 
 ## Table of Contents
 
@@ -13,6 +13,7 @@ This document provides a guide to building apps for the ESP32 line of SoCs from 
 	* [ESP32-S3](#platforms-esp32-s3)
 	* [ESP32-S3 Cameras](#platforms-esp32-s3-cameras)
 	* [ESP32-C3](#platforms-esp32-c3)
+	* [ESP32-C5](#platforms-esp32-c5)
 	* [ESP32-C6](#platforms-esp32-c6)
 	* [ESP32-H2](#platforms-esp32-h2)
 	* [Specifying ESP32 Subclass in Manifest](#platforms-manifest)
@@ -31,7 +32,7 @@ This document provides a guide to building apps for the ESP32 line of SoCs from 
 	* [Multi-port devices](#usb_multiport)
 	* [Build configuration](#usb_build)
 	* [TinyUSB](#usb_tinyusb) (esp32s2, esp32s3)
-	* [Serial-JTAG](#usb_serial_jtag) (esp32s3, esp32c3, esp32c6, esp32h2)
+	* [Serial-JTAG](#usb_serial_jtag) (esp32s3, esp32c3, esp32c5, esp32c6, esp32h2)
 * [Using Components from the ESP Component Registry and ESP-IDF](#idf-components)
 
 
@@ -54,7 +55,7 @@ When building with `mcconfig`, you specify your device target by providing the *
 mcconfig -d -m -p esp32/moddable_two
 ```
 
-A list of available ESP32, ESP32-S2, ESP32-S3, ESP32-C3, ESP32-C6 and ESP32-H2 subplatforms and their platform identifiers is provided in the **Platforms** section below.
+A list of available ESP32, ESP32-S2, ESP32-S3, ESP32-C3, ESP32-C5, ESP32-C6 and ESP32-H2 subplatforms and their platform identifiers is provided in the **Platforms** section below.
 
 <a id="platforms"></a>
 ## Platforms
@@ -192,6 +193,25 @@ The Moddable SDK supports three ESP32-C3 development kits:
 | <img src="./../assets/devices/lolin-c3-pico.png" width=100><BR>Lolin<BR>C3 Pico | `esp32/lolin_c3pico` |  Neopixel, 1 button | <li>[Product guide](https://www.wemos.cc/en/latest/c3/c3_pico.html)</li>
 
 
+<a id="platforms-esp32-c5"></a>
+### ESP32-C5
+
+ESP32-C5 has the following features:
+
+- 240 MHz RISC-V MCU
+- Dual-band 2.4 GHz / 5 GHz Wi-Fi 6
+- BLE
+- IEEE 802.15.4
+- 384 KB HP SRAM
+- 4 MB flash on popular modules
+
+The Moddable SDK supports these ESP32-C5 development kits:
+
+| Name | Platform identifier | Key features | Links |
+| :---: | :--- | :--- | :--- |
+| ESP32-C5 | `esp32/esp32c5`<br>`esp32/esp32c5_cdc` | NeoPixel, Button | |
+|  <img src="./../assets/devices/ws_c5_147.jpg" width=125><BR>Waveshare<br>ESP32-C5-LCD-1.47 | `esp32/ws_esp32c5_1_47` | 1.47" 172x320<br>Display<br>NeoPixel, Button | <li>[Product page](https://docs.waveshare.com/ESP32-C5-LCD-1.47)</li> |
+
 <a id="platforms-esp32-c6"></a>
 ### ESP32-C6
 
@@ -245,6 +265,7 @@ The target ESP32 subclass for a build is specified using the `ESP32_SUBCLASS` pr
 | `esp32s2` | ESP32-S2 |
 | `esp32s3` | ESP32-S3 |
 | `esp32c3` | ESP32-C3 |
+| `esp32c5` | ESP32-C5 |
 | `esp32c6` | ESP32-C6 |
 | `esp32h2` | ESP32-H2 |
 
@@ -273,7 +294,7 @@ Omitting the `-d` and `-i` options on the `mcconfig` command line selects a rele
 <a id="mac"></a>
 ## macOS
 
-The Moddable SDK build for ESP32 currently uses ESP-IDF v6.0 (commit `662a3be3`) and the CMake option of Espressif's [`idf.py` tool](https://github.com/espressif/esp-idf/blob/master/tools/idf.py).
+The Moddable SDK build for ESP32 currently uses ESP-IDF v6.0.2 (commit `7101770d`) and the CMake option of Espressif's [`idf.py` tool](https://github.com/espressif/esp-idf/blob/master/tools/idf.py).
 
 <a id="mac-instructions"></a>
 ### Installing
@@ -505,7 +526,7 @@ This is a substantial update. We have found it best to start with a clean clone.
 <a id="win"></a>
 ## Windows
 
-The Moddable SDK build for ESP32 currently uses ESP-IDF v6.0 (commit `662a3be3`) and the CMake option of Espressif's [`idf.py` tool](https://github.com/espressif/esp-idf/blob/master/tools/idf.py).
+The Moddable SDK build for ESP32 currently uses ESP-IDF v6.0.2 (commit `7101770d`) and the CMake option of Espressif's [`idf.py` tool](https://github.com/espressif/esp-idf/blob/master/tools/idf.py).
 
 <a id="win-instructions"></a>
 ### Installing
@@ -719,7 +740,7 @@ To ensure that your build environment is up to date, perform the following steps
 <a id="esp32-linux"></a>
 ## Linux
 
-The Moddable SDK build for ESP32 currently uses ESP-IDF v6.0 (commit `662a3be3`) and the CMake option of Espressif's [`idf.py` tool](https://github.com/espressif/esp-idf/blob/master/tools/idf.py).
+The Moddable SDK build for ESP32 currently uses ESP-IDF v6.0.2 (commit `7101770d`) and the CMake option of Espressif's [`idf.py` tool](https://github.com/espressif/esp-idf/blob/master/tools/idf.py).
 
 <a id="lin-instructions"></a>
 ### Installing
@@ -751,11 +772,11 @@ The Moddable SDK build for ESP32 currently uses ESP-IDF v6.0 (commit `662a3be3`)
 
 3. Create an `esp32` directory in your home directory at `~/esp32` for required third party SDKs and tools.
 
-4. If this is your first install, clone the `ESP-IDF` GitHub repository into your `~/esp32` directory. Make sure to specify the `--recursive` option. Then checkout the `v6.0` tag:
+4. If this is your first install, clone the `ESP-IDF` GitHub repository into your `~/esp32` directory. Make sure to specify the `--recursive` option. Then checkout the `v6.0.2` tag:
 
 	```text
 	cd ~/esp32
-	git clone -b v6.0 --recursive https://github.com/espressif/esp-idf.git esp-idf-v6.0
+	git clone -b v6.0.2 --recursive https://github.com/espressif/esp-idf.git esp-idf-v6.0.2
 	```
 
 5. Connect the ESP32 device to your Linux host with a USB cable.
@@ -874,7 +895,7 @@ This is a substantial update. We have found it best to start with a clean clone.
 	```text
 	cd ~/esp32
 	rm -rf esp-idf
-	git clone -b v6.0 --recursive https://github.com/espressif/esp-idf.git
+	git clone -b v6.0.2 --recursive https://github.com/espressif/esp-idf.git
 	```
 
 2. (optional) Update apt, then install any missing packages (and upgrade existing packages) required to compile with the `ESP-IDF`. The packages to install vary based on your distribution's default Python version.
@@ -1014,7 +1035,7 @@ Originally, programming and debugging with the ESP32 was done over a serial or *
 
 In newer devices, Espressif has added USB support. Starting with the ESP32-S2, TinyUSB support was added. TinyUSB support continued with ESP32-S3.
 
-Starting with the ESP32-S3 and continuing with the ESP32-C3, ESP32-C6 and ESP32-H2, support for USB is integrated into the device with a USB Serial/JTAG driver. Using the Serial/JTAG driver is preferred as it uses the built-in driver which results in a smaller binary.
+Starting with the ESP32-S3 and continuing with the ESP32-C3, ESP32-C5, ESP32-C6 and ESP32-H2, support for USB is integrated into the device with a USB Serial/JTAG driver. Using the Serial/JTAG driver is preferred as it uses the built-in driver which results in a smaller binary.
 
 <a id="usb_multiport"></a>
 ### Multi-port devices
