@@ -12,7 +12,7 @@ Microcontrollers are highly constrained devices compared to modern computers and
 
 <a href="https://tc39.es/ecma262/">![JS logo](./documentation/assets/moddable/js.png)</a>
 
-The primary programming language for development is JavaScript. The XS JavaScript engine at the center of the Moddable SDK implements the [2026 JavaScript language standard](https://262.ecma-international.org/17.0/) with better than 99% conformance.<sup>[[1](#footnotes)]</sup> The constraints of the target microcontroller may limit the number of language features that can be used in combination by a single application.
+The primary programming language for development is JavaScript. The XS JavaScript engine at the center of the Moddable SDK implements the [2026 JavaScript language standard](https://262.ecma-international.org/17.0/) with better than 99% conformance.<sup>[[1](#footnotes)]</sup> The constraints of the target microcontroller may limit the number of language features that can be used in combination in a single project.
 
 The JavaScript language implemented in the Moddable SDK is the same language used in web pages and Node.js. The microcontroller that the scripts run on, however, is very different from a personal computer, server, or mobile device. These differences often require a different approach to using JavaScript. The APIs and objects in the Moddable SDK are quite different, being designed with the goal of minimizing memory use. Bring your existing experience with JavaScript, but be prepared to think about performance, code size, and memory use in a different way.<sup>[[2](#footnotes)]</sup>
 
@@ -47,13 +47,16 @@ The Moddable SDK also includes command line tools for image format conversion, i
 
 The Moddable SDK implements a variety of hardware protocols including digital (GPIO), analog, PWM, and I2C. A number of drivers for common off-the-shelf sensors and [corresponding example apps](./examples/drivers) are also available.
 
-### Source level debugger
+### Source level debuggers
 
 The `xsbug` JavaScript source level debugger is a full-featured debugger that supports debugging modules and applications for XS platforms.
 
 Similar to other debuggers, `xsbug` supports setting breakpoints, browsing source code, and inspection of the call stack and variables. The `xsbug` debugger additionally provides real-time instrumentation to track memory usage and profile application and resource consumption.
 
+`xsdb` is a command line (CLI) debugger modeled on gdb. It is valuable for embedded developers already familiar with gdb, for building automated debugging flows, and for LLMs to debug their code. 
+
 > *See also: [xsbug documentation](./documentation/xs/xsbug.md)*
+> *See also: [xsdb documentation](./documentation/tools/tools.md#xsdb)*
 
 ## Getting Started
 
@@ -222,6 +225,7 @@ The Moddable SDK repository contains the following top level directories:
 - [**contributed**](./contributed): Unofficial projects and modules that show useful techniques for working with the Moddable API.
 - [**documentation**](./documentation): All the documentation for the Moddable SDK. Documentation is provided in markdown format.
 - [**examples**](./examples): Example applications for many of the capabilities of the Moddable SDK. The [readme.md](examples/readme.md) document provides a guide to building the examples and information to help you find the types of examples you are looking for.
+- [**guides**](./guides): All the developer Guides for the Moddable SDK in markdown format.
 - [**licenses**](./licenses): The license agreements for the software provided in the Moddable SDK. The Contributor License Agreements are here as well.
 - [**modules**](./modules): The software modules that make up the runtime of the Moddable SDK. These include networking, graphics, user interface, hardware access, cryptographic primitives, and device drivers. All modules have a JavaScript API. Many modules are implemented in part using C.
 - [**tools**](./tools): Tools to build applications using the Moddable SDK. These include command line tools for image format conversion, image compression, image rotation, font compression, processing localization strings, compiling resources, and building applications from JSON manifest files. In addition, xsbug, the XS source level debugger, is here.
@@ -230,6 +234,8 @@ The Moddable SDK repository contains the following top level directories:
 The [AGENTS.md](./AGENTS.md) document at the root of the repository is for LLM coding agents using the Moddable SDK. It describes the build tools, the manifest format, which APIs to use, and the SDK's conventions.
 
 ## API Documentation
+
+The best place to begin learning about the JavaScript APIs are the [Guides](./guides). These are a suite of small JavaScript snippets to perform common task accompanied by concise text to explain key points. There are also overviews of different areas that provide a round-up of all the relevant documentation, applicable standards, TypeScript declarations, examples, and implementations.
 
 The JavaScript APIs supported by the Moddable SDK are documented in a suite of documents in the [documentation](./documentation) directory. The documentation is an extensive reference, with numerous examples. The primary [Piu document](./documentation/piu/piu.md) alone is over 100 pages. All documentation is provided in markdown format.
 
@@ -254,7 +260,7 @@ The Moddable SDK is provided under a combination of licenses that includes GPL 3
 
 ## Security issues
 
-We work to ensure that there are no security holes in the Moddable SDK. Still, it is nearly impossible to eliminate them all. Security researchers who identify potential security issues with our software are encouraged to open an [open an issue](./issues). We will respond to these as quickly as we can. If you prefer, you may instead report security issues by [email](mailto:info@moddable.com).
+We work to ensure that there are no security holes in the Moddable SDK. Still, it is nearly impossible to eliminate them all. See our [Hardening the XS JavaScript Engine](https://www.moddable.com/hardening-xs) for our Vulnerability Disclosure Policy and notes to assist security researchers. Security researchers who identify potential security issues with our software are encouraged to open an [open an issue](./issues). We will respond to these as quickly as we can. If you prefer, you may instead report security issues by [email](mailto:info@moddable.com).
 
 ## Questions? We're here to help
 
@@ -266,6 +272,6 @@ To learn more about Moddable, see [our website](http://www.moddable.com).
 
 For companies interested in the benefits of using JavaScript and the Moddable SDK to power your products, Moddable provides consulting services to help you get started. We're available to help with design, implementation, training, and support.
 
-You can also reach out to us on X (aka Twitter) ([@moddabletech](https://twitter.com/moddabletech)). Following us is the best way to keep up with what we’re doing—we post announcements about new blog posts there, along with other Moddable news.
+You can also reach out to us on X (aka Twitter) ([@moddabletech](https://twitter.com/moddabletech)) or Bluesky at [@moddable.bsky.social](https://bsky.app/profile/moddable.bsky.social). Following us is the best way to keep up with what we’re doing—we post announcements about new blog posts there, along with other Moddable news.
 
 You can contact us directly by e-mail at [info@moddable.com](mailto:info@moddable.com).
