@@ -78,15 +78,15 @@ import keyValue from "embedded:storage/key-value";
 
 - Documentation
 	- [Web Storage API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API) on MDN
-	- [class Preference](../../files/files.md#preference) in Moddable SDK — the module replaced by the Key-Value store
+	- [class Preference](../../documentation/files/files.md#preference) in Moddable SDK — the module replaced by the Key-Value store
 - Standards
 	- [Web storage](https://html.spec.whatwg.org/multipage/webstorage.html) in the WHATWG HTML Standard
 	- [Key-Value store](https://419.ecma-international.org/#storage-keyvalue) in ECMA-419
 - Example
-	- [Web Storage example](../../../examples/io/storage/webstorage/main.js) in Moddable SDK
+	- [Web Storage example](../../examples/io/storage/webstorage/main.js) in Moddable SDK
 - Implementations
-	- [Web Storage](../../../examples/io/storage/webstorage/webstorage.js) in Moddable SDK
-	- [Key-Value store](../../../modules/io/storage/) in Moddable SDK
+	- [Web Storage](../../examples/io/storage/webstorage/webstorage.js) in Moddable SDK
+	- [Key-Value store](../../modules/io/storage/) in Moddable SDK
 - TypeScript Declarations
-	- [Web Storage](../../../typings/web/webstorage.d.ts) in Moddable SDK
-	- [Key-Value store](../../../typings/embedded/storage/key-value.d.ts) in Moddable SDK
+	- [Web Storage](../../typings/web/webstorage.d.ts) in Moddable SDK
+	- [Key-Value store](../../typings/embedded/storage/key-value.d.ts) in Moddable SDK

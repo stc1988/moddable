@@ -39,8 +39,8 @@ import Resolver from "embedded:network/dns/resolver/udp";
 	- [DNS Resolver](https://419.ecma-international.org/#dns-resolver) in ECMA-419
 	- [DNS protocol specification RFC](https://www.rfc-editor.org/info/rfc1035/)
 - Example
-	- [DNS Resolver example](../../../examples/io/udp/dns/main.js) in Moddable SDK
+	- [DNS Resolver example](../../examples/io/udp/dns/main.js) in Moddable SDK
 - Implementation
-	- [DNS Resolver](../../../examples/io/udp/dns/dns.js) in Moddable SDK
+	- [DNS Resolver](../../examples/io/udp/dns/dns.js) in Moddable SDK
 - TypeScript Declaration
-	- [DNS Resolver](../../../typings/embedded_network/dns/resolver/udp.d.ts) in Moddable SDK
+	- [DNS Resolver](../../typings/embedded_network/dns/resolver/udp.d.ts) in Moddable SDK

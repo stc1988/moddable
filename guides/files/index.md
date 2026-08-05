@@ -44,6 +44,6 @@ The manifest selects the implementation for your target: POSIX on macOS and Linu
 - Standard
 	- [Files](https://419.ecma-international.org/#storage-files) in ECMA-419
 - Implementation
-	- [Files](../../../modules/io/files/) in Moddable SDK
+	- [Files](../../modules/io/files/) in Moddable SDK
 - TypeScript Declaration
-	- [Files](../../../typings/embedded/storage/files.d.ts) in Moddable SDK
+	- [Files](../../typings/embedded/storage/files.d.ts) in Moddable SDK

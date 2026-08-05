@@ -71,11 +71,11 @@ If your project accesses the MQTT Client through `device.network.mqtt` or `devic
 	- [MQTT Client](https://419.ecma-international.org/#mqtt-client-class-pattern) in ECMA-419
 	- [MQTT protocol specification Version 3.1.1](https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html)
 - Examples
-	- [MQTT() example](../../../examples/io/tcp/mqtt/main.js) in Moddable SDK
-	- [MQTT Client example](../../../examples/io/tcp/mqttclient/main.js) in Moddable SDK
+	- [MQTT() example](../../examples/io/tcp/mqtt/main.js) in Moddable SDK
+	- [MQTT Client example](../../examples/io/tcp/mqttclient/main.js) in Moddable SDK
 - Implementations
-	- [MQTT()](../../../examples/io/tcp/mqtt/mqtt.js) in Moddable SDK
-	- [MQTT Client](../../../examples/io/tcp/mqttclient/mqttclient.js) in Moddable SDK
+	- [MQTT()](../../examples/io/tcp/mqtt/mqtt.js) in Moddable SDK
+	- [MQTT Client](../../examples/io/tcp/mqttclient/mqttclient.js) in Moddable SDK
 - TypeScript Declarations
-	- [MQTT()](../../../typings/mqtt/js.d.ts) in Moddable SDK
-	- [MQTT Client](../../../typings/embedded_network/mqtt/client.d.ts) in Moddable SDK
+	- [MQTT()](../../typings/mqtt/js.d.ts) in Moddable SDK
+	- [MQTT Client](../../typings/embedded_network/mqtt/client.d.ts) in Moddable SDK

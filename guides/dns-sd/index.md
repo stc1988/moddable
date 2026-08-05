@@ -50,8 +50,8 @@ import DNSSD from "embedded:network/dnssd";
 	- [DNS-Based Service Discovery RFC](https://www.rfc-editor.org/info/rfc6763/)
 	- [Multicast DNS RFC](https://www.rfc-editor.org/info/rfc6762/)
 - Example
-	- [DNS-SD example](../../../examples/io/dnssd/main.js) in Moddable SDK
+	- [DNS-SD example](../../examples/io/dnssd/main.js) in Moddable SDK
 - Implementation
-	- [DNS-SD](../../../modules/io/dnssd/dnssd.js) in Moddable SDK
+	- [DNS-SD](../../modules/io/dnssd/dnssd.js) in Moddable SDK
 - TypeScript Declaration
-	- [DNS-SD](../../../typings/embedded_network/dnssd.d.ts) in Moddable SDK
+	- [DNS-SD](../../typings/embedded_network/dnssd.d.ts) in Moddable SDK

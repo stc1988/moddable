@@ -14,4 +14,4 @@ openssl x509 -inform pem -in data.pem -out data.der -outform der
 
 ---
 
-It is sometimes necessary to convert the PEM to DER at runtime, for example, provisioning might deliver a certificate in PEM format. The Moddable SDK provides the [`pemToDER()`](../../crypt/crypt.md#transform-pemToDER) and [`privateKeyToPrivateKeyInfo()`](../../crypt/crypt.md#transform-privateKeyToPrivateKeyInfo) functions for these situations. These functions are part of the Crypt `Transform` class.
+It is sometimes necessary to convert the PEM to DER at runtime, for example, provisioning might deliver a certificate in PEM format. The Moddable SDK provides the [`pemToDER()`](../../documentation/crypt/crypt.md#transform-pemToDER) and [`privateKeyToPrivateKeyInfo()`](../../documentation/crypt/crypt.md#transform-privateKeyToPrivateKeyInfo) functions for these situations. These functions are part of the Crypt `Transform` class.

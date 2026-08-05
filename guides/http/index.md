@@ -85,11 +85,11 @@ If your project accesses the HTTP Client through `device.network.http` or `devic
 	- [HTTP Client](https://419.ecma-international.org/#http-client-class-pattern) in ECMA-419
 	- [HTTP/1.1 specification RFC](https://www.rfc-editor.org/info/rfc9110/)
 - Examples
-	- [fetch() example](../../../examples/io/tcp/fetch/main.js) in Moddable SDK
-	- [HTTP Client example](../../../examples/io/tcp/httpclient/main.js) in Moddable SDK
+	- [fetch() example](../../examples/io/tcp/fetch/main.js) in Moddable SDK
+	- [HTTP Client example](../../examples/io/tcp/httpclient/main.js) in Moddable SDK
 - Implementations
-	- [fetch()](../../../examples/io/tcp/fetch/fetch.js) in Moddable SDK
-	- [HTTP Client](../../../examples/io/tcp/httpclient/httpclient.js) in Moddable SDK
+	- [fetch()](../../examples/io/tcp/fetch/fetch.js) in Moddable SDK
+	- [HTTP Client](../../examples/io/tcp/httpclient/httpclient.js) in Moddable SDK
 - TypeScript Declarations
-	- [fetch()](../../../typings/web/fetch.d.ts) in Moddable SDK
-	- [HTTP Client](../../../typings/embedded_network/http/client.d.ts) in Moddable SDK
+	- [fetch()](../../typings/web/fetch.d.ts) in Moddable SDK
+	- [HTTP Client](../../typings/embedded_network/http/client.d.ts) in Moddable SDK

@@ -97,15 +97,15 @@ If your project uses the `WebSocketStream` global, `mcpack` automatically includ
 	- [WebSocket](https://websockets.spec.whatwg.org/) in the WHATWG WebSockets Standard
 	- [WebSocket Client](https://419.ecma-international.org/#websocket-client) in ECMA-419
 - Examples
-	- [WebSocket() example](../../../examples/io/tcp/websocket/main.js) in Moddable SDK
-	- [WebSocket Client example](../../../examples/io/tcp/websocketclient/main.js) in Moddable SDK
-	- [WebSocketStream() example](../../../examples/web/streams/websocket/main.js) in Moddable SDK
-	- [Touch over WebSocketStream() example](../../../examples/web/streams/touch-websocket/main.js) in Moddable SDK
+	- [WebSocket() example](../../examples/io/tcp/websocket/main.js) in Moddable SDK
+	- [WebSocket Client example](../../examples/io/tcp/websocketclient/main.js) in Moddable SDK
+	- [WebSocketStream() example](../../examples/web/streams/websocket/main.js) in Moddable SDK
+	- [Touch over WebSocketStream() example](../../examples/web/streams/touch-websocket/main.js) in Moddable SDK
 - Implementations
-	- [WebSocket()](../../../examples/io/tcp/websocket/WebSocket.js) in Moddable SDK
-	- [WebSocket Client](../../../examples/io/tcp/websocketclient/websocketclient.js) in Moddable SDK
-	- [WebSocketStream()](../../../modules/web/streams/websocket/WebSocketStream.js) in Moddable SDK
+	- [WebSocket()](../../examples/io/tcp/websocket/WebSocket.js) in Moddable SDK
+	- [WebSocket Client](../../examples/io/tcp/websocketclient/websocketclient.js) in Moddable SDK
+	- [WebSocketStream()](../../modules/web/streams/websocket/WebSocketStream.js) in Moddable SDK
 - TypeScript Declarations
-	- [WebSocket()](../../../typings/web/websocket.d.ts) in Moddable SDK
-	- [WebSocket Client](../../../typings/embedded_network/websocket/client.d.ts) in Moddable SDK
-	- [WebSocketStream()](../../../typings/web/websocketstream.d.ts) in Moddable SDK
+	- [WebSocket()](../../typings/web/websocket.d.ts) in Moddable SDK
+	- [WebSocket Client](../../typings/embedded_network/websocket/client.d.ts) in Moddable SDK
+	- [WebSocketStream()](../../typings/web/websocketstream.d.ts) in Moddable SDK

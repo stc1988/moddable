@@ -28,8 +28,8 @@ Optimization is about more than speed. Memory, system resources, energy, and cod
 ## Learn More
 
 - Documentation
-	- [XS Profiler](../../xs/XS%20Profiler.md) in Moddable SDK
-	- [xsbug debugger](../../xs/xsbug.md) in Moddable SDK
+	- [XS Profiler](../../documentation/xs/XS%20Profiler.md) in Moddable SDK
+	- [xsbug debugger](../../documentation/xs/xsbug.md) in Moddable SDK
 - Articles
 	- [Deliver High-Performance Products with the XS Profiler](https://www.moddable.com/blog/profiler/)
 	- [Optimizing Life Using the XS Performance Profiler](https://www.moddable.com/blog/optimizing-life/)

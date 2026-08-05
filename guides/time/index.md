@@ -7,7 +7,7 @@ updated: 2026-08-04
 Embedded JavaScript projects work with time in several ways, and these guides cross a range of APIs — from the standard JavaScript `Date` object to Moddable SDK modules and ECMA-419 device drivers.
 
 - The standard [`Date`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date) object provides the current date and time of day.
-- The Moddable SDK [`Time`](../../base/base.md#time) and [`Timer`](../../base/base.md#timer) modules provide system time, high-resolution timing, and short delays.
+- The Moddable SDK [`Time`](../../documentation/base/base.md#time) and [`Timer`](../../documentation/base/base.md#timer) modules provide system time, high-resolution timing, and short delays.
 - The ECMA-419 [Real-Time Clock](https://419.ecma-international.org/#real-time-clock-class-pattern) and [NTP Client](https://419.ecma-international.org/#ntp-client) read time from hardware and the network.
 
 ## Date and Time of Day
@@ -60,16 +60,16 @@ When building with `mcpack`, either add the microsoft manifest to your project o
 
 - Documentation
 	- [Date](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date) on MDN
-	- [class Time](../../base/base.md#time) in Moddable SDK
-	- [class Timer](../../base/base.md#timer) in Moddable SDK
+	- [class Time](../../documentation/base/base.md#time) in Moddable SDK
+	- [class Timer](../../documentation/base/base.md#timer) in Moddable SDK
 - Example
-	- [NTP example](../../../examples/io/udp/ntp/main.js) in Moddable SDK
+	- [NTP example](../../examples/io/udp/ntp/main.js) in Moddable SDK
 - Standards
 	- [Date Objects](https://tc39.es/ecma262/#sec-date-objects) in ECMAScript
 	- [Real-Time Clock Class Pattern](https://419.ecma-international.org/#real-time-clock-class-pattern) in ECMA-419
 	- [NTP Client](https://419.ecma-international.org/#ntp-client) in ECMA-419
 - TypeScript Declarations
-	- [class Time](../../../typings/time.d.ts) in Moddable SDK
-	- [class Timer](../../../typings/timer.d.ts) in Moddable SDK
-	- [Real-Time Clock](../../../typings/embedded/RTC.d.ts) in Moddable SDK
-	- [NTP Client](../../../typings/embedded_network/ntp/client.d.ts) in Moddable SDK
+	- [class Time](../../typings/time.d.ts) in Moddable SDK
+	- [class Timer](../../typings/timer.d.ts) in Moddable SDK
+	- [Real-Time Clock](../../typings/embedded/RTC.d.ts) in Moddable SDK
+	- [NTP Client](../../typings/embedded_network/ntp/client.d.ts) in Moddable SDK

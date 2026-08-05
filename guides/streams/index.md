@@ -16,7 +16,7 @@ Streams are a fundamental building block for many Web platform APIs. The Moddabl
 - [fetch](https://developer.mozilla.org/en-US/docs/Web/API/Window/fetch) – Streams can be used for both the Request body and Response body to conveniently support bodies larger than available memory. As an added bonus, streams allows fetch() to support compressed response bodies. See the [HTTP Guide](../http/index.md) for more information. 
 - [Web Serial](https://developer.mozilla.org/en-US/docs/Web/API/Web_Serial_API) – Access serial (UART) ports using readable and writable streams. Available on devices and the desktop simulator.
 
-Of course, you can use streams in your own projects in many ways. The streams examples can give you ideas, secifically for embedded devices. Start with the [readme](../../../examples/web/streams/readme.md). Then, check out the [button stream](../../../examples/web/streams/button/main.js) and [touch stream](../../../examples/web/streams/touch/main.js) examples.
+Of course, you can use streams in your own projects in many ways. The streams examples can give you ideas, secifically for embedded devices. Start with the [readme](../../examples/web/streams/readme.md). Then, check out the [button stream](../../examples/web/streams/button/main.js) and [touch stream](../../examples/web/streams/touch/main.js) examples.
 
 ## Building with mcconfig
 The stream classes are implemented across several modules.
@@ -79,16 +79,16 @@ The stream constructors are: `ReadableStream`, `ReadableStreamDefaultReader`, `R
 	- [DecompressionStream](https://compression.spec.whatwg.org/#decompression-stream) in the WHATWG Compression Standard
 	- [TextDecoderStream](https://encoding.spec.whatwg.org/#interface-textdecoderstream) and [TextEncoderStream](https://encoding.spec.whatwg.org/#interface-textencoderstream) in the WHATWG Encoding Standard
 - Examples
-	- [Streams examples](../../../examples/web/streams/readme.md) in Moddable SDK
-	- [fetch example](../../../examples/web/streams/fetch/main.js) in Moddable SDK
-	- [decompress example](../../../examples/web/streams/decompress/main.js) in Moddable SDK — `DecompressionStream` and `TextDecoderStream`
-	- [button example](../../../examples/web/streams/button/main.js) in Moddable SDK — ECMA-419 IO as readable and writable streams
-	- [touch example](../../../examples/web/streams/touch/main.js) in Moddable SDK — an ECMA-419 sensor as a readable stream
+	- [Streams examples](../../examples/web/streams/readme.md) in Moddable SDK
+	- [fetch example](../../examples/web/streams/fetch/main.js) in Moddable SDK
+	- [decompress example](../../examples/web/streams/decompress/main.js) in Moddable SDK — `DecompressionStream` and `TextDecoderStream`
+	- [button example](../../examples/web/streams/button/main.js) in Moddable SDK — ECMA-419 IO as readable and writable streams
+	- [touch example](../../examples/web/streams/touch/main.js) in Moddable SDK — an ECMA-419 sensor as a readable stream
 - Implementation
-	- [Streams](../../../modules/web/streams/all/) in Moddable SDK
-	- [DecompressionStream](../../../modules/web/streams/decompression/DecompressionStream.js) in Moddable SDK
-	- [TextDecoderStream](../../../modules/web/streams/text/decoder/TextDecoderStream.js) and [TextEncoderStream](../../../modules/web/streams/text/encoder/TextEncoderStream.js) in Moddable SDK
+	- [Streams](../../modules/web/streams/all/) in Moddable SDK
+	- [DecompressionStream](../../modules/web/streams/decompression/DecompressionStream.js) in Moddable SDK
+	- [TextDecoderStream](../../modules/web/streams/text/decoder/TextDecoderStream.js) and [TextEncoderStream](../../modules/web/streams/text/encoder/TextEncoderStream.js) in Moddable SDK
 - TypeScript Declarations
-	- [Streams](../../../typings/web/streams.d.ts) in Moddable SDK
-	- [DecompressionStream](../../../typings/web/decompressionstream.d.ts) in Moddable SDK
-	- [TextDecoderStream](../../../typings/web/textdecoderstream.d.ts) and [TextEncoderStream](../../../typings/web/textencoderstream.d.ts) in Moddable SDK
+	- [Streams](../../typings/web/streams.d.ts) in Moddable SDK
+	- [DecompressionStream](../../typings/web/decompressionstream.d.ts) in Moddable SDK
+	- [TextDecoderStream](../../typings/web/textdecoderstream.d.ts) and [TextEncoderStream](../../typings/web/textencoderstream.d.ts) in Moddable SDK

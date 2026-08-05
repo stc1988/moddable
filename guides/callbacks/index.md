@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Moddable Tech, Inc.
 updated: 2026-08-04
 ---
 
-The web standard Timers API (e.g. [`setTimeout`](https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout)) and the Moddable SDK's [`Timer`](../../base/base.md#timer) module are both available to Embedded JavaScript developers using the Moddable SDK. In fact, the Web platform's Timers API is implemented using the Moddable SDK's `Timer` module.
+The web standard Timers API (e.g. [`setTimeout`](https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout)) and the Moddable SDK's [`Timer`](../../documentation/base/base.md#timer) module are both available to Embedded JavaScript developers using the Moddable SDK. In fact, the Web platform's Timers API is implemented using the Moddable SDK's `Timer` module.
 
 ## Using Timer module
 
@@ -43,15 +43,15 @@ When building with `mcpack`, the `setTimeout()`, `setInterval()`, and `setImmedi
 ## Learn More
 
 - Documentation
-	- [Timer](../../base/base.md#timer) in Moddable SDK
+	- [Timer](../../documentation/base/base.md#timer) in Moddable SDK
 	- Web Timers API — [`setTimeout`](https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout), [`clearTimeout`](https://developer.mozilla.org/en-US/docs/Web/API/Window/clearTimeout), [`setInterval`](https://developer.mozilla.org/en-US/docs/Web/API/Window/setInterval), [`clearInterval`](https://developer.mozilla.org/en-US/docs/Web/API/Window/clearInterval), [`setImmediate`](https://developer.mozilla.org/en-US/docs/Web/API/Window/setImmediate), and [`clearImmediate`](https://developer.mozilla.org/en-US/docs/Web/API/Window/clearImmediate) on MDN
 - Example
-	- [Timers example](../../../examples/base/timers/main.js) in Moddable SDK
+	- [Timers example](../../examples/base/timers/main.js) in Moddable SDK
 - Implementations
-	- [Timer module](../../../modules/base/timer/) in Moddable SDK
-	- [Web Timers](../../../modules/web/timers/) in Moddable SDK
+	- [Timer module](../../modules/base/timer/) in Moddable SDK
+	- [Web Timers](../../modules/web/timers/) in Moddable SDK
 - Standard
 	- [Web Timers API](https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-settimeout-dev) in WHATWG HTML Standard
 - TypeScript Declarations
-	- [Timer module](../../../typings/timer.d.ts) in Moddable SDK
-	- [Web Timers](../../../typings/web/timers.d.ts) in Moddable SDK
+	- [Timer module](../../typings/timer.d.ts) in Moddable SDK
+	- [Web Timers](../../typings/web/timers.d.ts) in Moddable SDK

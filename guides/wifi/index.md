@@ -43,6 +43,6 @@ import WiFi from "embedded:network/interface/wifi";
 - Standard
 	- [Wi-Fi Network Interface](https://419.ecma-international.org/#network-interface-class-pattern-wi-fi-network-interface) in ECMA-419
 - Implementation
-	- [Wi-Fi Network Interface](../../../modules/io/wifi/) in Moddable SDK
+	- [Wi-Fi Network Interface](../../modules/io/wifi/) in Moddable SDK
 - TypeScript Declaration
-	- [Wi-Fi Network Interface](../../../typings/embedded_network/interface/wifi.d.ts) in Moddable SDK
+	- [Wi-Fi Network Interface](../../typings/embedded_network/interface/wifi.d.ts) in Moddable SDK

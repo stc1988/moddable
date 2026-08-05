@@ -39,8 +39,8 @@ If your project uses the `EventSource` global, `mcpack` automatically includes t
 - Standard
 	- [Server-Sent Events](https://html.spec.whatwg.org/multipage/server-sent-events.html) in the WHATWG HTML Standard
 - Example
-	- [EventSource example](../../../examples/io/tcp/eventsource/main.js) in Moddable SDK
+	- [EventSource example](../../examples/io/tcp/eventsource/main.js) in Moddable SDK
 - Implementation
-	- [EventSource](../../../examples/io/tcp/eventsource/eventsource.js) in Moddable SDK
+	- [EventSource](../../examples/io/tcp/eventsource/eventsource.js) in Moddable SDK
 - TypeScript Declaration
-	- [EventSource](../../../typings/web/eventsource.d.ts) in Moddable SDK
+	- [EventSource](../../typings/web/eventsource.d.ts) in Moddable SDK

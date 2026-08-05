@@ -36,11 +36,11 @@ When building with `mcpack`, the `console` global is automatically installed if 
 
 - Documentation
 	- [`console`](https://developer.mozilla.org/en-US/docs/Web/API/console) on MDN
-	- [`trace()`](../../xs/xsbug.md#colorize) in Moddable SDK
+	- [`trace()`](../../documentation/xs/xsbug.md#colorize) in Moddable SDK
 - Standard
 	- [Console](https://console.spec.whatwg.org/) in the WHATWG Console Standard
 - Implementation
-	- [Console](../../../modules/web/console/console.js) in Moddable SDK
+	- [Console](../../modules/web/console/console.js) in Moddable SDK
 - TypeScript Declarations
-	- [`console`](../../../typings/web/console.d.ts) in Moddable SDK
-	- [`xs.d.ts`](../../../xs/includes/xs.d.ts) in Moddable SDK — declares `trace()`
+	- [`console`](../../typings/web/console.d.ts) in Moddable SDK
+	- [`xs.d.ts`](../../xs/includes/xs.d.ts) in Moddable SDK — declares `trace()`

@@ -62,14 +62,14 @@ When building with `mcpack`, manifests are automatically included for any of the
 - Documentation
 	- [TextEncoder](https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder) and [TextDecoder](https://developer.mozilla.org/en-US/docs/Web/API/TextDecoder) on MDN
 	- [Uint8Array.fromBase64()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array/fromBase64) and [Uint8Array.fromHex()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array/fromHex) on MDN
-	- [class CRC8, CRC16](../../data/data.md#crc) in Moddable SDK
-	- [zlib: class Inflate and class Deflate](../../data/data.md#zlib) in Moddable SDK
+	- [class CRC8, CRC16](../../documentation/data/data.md#crc) in Moddable SDK
+	- [zlib: class Inflate and class Deflate](../../documentation/data/data.md#zlib) in Moddable SDK
 - Standards
 	- [TextEncoder](https://encoding.spec.whatwg.org/#interface-textencoder) and [TextDecoder](https://encoding.spec.whatwg.org/#interface-textdecoder) in the WHATWG Encoding Standard
 	- [Uint8Array to and from Base64 and Hex](https://tc39.es/proposal-arraybuffer-base64/) in TC39
 - TypeScript Declarations
-	- [TextEncoder](../../../typings/text/encoder.d.ts) in Moddable SDK
-	- [TextDecoder](../../../typings/text/decoder.d.ts) in Moddable SDK
-	- [CRC8, CRC16](../../../typings/crc.d.ts) in Moddable SDK
-	- [Deflate](../../../typings/deflate.d.ts) in Moddable SDK
-	- [Inflate](../../../typings/inflate.d.ts) in Moddable SDK
+	- [TextEncoder](../../typings/text/encoder.d.ts) in Moddable SDK
+	- [TextDecoder](../../typings/text/decoder.d.ts) in Moddable SDK
+	- [CRC8, CRC16](../../typings/crc.d.ts) in Moddable SDK
+	- [Deflate](../../typings/deflate.d.ts) in Moddable SDK
+	- [Inflate](../../typings/inflate.d.ts) in Moddable SDK
