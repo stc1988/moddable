@@ -13,7 +13,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/Moddable-OpenSource/moddable",
+		"url": "git+https://github.com/Moddable-OpenSource/moddable.git",
 		"directory": "build/devices/pebble/npm/pebbleproxy"
 	},
 	"keywords": [
@@ -23,6 +23,7 @@
 		"moddable",
 		"websocket",
 		"http",
-		"proxy"
+		"proxy",
+		"location"
 	]
 }
