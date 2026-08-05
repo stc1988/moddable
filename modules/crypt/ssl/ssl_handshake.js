@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2025  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -48,7 +48,7 @@ import DSA from "dsa";
 import ECDSA from "ecdsa";
 import Curve from "curve";
 import {Digest} from "crypt";
-import {CERT_RSA, CERT_DSA, DH_ANON, DH_DSS, DH_RSA, DHE_DSS, DHE_RSA, ECDHE_RSA, RSA, supportedCompressionMethods} from "ssl/constants";
+import {CERT_RSA, CERT_DSA, DH_ANON, DH_DSS, DH_RSA, DHE_DSS, DHE_RSA, ECDHE_RSA, RSA, SHA384 as cipherSHA384, supportedCompressionMethods} from "ssl/constants";
 
 const hello_request = 0;
 const client_hello = 1;
@@ -68,6 +68,7 @@ const server_finished_label = "server finished";
 const MD5 = 1;
 const SHA1 = 2;
 const SHA256 = 4;
+const SHA384 = 8;
 
 const extension_type = Object.freeze({
 	tls_server_name: 0,
@@ -124,6 +125,10 @@ function handshakeDigestResult(session, which)
 	}
 	if (which & SHA256) {
 		res = session.handshakeDigests.SHA256.close(true);
+		H = H ? H.concat(res) : res;
+	}
+	if (which & SHA384) {
+		res = session.handshakeDigests.SHA384.close(true);
 		H = H ? H.concat(res) : res;
 	}
 	return H;
@@ -261,18 +266,6 @@ const handshakeProtocol = {
 				session.protocolVersion = session.maxProtocolVersion;
 			else
 				session.protocolVersion = ver;	// should support all versions between [min, max]
-			session.handshakeDigests = {};
-			if (session.protocolVersion >= 0x303)
-				session.handshakeDigests.SHA256 = new Digest("SHA256");
-			else {
-				session.handshakeDigests.MD5 = new Digest("MD5");
-				session.handshakeDigests.SHA1 = new Digest("SHA1");
-			}
-
-			let data = session.handshakeMessages.getChunk();
-			for (let digest in session.handshakeDigests)
-				session.handshakeDigests[digest].write(data);
-			delete session.handshakeMessages;
 
 			var random = s.readChunk(32);
 			var sessionIDLen = s.readChar();
@@ -301,6 +294,23 @@ const handshakeProtocol = {
 			}
 			session.chosenCipher = this.selectCipherSuite(suites);
 			session.compressionMethod = this.selectCompressionMethod(compressionMethods);
+
+			session.handshakeDigests = {};
+			if (session.protocolVersion >= 0x303) {
+				session.handshakeDigests.SHA256 = new Digest("SHA256");	// CertificateVerify always signs SHA256 here
+				if (cipherSHA384 === session.chosenCipher.hashAlgorithm)
+					session.handshakeDigests.SHA384 = new Digest("SHA384");
+			}
+			else {
+				session.handshakeDigests.MD5 = new Digest("MD5");
+				session.handshakeDigests.SHA1 = new Digest("SHA1");
+			}
+
+			let data = session.handshakeMessages.getChunk();
+			for (let digest in session.handshakeDigests)
+				session.handshakeDigests[digest].write(data);
+			delete session.handshakeMessages;
+
 			if (msgType === server_hello && s.byteAvailable) {
 				let type = s.readChars(2);
 				switch (type) {
@@ -935,8 +945,9 @@ const handshakeProtocol = {
 		msgType: finished,
 
 		calculateVerifyData(session, flag) {
-			let finishLabel = (session.connectionEnd ^ flag) ? client_finished_label : server_finished_label;
-			let digest = handshakeDigestResult(session, session.protocolVersion <= 0x302 ? MD5 | SHA1 : SHA256);
+			const finishLabel = (session.connectionEnd ^ flag) ? client_finished_label : server_finished_label;
+			const digest = handshakeDigestResult(session, session.protocolVersion <= 0x302 ? MD5 | SHA1 :
+					(cipherSHA384 === session.chosenCipher.hashAlgorithm) ? SHA384 : SHA256);
 			return PRF(session, session.masterSecret, finishLabel, digest, 12);
 		},
 		unpacketize(session, s) {
