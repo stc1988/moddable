@@ -24,6 +24,39 @@ import WebPage from "embedded:network/http/server/options/webpage";
 import WebSocketHandshake from "embedded:network/http/server/options/websocket";
 import WebSocket from "WebSocket";
 
+const ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
+function randomText(length) {
+	let out = "";
+	for (let i = 0; i < length; i++)
+		out += ALPHABET[Math.irandom(ALPHABET.length)];
+	return out;
+}
+
+function clearestChannel(scan) {
+	const load = {1: 0, 6: 0, 11: 0};
+	for (const ap of scan.values()) {
+		let nearest = 1, distance = Infinity;
+		for (const c of [1, 6, 11]) {
+			if (ap.channel) {
+				const d = Math.abs(c - ap.channel);
+				if (d < distance) {
+					distance = d;
+					nearest = c;
+				}
+			}
+		}
+		load[nearest] += 1;
+	}
+	let choice = 1, min = Infinity;
+	for (const c of [1, 6, 11]) {
+		if (load[c] < min) {
+			min = load[c];
+			choice = c;
+		}
+	}
+	return choice;
+}
+
 class CaptivePortal {
 	#ap;
 	#wifi;
@@ -31,17 +64,19 @@ class CaptivePortal {
 	#dnsServer;
 	#ws;
 	#port;
+	#channel;
 	#onPage;
 	#onClose;
 	#onError;
 	#onStatus;
 	#phase = "";
 	#credentials;
+	#ssid;
+	#password;
+	#scan;
 
 	constructor(options) {
-		const {SSID, onPage, channel, password} = options;
-		if (!SSID)
-			throw new Error("SSID required");
+		const {onPage} = options;
 		if (!onPage)
 			throw new Error("onPage required");
 
@@ -50,24 +85,57 @@ class CaptivePortal {
 		this.#onError = options.onError;
 		this.#onStatus = options.onStatus;
 		this.#port = options.port ?? 80;
-
-		options = {
-			SSID: SSID,
-			max: 1,
-			onChanged: name => this.#onAPChanged(name),
-			onConnect: station => this.#setPhase("connected"),
-			onDisconnect: station => {
-				this.#ws?.close();
-				this.#ws = undefined;
-				this.#setPhase("waiting");
-			}
-		};
-		if (channel) options.channel = channel;
-		if (password) options.password = password;
-		this.#ap = new WiFiAccessPoint(options);
+		this.#channel = options.channel;
+		this.#ssid = options.SSID ?? "Moddable";
+		this.#password = options.password ?? randomText(10);
 
 		this.#wifi = new WiFi({
-			onChanged: (property) => this.#onWiFiChanged(property, this.#wifi[property])
+			onChanged: property => this.#onWiFiChanged(property, this.#wifi[property])
+		});
+
+		this.#setPhase("initializing");
+		this.#wifi.scan({
+			onFound: ap => {
+				if (!ap.SSID) return;
+				this.#wifi.found ??= new Map;
+				const prev = this.#wifi.found.get(ap.SSID);
+				if (!prev || (prev.RSSI < ap.RSSI)) {
+					const {BSSID, ...entry} = ap;		// remove BSSID
+					this.#wifi.found.set(ap.SSID, entry);
+				}
+			},
+			onComplete: () => {
+				const found = this.#wifi.found;
+				delete this.#wifi.found;
+				if (found)
+					this.#scan = Array.from(found.values());
+
+				let SSID;
+				do {
+					SSID = `${this.#ssid}-${randomText(6)}`;
+				} while (found?.has(SSID));
+
+				const options = {
+					SSID,
+					max: 1,
+					onChanged: name => this.#onAPChanged(name),
+					onConnect: () => this.#setPhase("connected"),
+					onDisconnect: () => {
+						this.#ws?.close();
+						this.#ws = undefined;
+						this.#setPhase("waiting");
+					}
+				};
+				if (this.#channel)
+					options.channel = this.#channel;
+				else if (found?.size)
+					options.channel = clearestChannel(found);
+				if (this.#password) options.password = this.#password;
+				this.#ap = new WiFiAccessPoint(options);
+				this.#ap.configure({
+					portal: `http://${this.#ap.address}`
+				});
+			}
 		});
 	}
 
@@ -89,7 +157,7 @@ class CaptivePortal {
 		if (this.#ap.connection >= 400) {
 			this.#dnsServer ??= this.#initializeDNSServer();
 			this.#httpServer ??= this.#initializeHTTPServer();
-			this.#setPhase("waiting");
+			this.#setPhase("ready", {SSID: this.#ap.SSID, password: this.#password});
 		}
 	}
 
@@ -98,8 +166,8 @@ class CaptivePortal {
 
 		if (value >= 500)
 			this.#setPhase("provisioned", this.#credentials);
-		else if (300 >= value)
-			this.#setPhase("connecting");
+		else if (value >= 300)
+			this.#setPhase("connecting", this.#credentials);
 		else if ((value <= 200) && ("connecting" === this.#phase))
 			this.#setPhase("failed");
 	}
@@ -154,17 +222,24 @@ class CaptivePortal {
 							this.route = {
 								...WebPage,
 								data: page.content,
-								headers: new Map([["cache-control", "no-store"], ["content-type", page.mimeType]])
+								headers: new Map([
+									["content-type", page.mimeType],
+									["cache-control", "no-store"],
+									["connection", "close"]
+								])
 							};
 						}
 						else {
+							const dest = `http://${portal.#ap.address}`;
 							this.route = {
 								...WebPage,
-								data: ArrayBuffer.fromString(""),
-								status: 302,
+								data: ArrayBuffer.fromString(`<HTML><HEAD><META http-equiv="refresh" content="0; URL=${dest}"></HEAD></HTML>`),
+								status: 200,
 								headers: new Map([
-									["location", "/"],
-									["cache-control", "no-store"]
+									["location", dest],
+									["content-type", "text/html"],
+									// ["cache-control", "no-store"],
+									["connection", "close"]
 								])
 							};
 						}
@@ -176,7 +251,7 @@ class CaptivePortal {
 
 	#attachWebSocket(ws) {
 		this.#ws = ws;
-		ws.addEventListener("open", () => this.#sendWS({event: "initialize"}));
+		ws.addEventListener("open", () => this.#sendWS({event: "ws initialize"}));
 		ws.addEventListener("message", event => {
 			try {
 				const msg = JSON.parse(event.data);
@@ -212,6 +287,12 @@ class CaptivePortal {
 	}
 
 	#handleScan() {
+		if (this.#scan) {
+			this.#sendWS({event: "scan", scan: this.#scan});
+			this.#scan = undefined;
+			return;
+		}
+
 		const scan = new Map;
 		try {
 			this.#wifi.scan({
@@ -219,7 +300,7 @@ class CaptivePortal {
 					if (ap.SSID === this.#ap.SSID) return;
 					const prev = scan.get(ap.SSID);
 					if (!prev || (prev.RSSI < ap.RSSI)) {
-						const {BSSID, ...entry} = ap;
+						const {BSSID, ...entry} = ap;		// remove BSSID
 						scan.set(ap.SSID, entry);
 					}
 				},
@@ -244,6 +325,7 @@ class CaptivePortal {
 		this.#credentials = options;
 		try {
 			this.#wifi.connect(options);
+		   this.#setPhase("connecting", options);
 		}
 		catch (e) {
 			this.#fail(e);
