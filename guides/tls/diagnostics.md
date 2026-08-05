@@ -23,8 +23,7 @@ const http = new device.network.https.io({
 
 ---
 
-You can disable certificate validation on the TLS connection. Only use this capability for debugging, never production. To disable validation, set `verify` to `false` in the `tls` options object.
-
+Disable certificate validation on the TLS connection by setting `verify` to `false` in the `tls` options object. Only use this capability for debugging, never in production.
 
 ```js
 const http = new device.network.https.io({
