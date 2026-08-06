@@ -1,17 +1,8 @@
 {
 	"modules": {
 		"*": [
-			"$(MODULES)/network/mdns/*",
-			"$(MODULES)/network/dns/moddnsparser",
-			"$(MODULES)/network/dns/dns"
-		],
-		"dns/parser": "$(MODULES)/network/dns/dnsparser",
-		"dns/serializer": "$(MODULES)/network/dns/dnsserializer"
+			"$(MODULES)/network/mdns/*"
+		]
 	},
-	"preload": [
-		"mdns",
-		"dns",
-		"dnsparser",
-		"dnsserializer"
-	]
+	"preload": "mdns"
 }
