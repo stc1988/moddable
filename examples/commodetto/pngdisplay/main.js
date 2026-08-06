@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2025 Moddable Tech, Inc.
+ * Copyright (c) 2016-2026 Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK.
  * 
@@ -12,70 +12,23 @@
  *
  */
 
-import {Server} from "http";
-import MDNS from "mdns";
+import HTTPServer from "embedded:network/http/server";
+import Listener from "embedded:io/socket/listener";
+import WiFi from "embedded:network/interface/wifi";
+import WiFiAccessPoint from "embedded:network/interface/wifi/accesspoint";
 import PNG from "commodetto/ReadPNG";
 import Poco from "commodetto/Poco";
 import Bitmap from "commodetto/Bitmap";
 import Convert from "commodetto/Convert";
 import config from "mc/config";
-import Net from "net";
-import WiFi from "wifi";
 
 /*
 	curl -T $MODDABLE/examples/commodetto/pngdisplay/test.png http://pngdisplay.local/upload
 
-	Details about this application: https://blog.moddable.com/blog/pngdisplay
+	Details about this application: https://www.moddable.com/blog/pngdisplay
 */
 const HOSTNAME = "pngdisplay";
 let poco;
-
-function callback(message, value, etc) {
-	switch (message) {
-		case 2:
-			this.isPut = "put" === etc.toLowerCase();
-			fill(this.isPut ? poco.makeColor(0, 255, 0) : poco.makeColor(255, 0, 0));
-			break;
-		case 3:
-			if ("content-length" === value) {
-				this.byteLength = parseInt(etc);
-				try {
-					this.png = new Uint8Array(new SharedArrayBuffer(this.byteLength));
-				}
-				catch {
-					fill(poco.makeColor(255, 0, 0));
-					return;
-				}
-				this.png.position = 0;
-			}
-			break;
-		case 4:
-			return undefined !== this.png;
-		case 5: {
-			if (!this.png) return;
-			const data = new Uint8Array(this.read(ArrayBuffer, value));
-			this.png.set(data, this.png.position);
-			this.png.position += data.byteLength;
-
-			poco.begin(0, (poco.height - 4) >> 1, poco.width * (this.png.position / this.png.byteLength), 4);
-			poco.fillRectangle(poco.makeColor(255, 255, 255), 0, 0, poco.width, poco.height);
-			poco.end();
-			} break;
-		case 8:
-			if (!this.png)
-				return {status: 500};
-			try {
-				render(this.png.buffer);
-				delete this.png;
-				return {status: 200};
-			}
-			catch {
-				delete this.png;
-				return {status: 500};
-			}
-			// break;
-	}
-}
 
 function render(data) {
 	const gray = poco.makeColor(128, 128, 128);
@@ -116,28 +69,86 @@ function fill(color) {
 export default function() {
 	poco = new Poco(screen, {rotation: config.rotation});
 
-	if (!Net.get("SSID", "station")) {
-		WiFi.accessPoint({
-			ssid: HOSTNAME,
+	const wifi = new WiFi({});
+	const hasStation = wifi.SSID;
+	wifi.close();
+	if (!hasStation) {
+		new WiFiAccessPoint({
+			SSID: HOSTNAME,
 			channel: 8,
 		});
 	}
 
-	/* const mdns = */ new MDNS({hostName: HOSTNAME}, function(message, value) {
-		switch (message) {
-			case 1:
-				fill(poco.makeColor(255, 255, 255));
-				trace(`MDNS - claimed hostname is "${value}"\n`);
-				break;
-
-			default:
-				if (message < 0) {
-					trace("MDNS - failed to claim, give up\n");
-					fill(poco.makeColor(255, 0, 0));
-				}
-				break;
-		  }
+	const dnssd = new (device.network.dnssd.io)(device.network.dnssd);
+	dnssd.claim({
+		host: HOSTNAME,
+		onReady() {
+			fill(poco.makeColor(255, 255, 255));
+			trace(`mDNS - claimed hostname is "${HOSTNAME}.local"\n`);
+			dnssd.advertise({
+				serviceType: "_http._tcp",
+				name: HOSTNAME,
+				host: HOSTNAME,
+				port: 80
+			});
+		},
+		onError() {
+			trace("mDNS - failed to claim, give up\n");
+			fill(poco.makeColor(255, 0, 0));
+		}
 	});
-	(new Server).callback = callback;
+
+	new HTTPServer({
+		io: Listener,
+		port: 80,
+		onConnect(connection) {
+			connection.accept({
+				onRequest(request) {
+					this.isPut = "put" === request.method.toLowerCase();
+					fill(this.isPut ? poco.makeColor(0, 255, 0) : poco.makeColor(255, 0, 0));
+
+					const contentLength = request.headers.get("content-length");
+					if (contentLength) {
+						this.byteLength = parseInt(contentLength);
+						try {
+							this.png = new Uint8Array(new SharedArrayBuffer(this.byteLength));
+						}
+						catch {
+							fill(poco.makeColor(255, 0, 0));
+							return;
+						}
+						this.png.position = 0;
+					}
+				},
+				onReadable(count) {
+					if (!this.png) return;
+					const data = new Uint8Array(this.read(count));
+					this.png.set(data, this.png.position);
+					this.png.position += data.byteLength;
+
+					poco.begin(0, (poco.height - 4) >> 1, poco.width * (this.png.position / this.png.byteLength), 4);
+					poco.fillRectangle(poco.makeColor(255, 255, 255), 0, 0, poco.width, poco.height);
+					poco.end();
+				},
+				onResponse(response) {
+					try {
+						if (this.png)
+							render(this.png.buffer);
+						else
+							response.status = 500;
+					}
+					catch {
+						response.status = 500;
+					}
+					finally {
+						delete this.png;
+						response.headers.set("content-length", "0");
+						this.respond(response);
+					}
+				}
+			});
+		}
+	});
+
 	fill(poco.makeColor(64, 64, 64));
 };

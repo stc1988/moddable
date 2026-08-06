@@ -3,7 +3,9 @@
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/examples/manifest_net.json",
 		"$(MODDABLE)/examples/manifest_commodetto.json",
-		"$(MODDABLE)/modules/network/mdns/manifest.json",
+		"$(MODDABLE)/modules/io/dnssd/manifest.json",
+		"$(MODDABLE)/modules/io/wifiaccesspoint/manifest.json",
+		"$(MODDABLE)/examples/io/listener/httpserver/manifest_httpserver.json",
 		"$(COMMODETTO)/manifest_bufferout.json",
 		"$(COMMODETTO)/manifest_convert.json",
 		"$(COMMODETTO)/manifest_pixelsout.json"
@@ -11,13 +13,11 @@
 	"modules": {
 		"*": [
 			"./main",
-			"$(MODULES)/network/http/*",
 			"$(COMMODETTO)/miniz"
 		],
 		"commodetto/ReadPNG": "$(COMMODETTO)/commodettoReadPNG"
 	},
 	"preload": [
-		"http",
 		"main"
 	],
 	"config": {
