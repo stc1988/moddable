@@ -207,11 +207,21 @@ function fetch(href, info = {}) {
 					return;
 				}
 				const readableStream = new ReadableStream({
-					type: "bytes",
+// 					type: "bytes",
 					start(controller) {
 						readableController = controller;
+						readableController.available = 0;
 					},
-					pull(controller) {
+					pull: (controller) => {
+						const count = readableController.available;
+						if (count > 0) {
+							readableController.available = 0;
+							readableController.enqueue(new Uint8Array(this.read(count)));
+						}
+						else {
+							readableController.promiseRecord = Promise.withResolvers();
+							return readableController.promiseRecord.promise;
+						}
 					},
 					cancel() {
 					}
@@ -270,8 +280,16 @@ function fetch(href, info = {}) {
 					this.read();
 					return;
 				}
-				if (readableController)
-					readableController.enqueue(new Uint8Array(this.read(count)));
+				if (readableController) {
+					const promiseRecord = readableController.promiseRecord;
+					if (promiseRecord) {
+						readableController.promiseRecord = null;
+						readableController.enqueue(new Uint8Array(this.read(count)));
+						promiseRecord.resolve();
+					}
+					else
+						readableController.available = count;
+				}
 			},
 			onDone(/* error */) {
 				if (this.redirected) {
