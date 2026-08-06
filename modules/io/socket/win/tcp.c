@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024  Moddable Tech, Inc.
+ * Copyright (c) 2022-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -331,10 +331,16 @@ void xs_tcp_write(xsMachine *the)
 
 	int ret = send(tcp->skt, buffer, needed, 0);
 	if (ret < 0) {
+		if (WSAEWOULDBLOCK == WSAGetLastError()) {
+			tcp->bytesWritable += needed;
+			xsUnknownError("would block");
+		}
 		xsTrace("write failed");
 		tcpTrigger(tcp, kTCPError);
 		return;
 	}
+	if (ret != (int)needed)
+		xsUnknownError("incomplete write");
 
 	modInstrumentationAdjust(NetworkBytesWritten, needed);
 
@@ -446,9 +452,12 @@ void tcpTask(modTimer timer, void *refcon, int refconSize)
 				modInstrumentationAdjust(NetworkBytesRead, bytesRead);
 			}
 			else {
-				tcp->error = 1;
-				if (0 == tcp->bytesReadable)
-					tcpTrigger(tcp, kTCPError);
+				int wsaError = (bytesRead < 0) ? WSAGetLastError() : 0;
+				if ((WSAEWOULDBLOCK != wsaError) && (WSAEINTR != wsaError)) {
+					tcp->error = 1;
+					if (0 == tcp->bytesReadable)
+						tcpTrigger(tcp, kTCPError);
+				}
 			}
 		}
 	}
