@@ -2,8 +2,7 @@
 	"modules": {
 		"*": [
 			"./pocoqrcode"
-		],
-		"commodetto/Poco": "$(COMMODETTO)/commodettoPoco"
+		]
 	},
 	"preload": "pocoqrcode",
 	"typescript": {
