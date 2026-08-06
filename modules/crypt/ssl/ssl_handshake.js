@@ -102,14 +102,17 @@ const options = Object.freeze({
 
 function handshakeDigestUpdate(session, data)
 {
-	if (session.handshakeDigests) {
-		for (let digest in session.handshakeDigests)
-			session.handshakeDigests[digest].write(data);
+	const digests = session.handshakeDigests;
+	if (null === digests)
+		return;
+
+	if (digests) {
+		for (let digest in digests)
+			digests[digest].write(data);
 		return;
 	}
 
-	if (!session.handshakeMessages)
-		session.handshakeMessages = new SSLStream();
+	session.handshakeMessages ??= new SSLStream();
 	return session.handshakeMessages.writeChunk(data);
 }
 
