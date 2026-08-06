@@ -17,15 +17,15 @@
 			}]
 		},
 		"...": {
+			"include": [
+				"$(COMMODETTO)/manifest_bufferout.json",
+				"$(COMMODETTO)/manifest_pixelsout.json"
+			],
 			"modules": {
-				"commodetto/BufferOut": "$(COMMODETTO)/commodettoBufferOut",
-				"commodetto/PixelsOut": "$(COMMODETTO)/commodettoPixelsOut",
 				"commodetto/readJPEG": "$(COMMODETTO)/commodettoReadJPEG",
 				"commodetto/loadJPEG": "$(COMMODETTO)/commodettoLoadJPEG"
 			},
 			"preload": [
-				"commodetto/BufferOut",
-				"commodetto/PixelsOut",
 				"commodetto/readJPEG",
 				"commodetto/loadJPEG"
 			]

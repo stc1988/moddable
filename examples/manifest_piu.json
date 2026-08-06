@@ -1,14 +1,14 @@
 {
 	"include": [
-		"$(MODULES)/base/easing/manifest.json"
+		"$(MODULES)/base/easing/manifest.json",
+		"$(COMMODETTO)/manifest_bitmap.json",
+		"$(COMMODETTO)/manifest_parsebmp.json",
+		"$(COMMODETTO)/manifest_parserle.json"
 	],
 	"modules": {
-		"commodetto/Bitmap": "$(COMMODETTO)/commodettoBitmap",
 		"commodetto/PocoCore": "$(COMMODETTO)/commodettoPocoCore",
 		"commodetto/*": "$(COMMODETTO)/commodettoPocoBlit",
 		"commodetto/cfe": "$(COMMODETTO)/cfeBMF",
-		"commodetto/parseBMP": "$(COMMODETTO)/commodettoParseBMP",
-		"commodetto/parseRLE": "$(COMMODETTO)/commodettoParseRLE",
 		"piu/*": "$(PIU)/All/piu*",
 		"piu/CombTransition": "$(PIU)/MC/piuCombTransition",
 		"piu/MC": "$(PIU)/MC/piuMC",

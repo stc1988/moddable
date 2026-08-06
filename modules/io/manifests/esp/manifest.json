@@ -9,14 +9,13 @@
 		"$(IO)/i2c/manifest.json",
 		"$(IO)/pwm/manifest.json",
 		"$(IO)/serial/manifest.json",
-		"$(IO)/spi/manifest.json"
+		"$(IO)/spi/manifest.json",
+		"$(COMMODETTO)/manifest_bitmap.json"
 	],
 	"modules": {
 		"*": [
 			"$(IO)/common/builtinCommon"
 		],
-		"commodetto/Bitmap": "$(COMMODETTO)/commodettoBitmap",
-
 		"embedded:io/socket/tcp": "$(IO)/socket/lwip/tcp",
 		"embedded:io/socket/udp": "$(IO)/socket/lwip/udp",
 		"embedded:io/socket/listener": "$(IO)/socket/lwip/listener",

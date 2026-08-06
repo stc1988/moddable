@@ -1,12 +1,12 @@
 {
+	"include": [
+		"$(COMMODETTO)/manifest_bitmap.json",
+		"$(COMMODETTO)/manifest_dither.json"
+	],
 	"modules": {
-		"gdey037t03": "$(MODULES)/drivers/gdey037t03/gdey037t03",
-		"commodetto/Dither": "$(COMMODETTO)/commodettoDither",
-		"commodetto/Bitmap": "$(COMMODETTO)/commodettoBitmap"
+		"gdey037t03": "$(MODULES)/drivers/gdey037t03/gdey037t03"
 	},
 	"preload": [
-		"gdey037t03",
-		"commodetto/Dither",
-		"commodetto/Bitmap"
+		"gdey037t03"
 	]
 }

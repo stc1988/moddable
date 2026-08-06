@@ -1301,8 +1301,12 @@ export default class extends TOOL {
 		}
 	}
 	parseManifest(path, from) {
-		if (this.manifests.already[path])
+		const already = this.manifests.already[path];
+		if (already) {
+			if (((undefined === from) || (path === from)) && (already.mcpack ?? this.mcpackDefault))
+				already.from = path;
 			return;
+		}
 		const parts = this.splitPath(path);
 		this.currentDirectory = parts.directory;
 		this.currentPath = path;
@@ -1400,6 +1404,7 @@ export default class extends TOOL {
 		});
 		return this.resolveSlash(value);
 	}
+/*
 	selectManifest(builtin) {
 		let index;
 		if (builtin.manifests.length == 1)
@@ -1413,6 +1418,7 @@ export default class extends TOOL {
 		}
 		return index;
 	}
+*/
 }
 
 class Rule {

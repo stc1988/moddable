@@ -3,7 +3,10 @@
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/examples/manifest_net.json",
 		"$(MODDABLE)/examples/manifest_commodetto.json",
-		"$(MODDABLE)/modules/network/mdns/manifest.json"
+		"$(MODDABLE)/modules/network/mdns/manifest.json",
+		"$(COMMODETTO)/manifest_bufferout.json",
+		"$(COMMODETTO)/manifest_convert.json",
+		"$(COMMODETTO)/manifest_pixelsout.json"
 	],
 	"modules": {
 		"*": [
@@ -11,14 +14,10 @@
 			"$(MODULES)/network/http/*",
 			"$(COMMODETTO)/miniz"
 		],
-		"commodetto/ReadPNG": "$(COMMODETTO)/commodettoReadPNG",
-		"commodetto/BufferOut": "$(COMMODETTO)/commodettoBufferOut",
-		"commodetto/Convert": "$(COMMODETTO)/commodettoConvert",
-		"commodetto/PixelsOut": "$(COMMODETTO)/commodettoPixelsOut"
+		"commodetto/ReadPNG": "$(COMMODETTO)/commodettoReadPNG"
 	},
 	"preload": [
 		"http",
-		"commodetto/*",
 		"main"
 	],
 	"config": {

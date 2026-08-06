@@ -1,6 +1,7 @@
 {
 	"include": [
-		"$(MODULES)/pins/digital/manifest.json"
+		"$(MODULES)/pins/digital/manifest.json",
+		"$(COMMODETTO)/manifest_bitmap.json"
 	],
 	"defines": {
 		"ili9341p8": {
@@ -15,12 +16,10 @@
 		}
 	},
 	"modules": {
-		"*": "./*",
-		"commodetto/Bitmap": "$(COMMODETTO)/commodettoBitmap"
+		"*": "./*"
 	},
 	"preload": [
-		"ili9341_p8",
-		"commodetto/Bitmap"
+		"ili9341_p8"
 	],
 	"platforms": {
 		"esp32": {

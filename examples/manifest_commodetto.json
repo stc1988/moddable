@@ -1,12 +1,12 @@
 {
 	"include": [
-		"$(MODULES)/io/display/manifest.json"	
+		"$(MODULES)/io/display/manifest.json",
+		"$(COMMODETTO)/manifest_bitmap.json",
+		"$(COMMODETTO)/manifest_parsebmp.json",
+		"$(COMMODETTO)/manifest_parserle.json"
 	],
 	"modules": {
 		"commodetto/parseBMF": "$(COMMODETTO)/commodettoParseBMF",
-		"commodetto/parseBMP": "$(COMMODETTO)/commodettoParseBMP",
-		"commodetto/parseRLE": "$(COMMODETTO)/commodettoParseRLE",
-		"commodetto/Bitmap": "$(COMMODETTO)/commodettoBitmap",
 		"commodetto/Poco": "$(COMMODETTO)/commodettoPoco",
 		"commodetto/PocoCore": "$(COMMODETTO)/commodettoPocoCore",
 		"commodetto/*": "$(COMMODETTO)/commodettoPocoBlit",

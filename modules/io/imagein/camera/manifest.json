@@ -4,24 +4,30 @@
 	],
 	"platforms": {
 		"mac": {
+			"include": [
+				"$(COMMODETTO)/manifest_convert.json"
+			],
 			"modules": {
 				"*": "$(MODDABLE)/modules/io/common/builtinCommon",
-				"embedded:io/image/in/camera": "./mac/camera",
-				"commodetto/Convert": "$(MODDABLE)/modules/commodetto/commodettoConvert"
+				"embedded:io/image/in/camera": "./mac/camera"
 			}
 		},
 		"lin": {
+			"include": [
+				"$(COMMODETTO)/manifest_convert.json"
+			],
 			"modules": {
 				"*": "$(MODDABLE)/modules/io/common/builtinCommon",
-				"embedded:io/image/in/camera": "./lin/camera",
-				"commodetto/Convert": "$(MODDABLE)/modules/commodetto/commodettoConvert"
+				"embedded:io/image/in/camera": "./lin/camera"
 			}
 		},
 		"win": {
+			"include": [
+				"$(COMMODETTO)/manifest_convert.json"
+			],
 			"modules": {
 				"*": "$(MODDABLE)/modules/io/common/builtinCommon",
-				"embedded:io/image/in/camera": "./win/camera",
-				"commodetto/Convert": "$(MODDABLE)/modules/commodetto/commodettoConvert"
+				"embedded:io/image/in/camera": "./win/camera"
 			}
 		},
 		"esp32": {

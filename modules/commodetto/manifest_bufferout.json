@@ -1,0 +1,6 @@
+{
+	"modules": {
+		"commodetto/BufferOut": "$(COMMODETTO)/commodettoBufferOut"
+	},
+	"preload": "commodetto/BufferOut"
+}

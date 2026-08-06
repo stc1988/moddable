@@ -2,15 +2,15 @@
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/modules/drivers/ili9341/manifest.json",
-		"$(MODDABLE)/modules/drivers/xpt2046/manifest.json"
+		"$(MODDABLE)/modules/drivers/xpt2046/manifest.json",
+		"$(COMMODETTO)/manifest_bitmap.json",
+		"$(COMMODETTO)/manifest_parserle.json"
 	],
 	"modules": {
 		"*": [
 			"./main",
 			"$(MODULES)/files/preference/*"
 		],
-		"commodetto/parseRLE": "$(COMMODETTO)/commodettoParseRLE",
-		"commodetto/Bitmap": "$(COMMODETTO)/commodettoBitmap",
 		"commodetto/Poco": "$(COMMODETTO)/commodettoPoco",
 		"commodetto/cfe": "$(COMMODETTO)/cfeBMF",
 		"commodetto/*": "$(COMMODETTO)/commodettoPocoBlit"

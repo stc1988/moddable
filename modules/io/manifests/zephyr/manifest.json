@@ -7,14 +7,13 @@
 		"$(IO)/digital/manifest.json",
 		"$(IO)/i2c/manifest.json",
 		"$(IO)/pwm/manifest.json",
-		"$(IO)/serial/manifest.json"
+		"$(IO)/serial/manifest.json",
+		"$(COMMODETTO)/manifest_bitmap.json"
 	],
 	"modules": {
 		"*": [
 			"$(IO)/common/builtinCommon"
 		],
-		"commodetto/Bitmap": "$(COMMODETTO)/commodettoBitmap",
-
 		"system": "$(IO)/system/*"
 	},
 	"preload": [

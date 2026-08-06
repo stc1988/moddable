@@ -2,16 +2,16 @@
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/examples/manifest_net.json",
-		"$(MODDABLE)/examples/manifest_commodetto.json"
+		"$(MODDABLE)/examples/manifest_commodetto.json",
+		"$(COMMODETTO)/manifest_bufferout.json",
+		"$(COMMODETTO)/manifest_pixelsout.json"
 	],
 	"modules": {
 		"*": [
 			"./main",
 			"$(MODULES)/network/http/*"
 		],
-		"commodetto/readJPEG": "$(COMMODETTO)/commodettoReadJPEG",
-		"commodetto/BufferOut": "$(COMMODETTO)/commodettoBufferOut",
-		"commodetto/PixelsOut": "$(COMMODETTO)/commodettoPixelsOut"
+		"commodetto/readJPEG": "$(COMMODETTO)/commodettoReadJPEG"
 	},
 	"preload": [
 		"http",

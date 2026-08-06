@@ -1,0 +1,6 @@
+{
+	"modules": {
+		"commodetto/parseBMP": "$(COMMODETTO)/commodettoParseBMP"
+	},
+	"preload": "commodetto/parseBMP"
+}

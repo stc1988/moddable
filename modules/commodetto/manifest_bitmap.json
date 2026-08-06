@@ -1,0 +1,6 @@
+{
+	"modules": {
+		"commodetto/Bitmap": "$(COMMODETTO)/commodettoBitmap"
+	},
+	"preload": "commodetto/Bitmap"
+}

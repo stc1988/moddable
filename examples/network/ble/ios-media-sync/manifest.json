@@ -4,16 +4,16 @@
 		"$(MODDABLE)/examples/manifest_net.json",
 		"$(MODDABLE)/examples/manifest_commodetto.json",
 		"$(MODDABLE)/modules/network/ble/ams-client/manifest.json",
-		"$(MODDABLE)/modules/crypt/tls.json"
+		"$(MODDABLE)/modules/crypt/tls.json",
+		"$(COMMODETTO)/manifest_bufferout.json",
+		"$(COMMODETTO)/manifest_pixelsout.json"
 	],
 	"modules": {
 		"*": [
 			"./main",
 			"$(MODULES)/network/http/*"
 		],
-		"commodetto/readJPEG": "$(COMMODETTO)/commodettoReadJPEG",
-		"commodetto/BufferOut": "$(COMMODETTO)/commodettoBufferOut",
-		"commodetto/PixelsOut": "$(COMMODETTO)/commodettoPixelsOut"
+		"commodetto/readJPEG": "$(COMMODETTO)/commodettoReadJPEG"
 	},
 	"resources": {
 		"*-mask": [
