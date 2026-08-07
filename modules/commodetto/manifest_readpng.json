@@ -1,0 +1,14 @@
+{
+	"include": [
+		"$(COMMODETTO)/manifest_bitmap.json",
+		"$(COMMODETTO)/manifest_bufferout.json",
+		"$(COMMODETTO)/manifest_convert.json"
+	],
+	"modules": {
+		"commodetto/ReadPNG": "$(COMMODETTO)/commodettoReadPNG",
+		"*": [
+			"$(COMMODETTO)/miniz"
+		]
+	},
+	"preload": "commodetto/ReadPNG"
+}

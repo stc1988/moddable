@@ -1,0 +1,10 @@
+{
+	"include": [
+		"$(COMMODETTO)/manifest_bitmap.json",
+		"$(COMMODETTO)/manifest_convert.json"
+	],
+	"modules": {
+		"commodetto/ColorCellOut": "$(COMMODETTO)/commodettoColorCellOut"
+	},
+	"preload": "commodetto/ColorCellOut"
+}

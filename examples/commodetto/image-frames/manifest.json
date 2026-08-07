@@ -2,11 +2,11 @@
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/examples/manifest_commodetto.json",
-		"$(MODDABLE)/modules/commodetto/colorcell/manifest.json"
+		"$(MODDABLE)/modules/commodetto/colorcell/manifest.json",
+		"$(COMMODETTO)/manifest_readstream.json"
 	],
 	"modules": {
-		"*": "./main",
-		"commodetto/readStream": "$(COMMODETTO)/commodettoReadStream"
+		"*": "./main"
 	},
 	"resources": {
 		"*": "$(MODDABLE)/examples/assets/images/cell-flag"
