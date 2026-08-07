@@ -99,7 +99,7 @@ class GT911 {
 	}
 	close() {
 		this.#io?.close();
-		this.#io.interrupt?.close();
+		this.#io?.interrupt?.close();
 		this.#io = undefined;
 	}
 	configure(options) {
