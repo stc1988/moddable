@@ -233,8 +233,7 @@ txSlot* fxCheckMapKey(txMachine* the)
 		txSlot* slot = mxArgv(0);
 		return slot;
 	}
-	mxTypeError("no key");
-	return C_NULL;
+	return &mxUndefined;
 }
 
 txSlot* fxNewMapInstance(txMachine* the)
