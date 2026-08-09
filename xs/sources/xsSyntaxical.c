@@ -3140,6 +3140,8 @@ void fxObjectExpression(txParser* parser)
 			fxGetNextToken(parser);
 			fxAssignmentExpression(parser);
 			fxPushNodeStruct(parser, 1, XS_TOKEN_SPREAD, aPropertyLine);
+			if (parser->states[0].token == XS_TOKEN_COMMA)
+				parser->root->flags |= mxElisionFlag;
         }
         else {
 			fxPropertyName(parser, &aSymbol, &aToken0, &aToken1, &aToken2, &flags);
@@ -3812,6 +3814,10 @@ txNode* fxObjectBindingFromExpression(txParser* parser, txNode* theNode, txToken
 			((txPropertyBindingAtNode*)property)->binding = binding;
 		}
 		else if (property->description->token == XS_TOKEN_SPREAD) {
+			if (property->flags & mxElisionFlag) {
+				fxReportParserError(parser, property->line, "invalid comma after rest");
+				return NULL;
+			}
 			binding = fxRestBindingFromExpression(parser, property, theToken, 1);
 			if (!binding) {
 				parser->errorSymbol = parser->SyntaxErrorSymbol;
