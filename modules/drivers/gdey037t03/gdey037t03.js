@@ -39,12 +39,20 @@ const NATIVE_H = WIDTH;
 const NATIVE_STRIDE = NATIVE_W >> 3;
 const FRAME_BYTES = STRIDE * HEIGHT;
 
-// Native transpose (gdey037t03.c): native(nx, ny) = logical(ny, nx). Done in C
-// because the per-pixel bit loop over the whole frame is far too slow in script.
-function transpose(logical, out) @ "xs_gdey037t03_transpose";
+  // Transpose a full logical (W x H) frame into the native (H x W) panel array,
+  // absorbing the panel's reversed gate scan so the advertised landscape
+  // orientation comes out upright. The work is done natively (see gdey037t03.c).
+function transpose(logical) { return native("xs_gdey037t03_transpose").call(this, logical); }
 
 class EPD {
-  constructor() {
+  #onDisplayReady;
+  #waitingDisplayDone;
+  #waitingPowerOn;
+  #waitingPowerOff;
+
+  constructor(options) {
+    this.#onDisplayReady = options?.onDisplayReady;
+
     const Digital = device.io.Digital;
     const SPI = device.io.SPI;
 
@@ -63,7 +71,36 @@ class EPD {
       mode: Digital.Output,
       initialValue: 1,
     });
-    this.busy = new Digital({ pin: device.pin.epdBusy, mode: Digital.Input });
+    this.busy = new Digital({
+      pin: device.pin.epdBusy,
+      mode: Digital.Input,
+      activeLow: true,
+      edge: !this.#onDisplayReady ? 0 : Digital.Falling,
+      onReadable: !this.#onDisplayReady ? undefined : () => {
+        if (this.#waitingPowerOn) {
+          this.writeCMD(0xe0);
+          this.writeData(0x02);
+          this.writeCMD(0xe5);
+          this.writeData(0x6e);
+          this.writeCMD(0x50);
+          this.writeData(0xd7);
+          this.displayPartial.apply(this, this.#waitingPowerOn);
+          this.#waitingPowerOn = false;
+
+        }
+        else if (this.#waitingDisplayDone) {
+            this.#waitingDisplayDone = false;
+            this.writeCMD(0x02);
+            this.#waitingPowerOff = true;
+        }
+        else if (this.#waitingPowerOff) {
+            this.#waitingPowerOff = false;
+            this.#onDisplayReady();
+        }
+        else
+          throw new Error;
+      }
+    });
 
     this.spi = new SPI({ ...device.SPI.default, hz: 10_000_000, mode: 0 });
     this.spi.byte = new Uint8Array(1);
@@ -99,7 +136,7 @@ class EPD {
   }
 
   isBusy() {
-    return !this.busy.read(); // LOW (0) = busy
+    return this.busy.read();
   }
   waitBusy(ms = 5000) {
     const deadline = Date.now() + ms;
@@ -111,10 +148,18 @@ class EPD {
   }
 
   reset_() {
+    if (this.#waitingDisplayDone || this.#waitingPowerOn || this.#waitingPowerOff) {
+      this.#waitingDisplayDone = false;
+      this.#waitingPowerOn = false;
+      this.#waitingPowerOff = false;
+      this.waitBusy();
+    }
+
+    // delays were 10 ms each, but 1 seems enough
     this.reset.write(0);
-    Timer.delay(10);
+    Timer.delay(1); 
     this.reset.write(1);
-    Timer.delay(10);
+    Timer.delay(1);
   }
 
   initFull() {
@@ -150,8 +195,11 @@ class EPD {
 
   #refresh() {
     this.writeCMD(0x12);
-    Timer.delay(1); // >= 200us before polling BUSY
-    this.waitBusy();
+
+    if (!this.#onDisplayReady) {
+      Timer.delay(1); // >= 200us before polling BUSY
+      this.waitBusy();
+	}
   }
   #powerOff() {
     this.writeCMD(0x02);
@@ -164,7 +212,10 @@ class EPD {
     this.writeCMD(0x13);
     this.writeBuffer(newFrame);
     this.#refresh();
-    this.#powerOff();
+    if (!this.#onDisplayReady)
+      this.#powerOff();
+    else
+      this.#waitingDisplayDone = true;
   }
 
   displayPartial(x, y, w, h, oldWin, newWin) {
@@ -184,8 +235,12 @@ class EPD {
     this.writeCMD(0x13);
     this.writeBuffer(newWin);
     this.#refresh();
-    this.writeCMD(0x92); // partial out
-    this.#powerOff();
+    if (!this.#onDisplayReady) {
+      this.writeCMD(0x92); // partial out
+      this.#powerOff();
+    }
+    else
+      this.#waitingDisplayDone = true;
   }
 
   deepSleep() {
@@ -194,6 +249,17 @@ class EPD {
     this.writeCMD(0x07);
     this.writeData(0xa5);
   }
+  doPartial(x, y, w, h, previous, next) {
+      if (!this.#onDisplayReady) {
+        this.initPart();
+        this.displayPartial(0, 0, NATIVE_W, NATIVE_H, previous, next);
+        return;
+      }
+    this.reset_();
+    this.writeCMD(0x04);
+    this.#waitingPowerOn = [x, y, w, h, previous, next];
+    return;
+  }
 }
 
 class Display {
@@ -201,13 +267,20 @@ class Display {
   #epd;
   #current = new Uint8Array(FRAME_BYTES).fill(0xff); // logical frame being drawn (0xFF = white)
   #previous = new Uint8Array(FRAME_BYTES).fill(0xff); // last displayed native frame (0x10 "old data")
+  #next = new Uint8Array(FRAME_BYTES).fill(0xff); // to be displayed native frame
   #dither = new Dither({ width: WIDTH });
   #mode = "full"; // full-refresh waveform: "full" (clean) or "fast"
   #wantFull = true; // next update is a full (de-ghosting) refresh
 
   constructor(options = {}) {
-    this.#epd = new EPD();
-    if (options.mode) this.#mode = options.mode;
+    if (options.onDisplayReady) {
+      options = {
+        ...options,
+        onDisplayReady: options.onDisplayReady.bind(this)
+      };
+    }
+    this.#epd = new EPD(options);
+    if (options.mode) this.#mode = options.mode;    //@@ should only be on configure()
   }
   close() {
     if (this.#epd) {
@@ -247,17 +320,17 @@ class Display {
   }
   end() {
     const epd = this.#epd;
-    const next = this.#toNative(this.#current);
+    const next = transpose(this.#current, this.#next);
     if (this.#wantFull) {
       // full refresh: redraws every pixel, clears ghosting, flashes
       "fast" === this.#mode ? epd.initFast() : epd.initFull();
-      epd.display(this.#previous, next);
       this.#wantFull = false;
+      epd.display(this.#previous, next);
     } else {
       // partial waveform over the whole screen: no flash
-      epd.initPart();
-      epd.displayPartial(0, 0, NATIVE_W, NATIVE_H, this.#previous, next);
+      epd.doPartial(0, 0, NATIVE_W, NATIVE_H, this.#previous, next)
     }
+    this.#next = this.#previous;
     this.#previous = next;
   }
   continue() {
@@ -292,15 +365,6 @@ class Display {
   }
   pixelsToBytes(count) {
     return count;
-  }
-
-  // Transpose a full logical (W x H) frame into the native (H x W) panel array,
-  // absorbing the panel's reversed gate scan so the advertised landscape
-  // orientation comes out upright. The work is done natively (see gdey037t03.c).
-  #toNative(logical) {
-    const out = new Uint8Array(NATIVE_STRIDE * NATIVE_H);
-    transpose(logical.buffer, out.buffer);
-    return out;
   }
 }
 
