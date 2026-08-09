@@ -171,9 +171,9 @@ typedef struct {
 	#define XS_MINOR_VERSION 3
 #endif
 #if mxKeysGarbageCollection
-	#define XS_PATCH_VERSION 1
+	#define XS_PATCH_VERSION 3
 #else
-	#define XS_PATCH_VERSION 0
+	#define XS_PATCH_VERSION 2
 #endif
 #ifndef XS_MOD_COMPATIBLE_MAJOR_VERSION
 	#define XS_MOD_COMPATIBLE_MAJOR_VERSION XS_MAJOR_VERSION
