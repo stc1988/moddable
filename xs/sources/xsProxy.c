@@ -578,6 +578,8 @@ void fxProxyOwnKeys(txMachine* the, txSlot* instance, txFlag flag, txSlot* list)
 		mxPushSlot(target);
 		mxRunCount(1);
 		reference = the->stack;
+		if (!mxIsReference(reference))
+			mxTypeError("(proxy).ownKeys: not an object");
 		mxPushSlot(reference);
 		mxGetID(mxID(_length));
 		length = fxToInteger(the, the->stack++);
