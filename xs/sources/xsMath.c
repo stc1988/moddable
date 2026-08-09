@@ -179,8 +179,9 @@ void fx_Math_atanh(txMachine* the)
 
 void fx_Math_atan2(txMachine* the)
 {
-	mxNanResultIfNoArg2;
+	mxNanResultIfNoArg;
 	fxToNumber(the, mxArgv(0));
+	mxNanResultIfNoArg2;
 	fxToNumber(the, mxArgv(1));
 	mxResult->kind = XS_NUMBER_KIND;
 	mxResult->value.number = c_atan2(mxArgv(0)->value.number, mxArgv(1)->value.number);
@@ -559,8 +560,9 @@ txNumber fx_pow(txNumber x, txNumber y)
 void fx_Math_pow(txMachine* the)
 {
 	txNumber x, y;
-	mxNanResultIfNoArg2;
+	mxNanResultIfNoArg;
 	x = fxToNumber(the, mxArgv(0));
+	mxNanResultIfNoArg2;
 	y = fxToNumber(the, mxArgv(1));
 	mxResult->kind = XS_NUMBER_KIND;
 	mxResult->value.number = fx_pow(x, y);
