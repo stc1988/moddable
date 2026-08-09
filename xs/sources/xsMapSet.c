@@ -569,8 +569,7 @@ txSlot* fxCheckSetValue(txMachine* the)
 		txSlot* slot = mxArgv(0);
 		return slot;
 	}
-	mxTypeError("no value");
-	return C_NULL;
+	return &mxUndefined;
 }
 
 txSlot* fxCheckSetRecord(txMachine* the, txInteger* otherSize, txSlot** otherHas, txSlot** otherKeys)
