@@ -380,7 +380,7 @@ void fxSetterThatIgnoresPrototypeProperties(txMachine* the, txSlot* reference, t
 		mxTypeError("set %s: not writable", name);
 	mxTemporary(property);
 	if (!mxBehaviorGetOwnProperty(the, instance, id, 0, property)) {
-		if (!mxBehaviorDefineOwnProperty(the, instance, id, 0, value, XS_NO_FLAG))
+		if (!mxBehaviorDefineOwnProperty(the, instance, id, 0, value, XS_GET_ONLY))
 			mxTypeError("set %s: not extensible", name);
 	}
 	else /*if (!mxIsProxy(instance))*/ {
