@@ -121,6 +121,11 @@
 				"embedded:provider/builtin": "$(SUBPLATFORMDIRECTORY)/host/provider"
 			}
 		},
+		"esp32/m5nanoh2": {
+			"modules": {
+				"embedded:provider/builtin": "$(SUBPLATFORMDIRECTORY)/host/provider"
+			}
+		},
 		"esp32/*": {
 			"include": [
 				"$(MODDABLE)/examples/manifest_net.json"
