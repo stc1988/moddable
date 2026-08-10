@@ -445,9 +445,7 @@ class HTTPServer {
 	}
 }
 
-function reason(status)
-{
-	const message = `
+const message = `
 100 Continue
 101 Switching Protocols
 200 OK
@@ -490,6 +488,9 @@ function reason(status)
 504 Gateway Timeout
 505 HTTP Version Not Supported
 `;
+
+function reason(status)
+{
 	const index = message.indexOf(`\n${status} `);
 	if (index < 0) return "OK";
 	return message.slice(index + 5, message.indexOf("\n", index + 1));
