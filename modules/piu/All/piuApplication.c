@@ -278,6 +278,7 @@ void PiuApplicationSetFocus(PiuApplication* self, void* it)
 void PiuApplicationStartContent(PiuApplication* self, void* it)
 {
 	PiuIdleLink* link = it;
+	PiuIdle linkIdle = PiuContentUseIdle(link);
 	PiuIdleLink* current = (*self)->idleChain;
 	while (current) {
 		if (current == link)
@@ -285,10 +286,10 @@ void PiuApplicationStartContent(PiuApplication* self, void* it)
 		current = PiuContentUseIdle(current)->idleLink;
 	}
 	if (!current) {
-		PiuContentUseIdle(link)->idleLink = (*self)->idleChain;
+		linkIdle->idleLink = (*self)->idleChain;
 		(*self)->idleChain = link;
 	}
-	PiuContentUseIdle(link)->ticks = PiuViewTicks((*self)->view);
+	linkIdle->ticks = PiuViewTicks((*self)->view);
 	PiuViewReschedule((*self)->view);
 }
 
