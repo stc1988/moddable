@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024  Moddable Tech, Inc.
+ * Copyright (c) 2026  Moddable Tech, Inc., Satoshi Tanaka
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -20,46 +20,18 @@
 
 import config from "mc/config";
 import NeoPixel from "neopixel";
-import Timer from "timer";
 import Button from "button";
 import LED from "led";
 import Digital from "pins/digital";
 
 class NeoPixelLED extends NeoPixel {
-  #value = 0;
   constructor(options) {
-    // Enable RGB LED Power
-    const power = new Digital({
-      pin: config.led.rgb.power_pin,
-      mode: Digital.Output,
-    });
-    power.write(1);
-
-    super({
+    return new NeoPixel({
       ...options,
       pin: config.led.rgb.data_pin,
       length: 1,
       order: "GRB",
     });
-    super.brightness = config.led.rgb.brightness;
-  }
-  read() {
-    return this.#value;
-  }
-  write(value) {
-    this.#value = value;
-    if (value) {
-      super.setPixel(0, super.makeRGB(255, 255, 255));
-    } else {
-      super.setPixel(0, super.makeRGB(0, 0, 0));
-    }
-    super.update();
-  }
-  on() {
-    this.write(1);
-  }
-  off() {
-    this.write(0);
   }
 }
 
@@ -72,7 +44,7 @@ class BlueLED {
   }
 }
 
-class Flash {
+class buttonA {
   constructor(options) {
     return new Button({
       ...options,
@@ -90,13 +62,19 @@ globalThis.Host = Object.freeze(
       Blue: BlueLED,
     },
     Button: {
-      Default: Flash,
-      Flash,
+      Default: buttonA,
+      a: buttonA,
     },
   },
   true
 );
 
 export default function (done) {
+  // Enable RGB LED Power
+  const power = new Digital({
+    pin: config.led.rgb.power_pin,
+    mode: Digital.Output,
+  });
+  power.write(1);
   done?.();
 }
