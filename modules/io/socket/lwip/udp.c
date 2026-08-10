@@ -26,11 +26,10 @@
 #include "lwip/raw.h"
 #include "lwip/igmp.h"
 
-#include "modLwipSafe.h"
-
 #include "xsmc.h"			// xs bindings for microcontroller
 #include "xsHost.h"
 #include "modInstrumentation.h"
+#include "modLwipSafe.h"
 #include "mc.xs.h"			// for xsID_* values
 
 #include "builtinCommon.h"
