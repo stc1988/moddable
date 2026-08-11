@@ -1,0 +1,8 @@
+{
+	"modules": {
+		"embedded:peripheral/Display/TM1637": "./tm1637"
+	},
+	"preload": [
+		"embedded:peripheral/Display/TM1637"
+	]
+}
