@@ -32,7 +32,6 @@
 		"tsconfig": {
 			"compilerOptions": {
 				"types": [
-					"$(MODDABLE)/xs/includes/xs",
 					"$(MODDABLE)/typings/global"
 				]
 			}
