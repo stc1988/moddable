@@ -91,7 +91,8 @@ interface Math {
 	idiv(a: number, b: number): number
 	imod(a: number, b: number): number
 	imuldiv(a: number, b: number, c: number): number
-	irandom(a: number, b: number): number
+	irandom(min: number, max: number): number
+	irandom(max: number): number
 	irem(a: number, b: number): number
 	mod(a: number, b: number): number
 }

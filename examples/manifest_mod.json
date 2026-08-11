@@ -244,6 +244,7 @@
 		"tsconfig": {
 			"compilerOptions": {
 				"types": [
+					"$(MODDABLE)/typings/xs",
 					"$(MODDABLE)/typings/global"
 				]
 			}
