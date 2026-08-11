@@ -13,7 +13,7 @@
  */
 
 import HTTPServer from "embedded:network/http/server"
-import WebPage from "embedded:network/http/server/options/webpage";
+import WebPage from "embedded:network/http/server/route/webpage";
 import Listener from "embedded:io/socket/listener";
 import Camera from "embedded:io/image/in/camera";
 import Net from "net";

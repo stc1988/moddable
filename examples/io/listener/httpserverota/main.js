@@ -20,7 +20,7 @@ import Timer from "timer";
 import FFI from "mc/ffi";
 const Natives = new FFI;
 
-import WebPage from "embedded:network/http/server/options/webpage";
+import WebPage from "embedded:network/http/server/route/webpage";
 
 const port = 80;
 const router = new Map;

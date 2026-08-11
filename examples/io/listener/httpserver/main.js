@@ -15,9 +15,9 @@
 import HTTPServer from "embedded:network/http/server"
 import Listener from "embedded:io/socket/listener";
 
-import ServerSentEvents from "embedded:network/http/server/options/serversendevents";
-import WebPage from "embedded:network/http/server/options/webpage";
-import WebSocketHandshake from "embedded:network/http/server/options/websocket";
+import ServerSentEvents from "embedded:network/http/server/route/serversentevents";
+import WebPage from "embedded:network/http/server/route/webpage";
+import WebSocketHandshake from "embedded:network/http/server/route/ws/handshake";
 
 import WebSocket from "WebSocket";
 

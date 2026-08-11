@@ -9,15 +9,15 @@
 			"$(MODULES)/network/dns/moddnsparser"
 		],
 		"embedded:network/http/server": "./httpserver",
-		"embedded:network/http/server/options/serversendevents": "./options/serversendevents",
-		"embedded:network/http/server/options/webpage": "./options/webpage",
-		"embedded:network/http/server/options/websocket": "./options/websocket"
+		"embedded:network/http/server/route/serversentevents": "./options/serversentevents",
+		"embedded:network/http/server/route/webpage": "./options/webpage",
+		"embedded:network/http/server/route/ws/handshake": "./options/websocket"
 	},
 	"preload": [
 		"embedded:network/http/server",
-		"embedded:network/http/server/options/serversendevents",
-		"embedded:network/http/server/options/webpage",
-		"embedded:network/http/server/options/websocket"
+		"embedded:network/http/server/route/serversentevents",
+		"embedded:network/http/server/route/webpage",
+		"embedded:network/http/server/route/ws/handshake"
 	],
 	"mcpack": true
 }

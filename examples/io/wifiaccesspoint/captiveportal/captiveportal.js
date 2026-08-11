@@ -20,8 +20,8 @@ import DNSServer from "embedded:network/dns/server/udp";
 
 import Listener from "embedded:io/socket/listener";
 import HTTPServer from "embedded:network/http/server";
-import WebPage from "embedded:network/http/server/options/webpage";
-import WebSocketHandshake from "embedded:network/http/server/options/websocket";
+import WebPage from "embedded:network/http/server/route/webpage";
+import WebSocketHandshake from "embedded:network/http/server/route/ws/handshake";
 import WebSocket from "WebSocket";
 
 const ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";

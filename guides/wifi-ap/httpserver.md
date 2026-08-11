@@ -17,7 +17,7 @@ See the [HTTP Server Guide](../http-server/index.md) for more information.
 ```js
 import HTTPServer from "embedded:network/http/server";
 import Listener from "embedded:io/socket/listener";
-import WebPage from "embedded:network/http/server/options/webpage";
+import WebPage from "embedded:network/http/server/route/webpage";
 
 const httpServer = new HTTPServer({
 	io: Listener,
