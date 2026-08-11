@@ -1,11 +1,32 @@
 {
 	"include": [
-		"$(MODDABLE)/examples/io/udp/dns/manifest_dnsserver.json",
-		"$(MODULES)/io/wifiaccesspoint/manifest.json",
-		"$(MODDABLE)/examples/io/listener/httpserver/manifest_httpserver.json",
-		"$(MODDABLE)/examples/io/tcp/websocket/manifest_websocket.json"
+		"$(MODULES)/io/wifiaccesspoint/manifest.json"
 	],
-	"modules": {
-		"captiveportal": "./captiveportal"
+	"platforms": {
+		"mac": {
+			"modules": {
+				"captiveportal": "./captiveportal-sim"
+			}
+		},
+		"lin": {
+			"modules": {
+				"captiveportal": "./captiveportal-sim"
+			}
+		},
+		"win": {
+			"modules": {
+				"captiveportal": "./captiveportal-sim"
+			}
+		},
+		"...": {
+			"include": [
+				"$(MODDABLE)/examples/io/udp/dns/manifest_dnsserver.json",
+				"$(MODDABLE)/examples/io/listener/httpserver/manifest_httpserver.json",
+				"$(MODDABLE)/examples/io/tcp/websocket/manifest_websocket.json"
+			],
+			"modules": {
+				"captiveportal": "./captiveportal"
+			}
+		}
 	}
 }

@@ -1,12 +1,12 @@
 ---
 name: Wi-Fi
 SPDX-FileCopyrightText: Copyright (c) 2026 Moddable Tech, Inc.
-updated: 2026-08-04
+updated: 2026-08-10
 ---
 
 Wi-Fi provides the network connection for the majority of Embedded JavaScript projects. The ECMA-419 embedded standard [Wi-Fi Network Interface](https://419.ecma-international.org/#network-interface-class-pattern-wi-fi-network-interface) is available scans for access points, connects to a network, and monitors the connection.
 
-The Moddable SDK provides Wi-Fi implementations for ESP32, ESP8266, Raspberry Pi Pico, and Zephyr.
+The Moddable SDK provides Wi-Fi implementations for ESP32, ESP8266, Raspberry Pi Pico, and Zephyr. There is a [simulator implementation](../../modules/io/wifi/sim/readme.md) to exercise Wi-Fi APIs without hardware.
 
 ## Using ECMA-419 Wi-Fi Network Interface
 

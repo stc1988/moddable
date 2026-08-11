@@ -88,7 +88,8 @@
 				"$(MODULES)/network/net/manifest.json",
 				"$(MODULES)/network/socket/manifest.json",
 				"$(MODULES)/network/sntp/manifest.json",
-				"$(MODULES)/network/wifi/manifest.json"
+				"$(MODULES)/network/wifi/manifest.json",
+				"$(MODULES)/io/wifi/manifest.json"
 			]
 		},
 		"lin": {
@@ -96,7 +97,8 @@
 				"$(MODULES)/network/net/manifest.json",
 				"$(MODULES)/network/socket/manifest.json",
 				"$(MODULES)/network/sntp/manifest.json",
-				"$(MODULES)/network/wifi/manifest.json"
+				"$(MODULES)/network/wifi/manifest.json",
+				"$(MODULES)/io/wifi/manifest.json"
 			]
 		},
 		"win": {
@@ -104,7 +106,8 @@
 				"$(MODULES)/network/net/manifest.json",
 				"$(MODULES)/network/socket/manifest.json",
 				"$(MODULES)/network/sntp/manifest.json",
-				"$(MODULES)/network/wifi/manifest.json"
+				"$(MODULES)/network/wifi/manifest.json",
+				"$(MODULES)/io/wifi/manifest.json"
 			]
 		},
 		"...": {
