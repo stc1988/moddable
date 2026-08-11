@@ -1,5 +1,5 @@
 ---
-name: Constructor Sets `target`
+name: Constructor Sets target
 SPDX-FileCopyrightText: Copyright (c) 2026 Moddable Tech, Inc.
 updated: 2026-08-07
 ---

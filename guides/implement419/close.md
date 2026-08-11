@@ -1,5 +1,5 @@
 ---
-name: `close()` and `[Symbol.dispose]`
+name: close() and [Symbol.dispose]
 SPDX-FileCopyrightText: Copyright (c) 2026 Moddable Tech, Inc.
 updated: 2026-08-07
 ---
