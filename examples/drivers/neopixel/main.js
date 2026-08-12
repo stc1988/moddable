@@ -15,6 +15,12 @@ import NeoPixel from "neopixel";
 import Timer from "timer";
 import config from "mc/config";
 
+let ledPower;
+if (device.peripherals?.Power?.LED) {
+	ledPower = new device.peripherals.Power.LED();
+	ledPower.write(1);
+}
+
 const np = new NeoPixel({length: 20, pin: config?.led?.pin ?? 15, order: "GRB"});
 
 np.brightness = 128;
