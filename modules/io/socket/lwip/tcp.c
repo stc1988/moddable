@@ -392,11 +392,12 @@ void xs_tcp_write(xsMachine *the)
 	void *buffer;
 	uint8_t value;
 
+	if (tcp->error || !tcp->skt)
+		return;
+
 	if (!tcp->ready)
 		xsUnknownError("not ready");
 
-	if (tcp->error || !tcp->skt)
-		return;
 
 	if (kIOFormatBuffer == tcp->format)
 		xsmcGetBufferReadable(xsArg(0), &buffer, &needed);
