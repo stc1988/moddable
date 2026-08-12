@@ -67,14 +67,14 @@ class DCDC {
 
   set voltage(v) {
     const byte = vToByte(v, this.#points, this.#steps);
-    this.#parent.writeByte(
+    this.#parent.writeUint8(
       this.#registerV,
-      (this.#parent.readByte(this.#registerV) & this.#mask) |
+      (this.#parent.readUint8(this.#registerV) & this.#mask) |
       (byte & ~this.#mask)
     );
   }
   get voltage() {
-    let byte = this.#parent.readByte(this.#registerV);
+    let byte = this.#parent.readUint8(this.#registerV);
     return byteToV(byte & this.#mask, this.#points, this.#steps)
   }
 }
@@ -97,35 +97,35 @@ class LDO {
 
   set voltage(v) {
     const byte = vToByte(v, this.#points, this.#steps)
-    this.#parent.writeByte(
+    this.#parent.writeUint8(
       this.#registerV,
-      (this.#parent.readByte(this.#registerV) & 0x1f) | byte
+      (this.#parent.readUint8(this.#registerV) & 0x1f) | byte
     );
   }
 
   get voltage() {
-    const byte = this.#parent.readByte(this.#registerV) & 0x1f;
+    const byte = this.#parent.readUint8(this.#registerV) & 0x1f;
     return byteToV(byte);
   }
 
   set enable(enable) {
     const mask = 0x01 << this.#offsetEn;
     if (enable) {
-      this.#parent.writeByte(
+      this.#parent.writeUint8(
         this.#registerEn,
-        this.#parent.readByte(this.#registerEn) | mask
+        this.#parent.readUint8(this.#registerEn) | mask
       );
     } else {
-      this.#parent.writeByte(
+      this.#parent.writeUint8(
         this.#registerEn,
-        this.#parent.readByte(this.#registerEn) & ~mask
+        this.#parent.readUint8(this.#registerEn) & ~mask
       );
     }
   }
 
   get enable() {
     return Boolean(
-      (this.#parent.readByte(this.#registerEn) >> this.#offsetEn) & 1
+      (this.#parent.readUint8(this.#registerEn) >> this.#offsetEn) & 1
     );
   }
 }
@@ -229,27 +229,27 @@ class AXP2101 {
     });
   }
 
-	readByte(address) {
+	readUint8(address) {
 		return this.#io.readUint8(address);
 	}
-	writeByte(address, value) {
+	writeUint8(address, value) {
 		return this.#io.writeUint8(address, value);
 	}
 
   isACINExist() {
-    return Boolean(this.readByte(0x00) & 0b10000000);
+    return Boolean(this.readUint8(0x00) & 0b10000000);
   }
 
   isACINAvailable() {
-    return Boolean(this.readByte(0x00) & 0b01000000);
+    return Boolean(this.readUint8(0x00) & 0b01000000);
   }
 
   isVBUSExist() {
-    return Boolean(this.readByte(0x00) & 0b00100000);
+    return Boolean(this.readUint8(0x00) & 0b00100000);
   }
 
   isVBUSAvailable() {
-    return Boolean(this.readByte(0x00) & 0b00010000);
+    return Boolean(this.readUint8(0x00) & 0b00010000);
   }
 
   /**
@@ -257,30 +257,30 @@ class AXP2101 {
    * @returns true: battery charging, false: battery discharging
    */
   getBatteryCurrentDirection() {
-    return Boolean(this.readByte(0x00) & 0b00000100);
+    return Boolean(this.readUint8(0x00) & 0b00000100);
   }
 
   isAXP173OverTemperature() {
-    return Boolean(this.readByte(0x01) & 0b10000000);
+    return Boolean(this.readUint8(0x01) & 0b10000000);
   }
 
   isCharging() {
-    return Boolean(this.readByte(0x01) & 0b01000000);
+    return Boolean(this.readUint8(0x01) & 0b01000000);
   }
 
   isBatteryExist() {
-    return Boolean(this.readByte(0x01) & 0b00100000);
+    return Boolean(this.readUint8(0x01) & 0b00100000);
   }
 
   isChargeCSmaller() {
-    return Boolean(this.readByte(0x01) & 0b00000100);
+    return Boolean(this.readUint8(0x01) & 0b00000100);
   }
 
   powerOff() {
-    this.writeByte(0x10, this.readByte(0x10) | 0b00000010); // POWERON Negative Edge IRQ(ponne_irq_en) enable
-    this.writeByte(0x25, 0b00011011); // sleep and wait for wakeup
+    this.writeUint8(0x10, this.readUint8(0x10) | 0b00000010); // POWERON Negative Edge IRQ(ponne_irq_en) enable
+    this.writeUint8(0x25, 0b00011011); // sleep and wait for wakeup
     Timer.delay(100);
-    this.writeByte(0x10, 0b00110001); // power off
+    this.writeUint8(0x10, 0b00110001); // power off
   }
 
   setChargeEnable(_enable) {
@@ -300,11 +300,13 @@ class AXP2101 {
   }
 
   _getCoulometerCharge() {
-    return this.readBlock(0xb0, 4);
+    const buff = this.#io.readBuffer(0xb0, new Uint8Array(4));
+    return (buff[0] << 24) | (buff[1] << 16) | (buff[2] << 8) | buff[3];
   }
 
   _getCoulometerDischarge() {
-    return this.readBlock(0xb4, 4);
+    const buff = this.#io.readBuffer(0xb4, new Uint8Array(4));
+    return (buff[0] << 24) | (buff[1] << 16) | (buff[2] << 8) | buff[3];
   }
 
   getCoulometerCurrent() {
@@ -354,18 +356,18 @@ class AXP2101 {
   }
 
   getPekState() {
-    const state = this.readByte(0x49) & 0x0C;
-    if (state) this.writeByte(0x49, state);
+    const state = this.readUint8(0x49) & 0x0C;
+    if (state) this.writeUint8(0x49, state);
     return state;
   }
 
   #read24Bit(address) {
-    const buff = this.readBlock(address, 3);
+    const buff = this.#io.readBuffer(address, new Uint8Array(3));
     return (buff[0] << 16) + (buff[1] << 8) + buff[2];
   }
 
   #read12Bit(address) {
-    const buff = this.readBlock(address, 2);
+    const buff = this.#io.readBuffer(address, new Uint8Array(2));
     return (buff[0] << 4) + buff[1];
   }
 }
