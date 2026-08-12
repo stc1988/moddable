@@ -1,0 +1,6 @@
+{
+	"modules": {
+		"LED": "./LED"
+	},
+	"preload": "LED"
+}
