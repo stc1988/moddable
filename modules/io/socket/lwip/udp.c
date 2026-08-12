@@ -221,6 +221,11 @@ void xs_udp_write(xsMachine *the)
 
 	xsmcGetBufferReadable(xsArg(0), &buffer, &byteLength);
 	udp_sendto_safe(udp->skt, buffer, byteLength, &dst, port, &err);
+#if !ESP32 && !PICO_BUILD
+	// esp8266 wifi returns positive value when transmit queue is full
+	if (err > 0)
+		return;
+#endif
 	if (ERR_OK != err)
 		xsUnknownError("UDP send failed");
 
