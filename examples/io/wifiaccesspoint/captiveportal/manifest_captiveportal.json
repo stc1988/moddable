@@ -2,6 +2,7 @@
 	"include": [
 		"$(MODULES)/io/wifiaccesspoint/manifest.json"
 	],
+	"preload": "captiveportal",
 	"platforms": {
 		"mac": {
 			"modules": {
