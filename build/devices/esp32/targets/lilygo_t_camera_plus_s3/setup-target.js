@@ -18,51 +18,6 @@
  *
  */
 
-import config from "mc/config";
-import Timer from "timer";
-import Button from "button";
-import Digital from "pins/digital";
-
-class Backlight {  // extends PWM
-	#pwm;
-
-	constructor(brightness = 100) {
-		this.#pwm = new device.io.PWM({ pin: config.backlight });
-		this.write(100 - brightness);
-	}
-	write(value) {
-		value = 100 - value;		// reversed
-		value /= 100;
-		if (value <= 0)
-			value = 1023;
-		else if (value >= 1)
-			value = 0;
-		else {
-			value *= value;		// linear
-			value = 1 - value;	// PWM is inverted from brightness (0 is full power, 1023 is no power)
-			value *= 1023;
-		}
-		this.#pwm.write(value);
-	}
-}
-
-class Flash {
-	constructor(options) {
-		return new Button({
-			...options,
-			pin: 0,
-			invert: true
-		});
-	}
-}
-
-globalThis.Host = Object.freeze({
-	Backlight,
-	Button: {
-		Default: Flash,
-		Flash
-	}
-}, true);
 
 export default function (done) {
 	done?.();

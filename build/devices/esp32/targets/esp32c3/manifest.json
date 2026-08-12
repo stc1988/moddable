@@ -1,7 +1,8 @@
 {
 	"include": [
-		"$(MODULES)/drivers/button/manifest.json",
-		"$(MODULES)/drivers/neopixel/manifest.json"
+		"$(MODDABLE)/modules/io/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/LEDneopixel/manifest.json"
 	],
 	"build":{
 		"ESP32_SUBCLASS": "esp32c3"
@@ -10,14 +11,13 @@
 		"setup/target": "./setup-target"
 	},
 	"preload": [
-		"setup/target",
-		"neopixel"
+		"setup/target"
 	],
 	"config": {
 		"screen": "",
 		"led": {
 			"pin": 8,
-			"rainbow": true,
+			"rainbow": false,
 			"brightness": 32
 		}
 	},

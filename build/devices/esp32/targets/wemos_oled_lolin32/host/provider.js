@@ -38,6 +38,7 @@ import PulseCount from "embedded:io/pulsecount";
 import PWM from "embedded:io/pwm";
 import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
+import Button from "button";
 import SPI from "embedded:io/spi";
 
 const device = {
@@ -72,8 +73,35 @@ const device = {
 		}
 	},
 	io: {Analog, Digital, DigitalBank, I2C, PulseCount, PWM, Serial, SMBus, SPI},
-	pins: {
+	pin: {
 		button: 0
+	},
+	peripheral: {
+		Button,
+		button: {
+			Default: class {
+				constructor(options) {
+					return new Button({
+						...options,
+						io: Digital,
+						pin: device.pin.button,
+						mode: Digital.InputPullUp,
+						invert: true
+					});
+				}
+			},
+			Flash: class {
+				constructor(options) {
+					return new Button({
+						...options,
+						io: Digital,
+						pin: device.pin.button,
+						mode: Digital.InputPullUp,
+						invert: true
+					});
+				}
+			}
+		}
 	}
 };
 

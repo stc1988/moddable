@@ -30,6 +30,9 @@ import SPI from "embedded:io/spi";
 import Touch from "embedded:sensor/Touch/CST816";
 import PulseWidth from "embedded:io/pulsewidth";
 
+import Button from "button";
+import Backlight from "backlight";
+
 const device = {
 	I2C: {
 		default: {
@@ -58,7 +61,20 @@ const device = {
 	io: {Analog, Digital, DigitalBank, I2C, PulseCount, PulseWidth, PWM, Serial, SMBus, SPI},
 	pin: {
 		//@@ button
-		button: 17
+		button: 17,
+		buttonA: 17,
+		backlight: 46
+	},
+	peripheral: {
+		Button,
+		Backlight: class {
+			constructor() {
+				return new Backlight({
+					io: device.io.PWM,
+					pin: device.pin.backlight
+				});
+			}
+		}
 	},
 	sensor: {
 		Touch: class {

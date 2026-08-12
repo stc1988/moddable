@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023  Moddable Tech, Inc.
+ * Copyright (c) 2023-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -23,10 +23,17 @@ import Digital from "embedded:io/digital";
 import DigitalBank from "embedded:io/digitalbank";
 import I2C from "embedded:io/i2c";
 // import PulseCount from "embedded:io/pulsecount";
-// import PWM from "embedded:io/pwm";
+import PWM from "embedded:io/pwm";
 import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
 // import SPI from "embedded:io/spi";
+
+import SHTC3 from "embedded:sensor/Humidity-Temperature/SHTC3";
+import IMU from "embedded:sensor/Accelerometer-Gyroscope/ICM42670P";
+
+import Button from "button";
+import LED from "LED";
+import LEDneopixel from "LEDneopixel";
 
 const device = {
 	I2C: {
@@ -51,10 +58,74 @@ const device = {
 			pin: 0
 		}
 	},
-	io: { Analog, Digital, DigitalBank, I2C, Serial, SMBus },
+	io: { Analog, Digital, DigitalBank, I2C, PWM, Serial, SMBus },
 	pin: {
 		button: 9,
-		led: 7
+		buttonA: 9,
+		led: 7,
+		LEDcolor: 2
+	},
+	peripheral: {
+		Button,
+		led: {
+			Default: class {
+				constructor(options) {
+					const led = new LED({
+						...options,
+						io: device.io.PWM,
+						pin: device.pin.led,
+						invert: 1
+					});
+					led.brightness = 32;
+					return led;
+				}
+			},
+			RGB: class {
+				constructor(options) {
+					const led = new LEDneopixel({
+						...options,
+						length: 1,
+						pin: device.pin.LEDcolor,
+						order: "GRB"
+					});
+					led.brightness = 32;
+					return led;
+				}
+			}
+		}
+	},
+	sensor: {
+		Environment: class {
+			constructor(options) {
+				const sensor = new SHTC3({ sensor: device.I2C.default, address: 0x88 });
+				sensor.configure({ lowPower: true, autoSleep: true });
+				return sensor;
+			}
+		},
+		IMU: class {
+			constructor(options) {
+				const sensor = new IMU({
+					...options,
+					sensor: {
+						...device.I2C.default,
+						io: device.io.SMBus
+					}
+				});
+				sensor.configure ({
+					accelerometer: {
+						scale: 4,
+						sampleRate: 100,
+						mode: "low noise"
+					},
+					gyroscope: {
+						scale: 500,
+						sampleRate: 100,
+						mode: "low noise"
+					}
+				});
+				return sensor;
+			}
+		}
 	}
 };
 

@@ -1,13 +1,18 @@
 {
 	"include": [
+		"$(MODULES)/io/manifest.json",
+		"$(MODULES)/drivers/peripherals/backlight/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/LED/manifest.json",
 		"$(MODDABLE)/modules/drivers/ili9341/manifest.json",
-		"$(MODDABLE)/modules/drivers/xpt2046/manifest.json",
-		"$(MODULES)/drivers/led/manifest.json"
+		"$(MODDABLE)/modules/drivers/xpt2046/manifest.json"
 	],
 	"modules": {
 		"setup/target": "./setup-target"
 	},
-	"preload": "setup/target",
+	"preload": [
+		"setup/target"
+	],
 	"config": {
 		"screen": "ili9341",
 		"touch": "xpt2046",

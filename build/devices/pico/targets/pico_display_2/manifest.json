@@ -1,13 +1,17 @@
 {
 	"include": [
-		"$(MODDABLE)/modules/drivers/st7789/manifest.json",
-		"$(MODULES)/drivers/led/manifest.json",
-		"$(MODULES)/drivers/button/manifest.json"
+		"$(MODULES)/io/manifest.json",
+		"$(MODULES)/drivers/peripherals/backlight/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/LEDrgb/manifest.json",
+		"$(MODDABLE)/modules/drivers/st7789/manifest.json"
 	],
 	"modules": {
 		"setup/target": "./setup-target"
 	},
-	"preload": "setup/target",
+	"preload": [
+		"setup/target"
+	],
 	"config": {
 		"screen": "st7789",
 		"touch": "",
@@ -16,12 +20,6 @@
 		"rgb_b": 8
 	},
 	"defines": {
-		"buttons": {
-			"a_pin": 16,
-			"b_pin": 17,
-			"x_pin": 18,
-			"y_pin": 19
-		},
 		"i2c": {
 			"sda_pin": 4,
 			"scl_pin": 5

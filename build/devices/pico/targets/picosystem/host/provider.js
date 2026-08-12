@@ -22,6 +22,10 @@ import Digital from "embedded:io/digital";
 import DigitalBank from "embedded:io/digitalbank";
 import PWM from "embedded:io/pwm";
 
+import Backlight from "backlight";
+import Button from "button";
+import LEDrgb from "LEDrgb";
+
 const device = {
 	io: { Digital, DigitalBank, PWM },
 	pin: {
@@ -37,7 +41,57 @@ const device = {
 		led: 14,
 		led_r: 14,
 		led_g: 13,
-		led_b: 15
+		led_b: 15,
+		backlight: 12
+	},
+	peripheral: {
+		Backlight: class {
+			constructor() {
+				return new Backlight({
+					io: device.io.PWM,
+					pin: device.pin.backlight
+				});
+			}
+		},
+		Button,
+		button: {
+			Default: class {
+				constructor(options) {
+					return new Button({
+						...options,
+						io: Digital,
+						pin: device.pin.button,
+						mode: Digital.InputPullUp,
+						invert: true
+					});
+				}
+			},
+			Flash: class {
+				constructor(options) {
+					return new Button({
+						...options,
+						io: Digital,
+						pin: device.pin.button,
+						mode: Digital.InputPullUp,
+						invert: true
+					});
+				}
+			}
+		},
+		led: {
+			Default: class {
+				constructor(options) {
+					const led = new LEDrgb({
+						...options,
+						io: device.io.PWM,
+						pin: { r: device.pin.led_r, g: device.pin.led_g, b: device.pin.led_b },
+						invert: true
+					});
+					led.brightness = 32;
+					return led;
+				}
+			}
+		}
 	}
 };
 

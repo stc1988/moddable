@@ -1,20 +1,16 @@
 {
-	"build":{
+	"build": {
 		"SDKCONFIGPATH": "$(MODDABLE)/build/devices/esp32/sdkconfig-s2-psram",
 		"ESP32_SUBCLASS": "esp32s2"
 	},
 	"include": [
+		"$(MODDABLE)/modules/io/manifest.json",
 		"$(MODULES)/drivers/ili9341/manifest.json",
-		"$(MODULES)/drivers/neopixel/manifest.json",
-		"$(MODULES)/pins/analog/manifest.json",
-		"$(MODULES)/drivers/button/manifest.json",
-		"$(MODULES)/pins/i2c/manifest.json"
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/LEDneopixel/manifest.json"
 	],
 	"modules": {
-		"setup/target": "./setup-target",
-		"true/audioout": "$(MODULES)/pins/i2s/*",
-		"pins/audioout": "./audioout",
-		"pins/smbus": "$(MODULES)/pins/smbus/smbus"
+		"setup/target": "./setup-target"
 	},
 	"preload": [
 		"setup/target"
@@ -51,7 +47,7 @@
 			"power": {
 				"pin": 10
 			},
-			"volume": 154
+			"volume": 0.6
 		}
 	},
 	"defines": {
@@ -84,24 +80,11 @@
 				"0xD0, 2, 0xA4, 0xA1,",
 				"0xE0, 14, 0xD0, 0x04, 0x0D, 0x11, 0x13, 0x2B, 0x3F, 0x54, 0x4C, 0x18, 0x0D, 0x0B, 0x1F, 0x23,",
 				"0xE1, 14, 0xD0, 0x04, 0x0C, 0x11, 0x13, 0x2C, 0x3F, 0x44, 0x51, 0x2F, 0x1F, 0x1F, 0x20, 0x23,",
-				"0x20, 0,",
+				"0x21, 0,",
 				"0x11, 0,",
 				"0x29, 0,",
-				"0xFF, 0"
+				"kDelayMS, 0"
 			]
-		},
-		"audioOut": {
-			"bitsPerSample": 16,
-			"numChannels": 1,
-			"sampleRate": 32000,
-			"format": "ima",
-			"streams": 1,
-			"queueLength": 8,
-			"i2s": {
-				"bck_pin": 18,
-				"lr_pin": 17,
-				"dataout_pin": 12 
-			}
 		}
 	}
 }

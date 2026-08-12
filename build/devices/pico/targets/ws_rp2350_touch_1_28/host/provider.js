@@ -29,29 +29,7 @@ import SPI from "embedded:io/spi";
 import Touch from "embedded:sensor/Touch/CST816S";
 import IMU from "embedded:sensor/Accelerometer-Gyroscope/QMI8658";
 
-class Backlight {
-	#io;
-
-	constructor(options) {
-		this.#io = new PWM(options);
-	}
-	close() {
-		this.#io?.close();
-		this.#io = undefined;
-	}
-	set brightness(value) {
-		if (value <= 0)
-			value = 0;
-		else if (value >= 1)
-			value = 1023;
-		else
-			value *= 1023;
-		this.#io.write(value);
-	}
-	write(value) {
-		this.brightness = value / 100;
-	}
-}
+import Backlight from "backlight";
 
 const device = {
 	I2C: {
@@ -92,7 +70,10 @@ const device = {
 	peripheral: {
 		Backlight: class {
 			constructor() {
-				return new Backlight({pin: device.pin.backlight });
+				return new Backlight({
+					io: device.io.PWM,
+					pin: device.pin.backlight
+				});
 			}
 		}
 	},
@@ -120,9 +101,9 @@ const device = {
 				return result;
 			}
 		},
-		IMU: class {
+		IMU: class extends IMU {
 			constructor(options) {
-				return new IMU({
+				super({
 					...options,
 					sensor: {
 						...device.I2C.default,
@@ -130,6 +111,12 @@ const device = {
 						io: device.io.SMBus
 					}
 				});
+			}
+			sample() {
+				const sample = super.sample()
+				if (undefined !== sample)
+					[ sample.accelerometer.x, sample.accelerometer.y ] = [ sample.accelerometer.y * -1, sample.accelerometer.x * -1 ];
+				return sample;
 			}
 		}
 	}

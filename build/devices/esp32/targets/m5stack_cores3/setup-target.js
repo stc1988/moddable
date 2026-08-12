@@ -29,18 +29,6 @@ const state = {
   handleRotation: nop,
 };
 
-globalThis.Host = {
-  Backlight: class {
-    constructor(brightness = 100) {
-      this.write(brightness);
-    }
-    write(value) {
-      if (undefined !== globalThis.power) globalThis.power.brightness = value;
-    }
-    close() {}
-  },
-};
-
 class M5CoreS3Button {
   // M5StackCoreTouch calls write when button changes
   #value = 0;
@@ -161,8 +149,8 @@ class AW88298 {
   }
 
   get volume() {
-    const vdata = this.readByte(0x0c);
-    return 256 - vdata;
+    const vdata = this.#io.readUint16(0x0c, true);
+    return 256 - ((vdata >> 8) & 0xff);
   }
 }
 
@@ -222,39 +210,70 @@ class ES7210 {
 
 class Power {	// extends AXP2101 {
 	#axp2101;
+	#brightness = 100;
 
 	constructor(options) {
 		const axp2101 = this.#axp2101 = new AXP2101({ address:0x34, ...options });
-		axp2101.writeByte(0x90, 0xbf);
-		axp2101.writeByte(0x92, 13);
-		axp2101.writeByte(0x93, 28);
-		axp2101.writeByte(0x94, 28);
-		axp2101.writeByte(0x95, 28);
-		axp2101.writeByte(0x27, 0);
-		axp2101.writeByte(0x69, 0x11);
-		axp2101.writeByte(0x10, 0x30);
-		axp2101.writeByte(0x30, 0x0f); // ADC enabled (for voltage measurement)
+		axp2101.writeUint8(0x90, 0xbf);
+		axp2101.writeUint8(0x92, 13);
+		axp2101.writeUint8(0x93, 28);
+		axp2101.writeUint8(0x94, 28);
+		axp2101.writeUint8(0x95, 28);
+		axp2101.writeUint8(0x27, 0);
+		axp2101.writeUint8(0x69, 0x11);
+		axp2101.writeUint8(0x10, 0x30);
+		axp2101.writeUint8(0x30, 0x0f); // ADC enabled (for voltage measurement)
 
-    this.expander = new AW9523({ ...options });
-    this.expander.writeByte(0x02, 0b00000111);
-    this.expander.writeByte(0x03, 0b10000011);
-    this.expander.writeByte(0x04, 0b00011000);
-    this.expander.writeByte(0x05, 0b00001100);
-    this.expander.writeByte(0x11, 0b00010000);
-    this.expander.writeByte(0x12, 0b11111111);
-    this.expander.writeByte(0x13, 0b11111111);
+		this.expander = new AW9523({ ...options });
+		this.expander.writeUint8(0x02, 0b00000111);
+		this.expander.writeUint8(0x03, 0b10000011);
+		this.expander.writeUint8(0x04, 0b00011000);
+		this.expander.writeUint8(0x05, 0b00001100);
+		this.expander.writeUint8(0x11, 0b00010000);
+		this.expander.writeUint8(0x12, 0b11111111);
+		this.expander.writeUint8(0x13, 0b11111111);
 
-    this.resetLcd();
-  }
+		this.resetLcd();
+		// LCD backlight is AXP2101 DLDO1 (M5GFX Light_M5StackCoreS3)
+		this.brightness = 100;
+	}
 
-  resetLcd() {
-    this.expander.writeByteMask(0x03, 0, 0b11011111);
-    Timer.delay(20);
-    this.expander.writeByteMask(0x03, 0b00100000, 0xff);
-  }
-  getPekState() {
-    return this.#axp2101.getPekState();
-  }
+	resetLcd() {
+		this.expander.writeUint8Mask(0x03, 0, 0b11011111);
+		Timer.delay(20);
+		this.expander.writeUint8Mask(0x03, 0b00100000, 0xff);
+	}
+
+	getPekState() {
+		return this.#axp2101.getPekState();
+	}
+
+	/**
+	 * LCD backlight level, 0–100.
+	 * Hardware: AXP2101 DLDO1 enable (0x90 bit7) + voltage code (0x99).
+	 * Formula matches M5GFX Light_M5StackCoreS3 (0–255 then ((b + 641) >> 5)).
+	 */
+	set brightness(value) {
+		const axp = this.#axp2101;
+		if (value <= 0) {
+			this.#brightness = 0;
+			axp.writeUint8(0x90, axp.readUint8(0x90) & ~0x80);
+			return;
+		}
+		if (value > 100)
+			value = 100;
+		this.#brightness = value;
+
+		// percent → 0–255, then M5GFX CoreS3 encoding
+		let code = Math.round((value * 255) / 100);
+		code = (code + 641) >> 5;
+		axp.writeUint8(0x99, code);
+		axp.writeUint8(0x90, axp.readUint8(0x90) | 0x80);
+	}
+
+	get brightness() {
+		return this.#brightness;
+	}
 }
 
 /**
@@ -271,14 +290,13 @@ class AW9523 {
 	});
   }
 
-  writeByteMask(address, data, mask) {
-    const tmp = this.#io.readUint8(address);
-    const newData = (tmp & mask) | data;
-    this.#io.writeUint8(address, newData);
-  }
-	writeByte(address, data) {
+	writeUint8Mask(address, data, mask) {
+		const tmp = this.#io.readUint8(address);
+		this.#io.writeUint8(address, (tmp & mask) | data);
+	}
+	writeUint8(address, data) {
 		this.#io.writeUint8(address, data);
-  }
+	}
 }
 
 function nop() {}

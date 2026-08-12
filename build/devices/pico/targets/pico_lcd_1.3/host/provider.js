@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025  Moddable Tech, Inc.
+ * Copyright (c) 2022-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -26,6 +26,10 @@ import PulseCount from "embedded:io/pulsecount";
 import PWM from "embedded:io/pwm";
 import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
+
+import Backlight from "backlight";
+import Button from "button";
+import LED from "LED";
 
 const device = {
 	I2C: {
@@ -62,7 +66,30 @@ const device = {
 		buttonLEFT: 16,
 		buttonRIGHT: 20,
 		buttonCENTER: 3,
-		led: 25
+		led: 25,
+		backlight: 13
+	},
+	peripheral: {
+		Backlight: class {
+			constructor() {
+				return new Backlight({
+					io: device.io.PWM,
+					pin: device.pin.backlight
+				});
+			}
+		},
+		Button,
+		led: {
+			Default: class {
+				constructor(options) {
+					return new LED({
+						...options,
+						io: device.io.PWM,
+						pin: device.pin.led
+					});
+				}
+			}
+		}
 	}
 };
 

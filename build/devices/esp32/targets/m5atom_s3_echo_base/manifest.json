@@ -1,5 +1,5 @@
 {
-	"build":{
+	"build": {
 		"ESP32_SUBCLASS": "esp32s3",
 		"USE_USB": "2",
 		"SDKCONFIGPATH": "./sdkconfig",
@@ -9,33 +9,24 @@
 	},
 	"include": [
 		"$(MODDABLE)/modules/io/manifest.json",
-		"$(MODULES)/pins/smbus/manifest.json",
-		"$(MODULES)/pins/digital/manifest.json",
-		"$(MODULES)/pins/digital/monitor/manifest.json",
+		"$(MODDABLE)/modules/io/audioout/manifest.json",
 		"$(MODDABLE)/modules/drivers/ili9341/manifest.json",
-		"$(MODULES)/drivers/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/backlight/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
 		"$(MODULES)/drivers/sensors/mpu6886/manifest.json"
 	],
 	"modules": {
-		"setup/target": "./setup-target",
-		"pins/audioout": "$(MODULES)/pins/i2s/*",
-		"pins/smbus": "$(MODULES)/pins/smbus/smbus",
-		"*": [
-			"../m5stack_fire/m5button"
-		]
+		"setup/target": "./setup-target"
 	},
 	"preload": [
-		"pins/audioout",
-		"audioin",
-		"setup/target",
-		"m5button"
+		"setup/target"
 	],
 	"config": {
 		"screen": "ili9341",
 		"touch": "",
 		"startupSound": "bflatmajor.maud",
 		"es8311": {
-			"volume": 160
+			"volume": 0.63
 		}
 	},
 	"resources": {
@@ -59,7 +50,7 @@
 			"scl_pin": 39
 		},
 		"spi": {
-			"mosi_pin":21,
+			"mosi_pin": 21,
 			"sck_pin": 17
 		},
 		"ili9341": {

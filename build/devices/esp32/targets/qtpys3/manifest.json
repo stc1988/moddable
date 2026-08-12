@@ -7,15 +7,15 @@
         "BEFORE_DEBUGGING_MESSAGE": "Press and release the RESET button."
 	},
 	"include": [
-		"$(MODULES)/drivers/button/manifest.json",
-		"$(MODULES)/drivers/neopixel/manifest.json"
+		"$(MODULES)/io/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/LEDneopixel/manifest.json"
 	],
 	"modules": {
 		"setup/target": "./setup-target"
 	},
 	"preload": [
-		"setup/target",
-		"neopixel"
+		"setup/target"
 	],
 	"config": {
 		"screen": "",

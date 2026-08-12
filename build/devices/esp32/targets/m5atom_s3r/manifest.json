@@ -1,5 +1,5 @@
 {
-	"build":{
+	"build": {
 		"ESP32_SUBCLASS": "esp32s3",
 		"USE_USB": "2",
 		"SDKCONFIGPATH": "./sdkconfig",
@@ -10,17 +10,14 @@
 	"include": [
 		"$(MODDABLE)/modules/io/manifest.json",
 		"$(MODDABLE)/modules/drivers/ili9341/manifest.json",
-		"$(MODULES)/drivers/button/manifest.json"
+        "$(MODULES)/drivers/sensors/bmi270/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json"
 	],
 	"modules": {
-		"*": [
-			"../m5stack_fire/m5button"
-		],
 		"setup/target": "./setup-target"
 	},
 	"preload": [
-		"setup/target",
-		"m5button"
+		"setup/target"
 	],
 	"config": {
 		"screen": "ili9341",
@@ -44,7 +41,7 @@
 			"scl_pin": 0
 		},
 		"spi": {
-			"mosi_pin":21,
+			"mosi_pin": 21,
 			"sck_pin": 15
 		},
 		"ili9341": {

@@ -28,6 +28,9 @@ import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 
+import Button from "button";
+import LEDrgb from "LEDrgb";
+
 const device = {
 	I2C: {
 		default: {
@@ -50,7 +53,7 @@ const device = {
 			clock: 26,
 			in: 28,
 			out: 27,
-			port 1
+			port: 1
 		}
 	},
 	Analog: {
@@ -62,10 +65,28 @@ const device = {
 	io: { Analog, Digital, DigitalBank, I2C, PulseCount, PWM, Serial, SMBus },
 	pin: {
 		button: 23,
+		buttonA: 23,
 		led: 18,
 		led_r: 18,
 		led_g: 19,
 		led_b: 20
+	},
+	peripheral: {
+		Button,
+		led: {
+			Default: class {
+				constructor(options) {
+					const led = new LEDrgb({
+						...options,
+						io: device.io.PWM,
+						pin: { r: device.pin.led_r, g: device.pin.led_g, b: device.pin.led_b },
+						invert: 1
+					});
+					led.brightness = 32;
+					return led;
+				}
+			}
+		}
 	}
 };
 

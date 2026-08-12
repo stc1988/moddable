@@ -30,29 +30,8 @@ import Touch from "embedded:sensor/Touch/CST816S";
 import RTC from "embedded:RTC/PCF85063";
 import IMU from "embedded:sensor/Accelerometer-Gyroscope/QMI8658";
 
-class Backlight {
-	#io;
-
-	constructor(options) {
-		this.#io = new PWM(options);
-	}
-	close() {
-		this.#io?.close();
-		this.#io = undefined;
-	}
-	set brightness(value) {
-		if (value <= 0)
-			value = 0;
-		else if (value >= 1)
-			value = 1023;
-		else
-			value *= 1023;
-		this.#io.write(value);
-	}
-	write(value) {		// compatibility
-		this.brightness = value / 100;
-	}
-}
+import Backlight from "backlight";
+import Button from "button";
 
 const device = {
 	I2C: {
@@ -86,6 +65,8 @@ const device = {
 	},
 	io: { Analog, Digital, DigitalBank, I2C, PulseCount, PWM, SMBus, SPI },
 	pin: {
+		button: 14,
+		buttonA: 14,
 		backlight: 25,
 		displayDC: 8,
 		displaySelect: 9,
@@ -97,6 +78,7 @@ const device = {
 				return new Backlight({pin: device.pin.backlight });
 			}
 		},
+		Button,
 		RTC: class {
 			constructor(options) {
 				return new RTC({
@@ -133,9 +115,9 @@ const device = {
 				return result;
 			}
 		},
-		IMU: class {
+		IMU: class extends IMU {
 			constructor(options) {
-				return new IMU({
+				super({
 					...options,
 					sensor: {
 						...device.I2C.default,
@@ -143,6 +125,11 @@ const device = {
 						io: device.io.SMBus
 					}
 				});
+			}
+			sample() {
+				const sample = super.sample();
+				[sample.accelerometer.x, sample.accelerometer.y] = [sample.accelerometer.y, sample.accelerometer.x ];
+				return sample;
 			}
 		}
 	}

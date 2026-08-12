@@ -1,21 +1,23 @@
 {
 	"include": [
-		"$(MODULES)/drivers/led/manifest.json",
-		"$(MODULES)/drivers/neopixel/manifest.json",
-		"$(MODULES)/drivers/button/manifest.json",
+		"$(MODULES)/io/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/LEDneopixel/manifest.json",
 		"$(MODULES)/drivers/ili9341/manifest.json"
 	],
 	"modules": {
 		"setup/target": "./setup-target"
 	},
-	"preload": "setup/target",
+	"preload": [
+		"setup/target"
+	],
 	"config": {
 		"screen": "ili9341",
 		"touch": "",
 		"led": {
 			"pin": 12,
 			"power": 11,
-			"rainbow": true,
+			"rainbow": false,
 			"brightness": 32
 		}
 	},

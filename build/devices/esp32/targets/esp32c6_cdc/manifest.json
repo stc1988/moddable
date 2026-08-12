@@ -1,26 +1,26 @@
 {
-	"include": [
-		"$(MODULES)/drivers/button/manifest.json",
-		"$(MODULES)/drivers/neopixel/manifest.json"
-	],
 	"build":{
 		"ESP32_SUBCLASS": "esp32c6",
 		"USE_USB": "2",
 		"PROGRAMMING_MODE_MESSAGE": "INSTRUCTIONS: Hold the BOOT button and press then release the RST button.",
 		"BEFORE_DEBUGGING_MESSAGE": "Press and release the RST button."
 	},
+	"include": [
+		"$(MODDABLE)/modules/io/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/LEDneopixel/manifest.json"
+	],
 	"modules": {
 		"setup/target": "./setup-target"
 	},
 	"preload": [
-		"setup/target",
-		"neopixel"
+		"setup/target"
 	],
 	"config": {
 		"screen": "",
 		"led": {
 			"pin": 8,
-			"rainbow": false,
+			"rainbow": true,
 			"brightness": 32
 		}
 	},

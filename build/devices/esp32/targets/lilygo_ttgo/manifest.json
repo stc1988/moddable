@@ -1,16 +1,15 @@
 {
 	"include": [
-		"$(MODULES)/drivers/st7789/manifest.json"
+		"$(MODULES)/io/manifest.json",
+		"$(MODULES)/drivers/st7789/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/backlight/manifest.json"
 	],
 	"config": {
 		"screen": "st7789",
 		"touch": ""
 	},
 	"modules": {
-		"*": [
-			"$(MODULES)/pins/digital/monitor/*",
-			"$(MODULES)/pins/digital/monitor/esp32/*"
-		],
 		"setup/target": "./setup-target"
 	},
 	"preload": [

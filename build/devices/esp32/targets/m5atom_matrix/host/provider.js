@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021  Moddable Tech, Inc.
+ * Copyright (c) 2021-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -30,6 +30,9 @@ import SPI from "embedded:io/spi";
 import PulseWidth from "embedded:io/pulsewidth";
 import MPU6886 from "embedded:sensor/Accelerometer-Gyroscope/MPU6886";
 
+import Button from "button";
+import LEDneopixel from "LEDneopixel";
+
 const device = {
 	I2C: {
 		default: {
@@ -59,10 +62,41 @@ const device = {
 	},
 	io: { Analog, Digital, DigitalBank, I2C, PulseCount, PulseWidth, PWM, Serial, SMBus, SPI },
 	pin: {
-		button: 39
+		button: 39,
+		buttonA: 39,
+		led: 27
 	},
-	
- 	sensor: {
+	peripheral: {
+		Button,
+		button: {
+			A: class {
+				constructor(options) {
+					return new Button({
+						...options,
+						io: Digital,
+						pin: device.pin.buttonA,
+						mode: Digital.InputPullUp,
+						invert: true
+					});
+				}
+			}
+		},
+		led: {
+			Default: class {
+				constructor(options) {
+					const led = new LEDneopixel({
+						...options,
+						length: 25,
+						pin: device.pin.led,
+						order: "GRB"
+					});
+					led.brightness = 32;
+					return led;
+				}
+			}
+		}
+	},
+	sensor: {
 		IMU: class extends MPU6886 {
 			constructor(options) {
 				super({

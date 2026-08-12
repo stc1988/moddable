@@ -1,5 +1,5 @@
 {
-	"build":{
+	"build": {
 		"ESP32_SUBCLASS": "esp32s3",
 		"USE_USB": "1",
 		"SDKCONFIGPATH": "./sdkconfig",
@@ -7,21 +7,15 @@
 		"BEFORE_DEBUGGING_MESSAGE": "Press and release the Reset button."
 	},
 	"include": [
-		"$(MODULES)/pins/smbus/manifest.json",
-		"$(MODULES)/pins/digital/manifest.json",
-		"$(MODULES)/pins/digital/monitor/manifest.json",
-		"$(MODULES)/drivers/button/manifest.json",
-		"$(MODULES)/drivers/neopixel/manifest.json"
+		"$(MODDABLE)/modules/io/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/LEDneopixel/manifest.json"
 	],
 	"modules": {
-		"*": [
-			"../m5stack_fire/m5button"
-		],
 		"setup/target": "./setup-target"
 	},
 	"preload": [
-		"setup/target",
-		"m5button"
+		"setup/target"
 	],
 	"creation": {
 		"static": 0,
@@ -39,13 +33,6 @@
 		"i2c": {
 			"sda_pin": 38,
 			"scl_pin": 39
-		},
-		"neopixel": {
-			"length": 1,
-			"pin": 35,
-			"order": "#GRB",
-			"rmt_channel": "RMT_CHANNEL_0"
 		}
 	}
 }
-

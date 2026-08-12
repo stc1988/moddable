@@ -22,36 +22,14 @@ import Analog from "embedded:io/analog";
 import Digital from "embedded:io/digital";
 import DigitalBank from "embedded:io/digitalbank";
 import I2C from "embedded:io/i2c";
-// import PulseCount from "embedded:io/pulsecount";
 import PWM from "embedded:io/pwm";
 import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 
-class Backlight {
-	#io;
-
-	constructor(options) {
-		this.#io = new PWM(options);
-	}
-	close() {
-		this.#io?.close();
-		this.#io = undefined;
-	}
-	set brightness(value) {
-		value = 1 - value;
-		if (value <= 0)
-			value = 0;
-		else if (value >= 1)
-			value = 1023;
-		else
-			value *= 1023;
-		this.#io.write(value);
-	}
-	write(value) {
-		this.brightness = value / 100;
-	}
-}
+import Backlight from "backlight";
+import Button from "button";
+import LEDneopixel from "LEDneopixel";
 
 const device = {
 	I2C: {
@@ -88,6 +66,7 @@ const device = {
 	pin: {
 		button: 9,
 		buttonA: 9,
+		led: 8,
 		backlight: 22,
 		displayDC: 15,
 		displaySelect: 14
@@ -95,7 +74,49 @@ const device = {
 	peripheral: {
 		Backlight: class {
 			constructor() {
-				return new Backlight({pin: device.pin.backlight});
+				return new Backlight({
+					io: device.io.PWM,
+					pin: device.pin.backlight
+				});
+			}
+		},
+		Button,
+		button: {
+			Default: class {
+				constructor(options) {
+					return new Button({
+						...options,
+						io: Digital,
+						pin: device.pin.button,
+						mode: Digital.InputPullUp,
+						invert: true
+					});
+				}
+			},
+			Flash: class {
+				constructor(options) {
+					return new Button({
+						...options,
+						io: Digital,
+						pin: device.pin.button,
+						mode: Digital.InputPullUp,
+						invert: true
+					});
+				}
+			}
+		},
+		led: {
+			Default: class {
+				constructor(options) {
+					const led = new LEDneopixel({
+						...options,
+						length: 1,
+						pin: device.pin.led,
+						order: "GRB"
+					});
+					led.brightness = 32;
+					return led;
+				}
 			}
 		}
 	}

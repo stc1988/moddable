@@ -4,8 +4,9 @@
 		"UF2_VOLUME_NAME": "MODDABLEnRF"
 	},
 	"include": [
-		"$(MODULES)/drivers/button/manifest.json",
-		"$(MODULES)/drivers/led/manifest.json"
+		"$(MODDABLE)/modules/io/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/LEDrgb/manifest.json"
 	],
 	"modules": {
 		"setup/target": "./setup-target"
@@ -27,7 +28,7 @@
 			"baud": "NRF_UART_BAUDRATE_115200"
 		},
 		"spi": {
-			"interface": "1",
+			"interface": "2",
 			"hz": "2000000",
 			"mosi_pin": 4,
 			"miso_pin": 5,

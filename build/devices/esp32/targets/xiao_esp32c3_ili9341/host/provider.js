@@ -27,6 +27,8 @@ import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 
+import Button from "button";
+
 const device = {
 	I2C: {
 		default: {
@@ -61,7 +63,35 @@ const device = {
 	},
 	io: { Analog, Digital, DigitalBank, I2C, PWM, Serial, SMBus, SPI },
 	pin: {
-		button: 9
+		button: 9,
+		buttonA: 9
+	},
+	peripheral: {
+		Button,
+		button: {
+			Default: class {
+				constructor(options) {
+					return new Button({
+						...options,
+						io: Digital,
+						pin: device.pin.button,
+						mode: Digital.InputPullUp,
+						invert: true
+					});
+				}
+			},
+			Flash: class {
+				constructor(options) {
+					return new Button({
+						...options,
+						io: Digital,
+						pin: device.pin.button,
+						mode: Digital.InputPullUp,
+						invert: true
+					});
+				}
+			}
+		}
 	}
 };
 

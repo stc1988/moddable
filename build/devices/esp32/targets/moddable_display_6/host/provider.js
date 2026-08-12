@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024  Moddable Tech, Inc.
+ * Copyright (c) 2021-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -30,6 +30,10 @@ import SPI from "embedded:io/spi";
 import Touch from "embedded:sensor/Touch/GT911";
 import PulseWidth from "embedded:io/pulsewidth";
 
+import Backlight from "backlight";
+import Button from "button";
+import LEDneopixel from "LEDneopixel";
+
 const device = {
 	I2C: {
 		default: {
@@ -59,6 +63,35 @@ const device = {
 	pin: {
 		//@@ button
 		button: 0,
+		buttonA: 0,
+		LED: 48,
+		backlight: 14
+	},
+	peripheral: {
+		Backlight: class {
+			constructor() {
+				return new Backlight({
+					io: device.io.PWM,
+					pin: device.pin.backlight,
+					invert: true
+				});
+			}
+		},
+		Button,
+		led: {
+			Default: class {
+				constructor(options) {
+					const led = new LEDneopixel({
+						...options,
+						length: 1,
+						pin: device.pin.LED,
+						order: "GRB"
+					});
+					led.brightness = 32;
+					return led;
+				}
+			}
+		}
 	},
 	sensor: {
 		Touch: class {

@@ -31,66 +31,8 @@ import RTC from "embedded:RTC/PCF8563"
 
 import Timer from "timer";
 
-//@@ Move Button class to common module
-class Button {
-	#io;
-	#onPush;
-
-	constructor(options) {
-		options = {...options};
-		if (options.onReadable || options.onWritable || options.onError)
-			throw new Error;
-
-		if (options.target)
-			this.target = options.target;
-
-		const Digital = options.io;
-		if (options.onPush) {
-			this.#onPush = options.onPush; 
-			options.onReadable = () => this.#onPush();
-			options.edge = Digital.Rising | Digital.Falling;
-		}
-
-		this.#io = new Digital(options);
-		this.#io.pressed = options.invert ? 0 : 1;
-	}
-	close() {
-		this.#io?.close();
-		this.#io = undefined;
-	}
-	get pressed() {
-		return (this.#io.read() === this.#io.pressed) ? 1 : 0;
-	}
-}
-
-//@@ Move Button class to common module
-class LED {
-	#io;
-
-	constructor(options) {
-		options = {...options};
-		if (options.target)
-			this.target = options.target;
-
-		this.#io = new (options.io)(options);
-		if (options.invert)
-			this.#io.invert = true;
-		this.on = 0;
-	}
-	close() {
-		this.#io?.close();
-		this.#io = undefined;
-	}
-	set on(value) {
-		const range = (1 << this.#io.resolution) - 1;
-		this.#io.value = Number(value);
-		value = (this.#io.value * range) | 0;
-		this.#io.write(this.#io.invert ? range - value : value);
-	}
-	get on() {
-		return this.#io.value;
-	}
-}
+import Button from "button";
+import LED from "LED";
 
 const notes = new Map;
 notes.set("C", 4186);
@@ -171,6 +113,9 @@ const device = {
 	},
 	io: {Analog, Digital, DigitalBank, I2C, PulseCount, PWM, Serial, SMBus, SPI},
 	pin: {
+		button: 5,
+		buttonA: 5,
+		buttonB: 38,
 		led: 10,
 		buzzer: 2,
 		powerMain: 12,
@@ -184,6 +129,7 @@ const device = {
 	sensor: {
 	},
 	peripheral: {
+		Button,
 		RTC: class {
 			constructor(options) {
 				return new RTC({

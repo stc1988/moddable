@@ -29,7 +29,21 @@ import SMBus from 'embedded:io/smbus'
 import SPI from 'embedded:io/spi'
 import Touch from 'embedded:sensor/Touch/FT3168'
 import RTC from 'embedded:RTC/PCF85063'
-import IMU from 'embedded:sensor/Accelerometer-Gyroscope/QMI8658'
+import QMI8658 from 'embedded:sensor/Accelerometer-Gyroscope/QMI8658'
+
+import Button from "button";
+import AXP2101 from 'embedded:peripheral/Power/axp2101'
+
+class Backlight {
+	constructor(brightness = 100) {
+		this.write(brightness);
+	}
+	write(value) {
+		if (globalThis.screen)
+			globalThis.screen.brightness = value;
+	}
+	close() {}
+};
 
 const device = {
   I2C: {
@@ -49,7 +63,45 @@ const device = {
   },
   io: { Analog, Digital, DigitalBank, I2C, PulseCount, PWM, Serial, SMBus, SPI },
   pin: {
-    button: 0
+    button: 0,
+	buttonA: 0,
+    buttonB: 10,
+	amplifier: 46
+  },
+  peripheral: {
+	Backlight,
+    Button,
+    Power: {
+      PMIC: class {
+        constructor() {
+          return new AXP2101({
+            sensor: { ...device.I2C.default, io: SMBus },
+            address: 0x34
+          });
+        }
+      },
+      Amplifier: class {
+        constructor() {
+          return new Digital({
+            io: Digital,
+            pin: device.pin.amplifier,
+            mode: Digital.Output,
+            initialValue: 1
+          });
+		}
+      }
+    },
+    RTC: class {
+      constructor(options) {
+        return new RTC({
+          ...options,
+          clock: {
+            ...device.I2C.default,
+            io: SMBus
+          }
+        })
+      }
+	}
   },
   sensor: {
     Touch: class {
@@ -75,19 +127,27 @@ const device = {
         return result
       }
     },
-    IMU: class {
+    IMU: class extends QMI8658 {
       constructor(options) {
-        return new IMU({
+        super({
           ...options,
           sensor: {
             ...device.I2C.default,
             io: device.io.SMBus
           }
-        })
+        });
       }
+	  sample() {
+		const sample = super.sample();
+		[sample.accelerometer.x, sample.accelerometer.y, sample.accelerometer.z] =
+		  [sample.accelerometer.y, sample.accelerometer.x, sample.accelerometer.z * -1];
+        [sample.gyroscope.x, sample.gyroscope.y, sample.gyroscope.z] =
+		  [sample.gyroscope.y, sample.gyroscope.x, sample.gyroscope.z * -1];
+		return sample;
+	  }
     }
   },
-  peripheral: {
+  xperipheral: {
     button: {
       A: class {
         constructor(options) {
@@ -97,17 +157,6 @@ const device = {
             mode: Digital.InputPullUp
           })
         }
-      }
-    },
-    RTC: class {
-      constructor(options) {
-        return new RTC({
-          ...options,
-          clock: {
-            ...device.I2C.default,
-            io: SMBus
-          }
-        })
       }
     }
   }

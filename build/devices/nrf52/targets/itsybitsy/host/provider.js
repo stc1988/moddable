@@ -24,6 +24,8 @@ import I2C from "embedded:io/i2c";
 import PWM from "embedded:io/pwm";
 import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
+import Button from "button";
+import LED from "LED";
 
 const device = {
 	I2C: {
@@ -44,7 +46,36 @@ const device = {
 	io: {Analog, Digital, DigitalBank, I2C, PWM, Serial, SMBus},
 	pin: {
 		button: 29,
+		buttonA: 29,
 		led: 6
+	},
+	peripheral: {
+		Button,
+		button: {
+			Default: class {
+				constructor(options) {
+					return new Button({
+						...options,
+						io: Digital,
+						pin: device.pin.button,
+						mode: Digital.InputPullUp,
+						invert: true
+					});
+				}
+			}
+		},
+		led: {
+			Default: class {
+				constructor(options) {
+					return new LED({
+						...options,
+						io: PWM,
+						pin: device.pin.led,
+						invert: true
+					});
+				}
+			}
+		}
 	}
 };
 

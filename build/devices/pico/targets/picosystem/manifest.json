@@ -1,13 +1,17 @@
 {
 	"include": [
-		"$(MODDABLE)/modules/drivers/st7789/manifest.json",
-		"$(MODULES)/drivers/led/manifest.json",
-		"$(MODULES)/drivers/button/manifest.json"
+		"$(MODULES)/io/manifest.json",
+		"$(MODULES)/drivers/peripherals/backlight/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/LEDrgb/manifest.json",
+		"$(MODDABLE)/modules/drivers/st7789/manifest.json"
 	],
 	"modules": {
 		"setup/target": "./setup-target"
 	},
-	"preload": "setup/target",
+	"preload": [
+		"setup/target"
+	],
 	"config": {
 		"screen": "st7789",
 		"touch": "",
@@ -31,16 +35,6 @@
 		"battery_level": 26
 	},
 	"defines": {
-		"buttons": {
-			"a_pin": 18,
-			"b_pin": 19,
-			"x_pin": 17,
-			"y_pin": 16,
-			"up_pin": 23,
-			"down_pin": 20,
-			"left_pin": 22,
-			"right_pin": 21
-		},
 		"spi": {
 			"mosi_pin": 7,
 			"sck_pin": 6,

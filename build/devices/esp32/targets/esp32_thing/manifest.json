@@ -1,4 +1,8 @@
 {
+	"include": [
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/LED/manifest.json"
+	],
 	"config": {
 		"screen": "",
 		"touch": ""

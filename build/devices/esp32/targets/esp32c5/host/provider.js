@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024  Moddable Tech, Inc.
+ * Copyright (c) 2023-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -27,6 +27,9 @@ import PWM from "embedded:io/pwm";
 import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
+
+import Button from "button";
+import LEDneopixel from "LEDneopixel";
 
 const device = {
 	I2C: {
@@ -62,7 +65,25 @@ const device = {
 	io: {Analog, Digital, DigitalBank, I2C, PWM, Serial, SMBus, SPI},
 	pin: {
 		button: 28,
-		buttonA: 28
+		buttonA: 28,
+		LED: 27
+	},
+	peripheral: {
+		Button,
+		led: {
+			Default: class {
+				constructor(options) {
+					const led = new LEDneopixel({
+						...options,
+						length: 1,
+						pin: device.pin.LED,
+						order: "GRB"
+					});
+					led.brightness = 32;
+					return led;
+				}
+			}
+		}
 	}
 };
 

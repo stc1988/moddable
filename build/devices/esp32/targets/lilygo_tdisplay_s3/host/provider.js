@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023  Moddable Tech, Inc.
+ * Copyright (c) 2021-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -30,6 +30,10 @@ import SPI from "embedded:io/spi";
 import Touch from "embedded:sensor/Touch/CST816";
 import PulseWidth from "embedded:io/pulsewidth";
 
+import Backlight from "backlight";
+import Button from "button";
+import LEDneopixel from "LEDneopixel";
+
 const device = {
 	I2C: {
 		default: {
@@ -54,29 +58,30 @@ const device = {
 	},
 	io: {Analog, Digital, DigitalBank, I2C, PulseCount, PulseWidth, PWM, Serial, SMBus, SPI},
 	pin: {
+		button: 0,
+		buttonA: 0,
+		buttonB: 14,
+		backlight: 38,
+        lcdPower: 15
 	},
-	sensor: {
-		Touch: class {
-			constructor(options) {
-				const result = new Touch({
-					...options,
-					sensor: {
-						...device.I2C.internal,
-						io: device.io.SMBus
-					},
-					reset: {
+	peripheral: {
+		Button,
+		Power: {
+			LCD: class {
+				constructor() {
+					return new Digital({
 						io: Digital,
-						mode: Digital.Output,
-						pin: 21
-					},
-					interrupt: {
-						io: Digital,
-						mode: Digital.Input,
-						pin: 16
+						pin: device.pin.lcdPower,
+						mode: Digital.Output });
 					}
+			}
+		},
+		Backlight: class {
+			constructor() {
+				return new Backlight({
+						io: device.io.PWM,
+						pin: device.pin.backlight
 				});
-				result.configure({});
-				return result;
 			}
 		}
 	}

@@ -4,12 +4,12 @@
 		"FTDI_TRACE": "-DUSE_FTDI_TRACE=0"
 	},
 	"include": [
+		"$(MODDABLE)/modules/io/manifest.json",
 		"$(MODULES)/drivers/ls013b4dn04/manifest.json",
-		"$(MODULES)/pins/digital/monitor/manifest.json",
-		"$(MODULES)/drivers/jogdial/manifest.json",
-		"$(MODULES)/drivers/button/manifest.json",
-		"$(MODULES)/drivers/led/manifest.json",
-		"$(MODULES)/pins/smbus/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/led/manifest.json",
+		"$(MODULES)/drivers/peripherals/jogdial/manifest.json",
+		"$(MODULES)/drivers/sensors/lis3dh/manifest.json",
 		"$(MODULES)/files/preference/manifest.json"
 	],
 	"config": {
@@ -34,10 +34,7 @@
 		}
 	},
    "modules": {
-		"setup/target": "./setup-target",
-		"*": [
-			"$(MODULES)/drivers/lis3dh/*"
-		]
+		"setup/target": "./setup-target"
    },
     "preload": [
 		"lis3dh",

@@ -7,16 +7,17 @@
         "BEFORE_DEBUGGING_MESSAGE": "Press and release the Rst button."
 	},
 	"include": [
-		"$(MODULES)/drivers/button/manifest.json",
-		"$(MODULES)/drivers/neopixel/manifest.json",
+		"$(MODULES)/io/manifest.json",
+		"$(MODULES)/drivers/peripherals/backlight/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/LEDneopixel/manifest.json",
 		"$(MODULES)/drivers/st7789/manifest.json"
 	],
 	"modules": {
 		"setup/target": "./setup-target"
 	},
 	"preload": [
-		"setup/target",
-		"neopixel"
+		"setup/target"
 	],
 	"config": {
 		"screen": "st7789",
@@ -28,6 +29,7 @@
 			"brightness": 32
 		},
 		"backlight": "1",
+		"brightness": 90,
 		"peripheral_power_pin": "21"
 	},
 	"creation": {

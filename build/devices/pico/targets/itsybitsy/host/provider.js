@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025  Moddable Tech, Inc.
+ * Copyright (c) 2022-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -27,6 +27,9 @@ import PWM from "embedded:io/pwm";
 import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
+import Button from "button";
+import LED from "LED";
+import LEDneopixel from "LEDneopixel";
 
 const device = {
 	I2C: {
@@ -61,10 +64,73 @@ const device = {
 	},
 	io: { Analog, Digital, DigitalBank, I2C, PulseCount, PWM, Serial, SMBus, SPI },
 	pin: {
+		button: 13,
+		buttonA: 13,
 		led: 11,
-		button: 13
+		ledRGB: 17,
+		ledPower: 16
+	},
+	peripheral: {
+		Button,
+		button: {
+			Default: class {
+				constructor(options) {
+					return new Button({
+						...options,
+						io: Digital,
+						pin: device.pin.button,
+						mode: Digital.InputPullUp,
+						invert: true
+					});
+				}
+			},
+			Flash: class {
+				constructor(options) {
+					return new Button({
+						...options,
+						io: Digital,
+						pin: device.pin.button,
+						mode: Digital.InputPullUp,
+						invert: true
+					});
+				}
+			}
+		},
+		Power: {
+			LED: class {
+				constructor() {
+					return new Digital({
+						io: Digital,
+						pin: device.pin.ledPower,
+						mode: Digital.Output
+					});
+				}
+			}
+		},
+		led: {
+			Default: class {
+				constructor() {
+					return new LED({
+						io: PWM,
+						pin: device.pin.led
+					});
+				}
+			},
+			RGB: class {
+				constructor(options) {
+					const led = new LEDneopixel({
+						...options,
+						length: 1,
+						pin: device.pin.ledRGB,
+						order: "GRB",
+						power: new device.peripheral.Power.LED()
+					});
+					led.brightness = 32;
+					return led;
+				}
+			}
+		}
 	}
 };
 
 export default device;
-

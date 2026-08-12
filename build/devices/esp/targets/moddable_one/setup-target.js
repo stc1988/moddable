@@ -18,31 +18,6 @@
  *
  */
 
-import Button from "button";
-import LED from "led";
-
-globalThis.Host = {
-	LED: {
-		Default: class {
-			constructor(options) {
-				return new LED({
-					...options,
-					pin: 2,
-					invert: true
-				});
-			}
-		}
-	},
-	Button: {
-		Default: class {
-			constructor(options) {
-				return new Button({
-					...options,
-					pin: 0,
-					invert: true
-				});
-			}
-		}
-	}
-};
-Object.freeze(Host, true);
+export default function (done) {
+	done?.();
+}

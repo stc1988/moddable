@@ -4,8 +4,9 @@
 		"UPLOAD_SPEED": "460800"
 	},
 	"include": [
-		"$(MODULES)/drivers/button/manifest.json",
-		"$(MODULES)/drivers/led/manifest.json"
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/LEDrgb/manifest.json",
+		"$(MODULES)/drivers/peripherals/LED/manifest.json"
 	],
 	"modules": {
 		"setup/target": "./setup-target"
@@ -16,7 +17,7 @@
 	"config": {
 		"screen": "",
 		"led": {
-			"pin": 19
+			"rainbow": 1
 		}
 	},
 	"creation": {

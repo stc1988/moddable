@@ -1,20 +1,23 @@
 {
 	"include": [
-		"$(MODULES)/drivers/led/manifest.json",
-		"$(MODULES)/drivers/neopixel/manifest.json",
-		"$(MODULES)/drivers/button/manifest.json"
+		"$(MODULES)/io/manifest.json",
+		"$(MODULES)/drivers/peripherals/LED/manifest.json",
+		"$(MODULES)/drivers/peripherals/LEDneopixel/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json"
 	],
 	"modules": {
 		"setup/target": "./setup-target"
 	},
-	"preload": "setup/target",
+	"preload": [
+		"setup/target"
+	],
 	"config": {
 		"screen": "",
 		"touch": "",
 		"led": {
 			"pin": 17,
 			"power": 16,
-			"rainbow": true,
+			"rainbow": false,
 			"brightness": 32
 		}
 	},

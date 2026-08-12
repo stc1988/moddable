@@ -18,7 +18,6 @@
  *
  */
 
-//import AudioOut from "pins/audioout-original";
 import AudioOut from "embedded:io/audio/out-original";
 
 /**

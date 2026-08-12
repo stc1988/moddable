@@ -19,8 +19,6 @@
  */
 
 import Analog from "embedded:io/analog";
-import Backlight from "backlight";
-import Button from "button";
 import Digital from "embedded:io/digital";
 import DigitalBank from "embedded:io/digitalbank";
 import I2C from "embedded:io/i2c";
@@ -30,6 +28,9 @@ import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 import PulseWidth from "embedded:io/pulsewidth";
+
+import Backlight from "backlight";
+import Button from "button";
 
 const device = {
 	I2C: {

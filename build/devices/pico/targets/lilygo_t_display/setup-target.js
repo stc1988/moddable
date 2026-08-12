@@ -1,51 +1,28 @@
-import Digital from "pins/digital";
-import config from "mc/config";
-import LED from "led";
-import Button from "button";
-import Timer from "timer";
-
-class A {
-	constructor(options) {
-		return new Button({...options, invert: true, pin: 6});
-	}
-}
-
-globalThis.Host = Object.freeze({
-	LED: {
-		Default: class {
-			#pin = {
-				red: new Digital(25, Digital.Output)
-			}
-			constructor() {
-				this.write({red: 1});
-			}
-			close() {
-				this.write({red: 1});
-				this.#pin.red.close();
-			}
-			write(color) {
-				color ??= {red: 0};
-				this.#pin.red.write((color.red >= 128) ? 0 : 1);
-			}
-		}
-	},
-	Button: {
-		Default: A,
-		A,
-		B: class {
-			constructor(options) {
-				return new Button({...options, invert: true, pin: 7});
-			}
-		}
-	}
-}, true);
+/*
+ * Copyright (c) 2018-2026  Moddable Tech, Inc.
+ *
+ *   This file is part of the Moddable SDK Runtime.
+ *
+ *   The Moddable SDK Runtime is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU Lesser General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   The Moddable SDK Runtime is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public License
+ *   along with the Moddable SDK Runtime.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 
 export default function (done) {
-	trace(`digital write (${config.display_power_pin}, 1)\n`);
-	Digital.write(config.display_power_pin, 1);		//  PWR_ON
-	Timer.delay(250);
-	if (undefined !== config.backlight)
-		Digital.write(config.backlight, 1);
+	if (undefined !== device.peripheral?.Power?.LCD) {
+		globalThis.lcd_power = new device.peripheral.Power.LCD();
+		globalThis.lcd_power.write(1);
+	}
 
-	done();
+	done?.();
 }
