@@ -21,9 +21,9 @@ const display = new TM1637({
 		data: device.I2C.default.data,
 		clock: device.I2C.default.clock,
 	},
-	brightness: 4,
 	onError: error => trace(`${error}\n`)
 });
+display.configure({ brightness: 4 });
 
 let state = 0;
 const timer = Timer.repeat(() => {

@@ -99,26 +99,18 @@ class TM1637Display {
 	 * options:
 	 *  sensor:    Digital IO options with clock and data pins
 	 *  digits:    4 - number of display digits (1–6)
-	 *  rate:      250 - milliseconds between scroll steps
-	 *  direction: 1 - scroll direction (-1 scroll right)
-	 *  brightness: 7 - display brightness (0–7)
+	 *  onError:   callback invoked when communication fails
 	 */
 	constructor(options) {
 		const sensor = options?.sensor;
 		if (!sensor?.io || (undefined === sensor.clock) || (undefined === sensor.data))
 			throw new Error("sensor with io, clock, and data is required");
 
-		const digits = options.digits ?? 4;
-		if (!Number.isInteger(digits) || (digits < 1) || (digits > MAX_DIGITS))
-			throw new RangeError("digits must be an integer from 1 to 6");
+		const digits = Math.round(options.digits ?? 4);
+		if (!((digits >= 1) && (digits <= MAX_DIGITS)))
+			throw new RangeError("digits must round to an integer from 1 to 6");
 
 		this.#onError = options.onError;
-		if (undefined !== options.rate)
-			this.#rate = Math.max(50, options.rate | 0);
-		if (undefined !== options.direction)
-			this.#direction = (options.direction === -1) ? -1 : 1;
-		if (undefined !== options.brightness)
-			this.#brightness = Math.max(0, Math.min(7, options.brightness | 0));
 
 		try {
 			const {io: Digital, clock, data, ...ioOptions} = sensor;
@@ -191,8 +183,7 @@ class TM1637Display {
 	 * colon because bit 7 of the second digit is connected to it.
 	 */
 	write(string) {
-		if (typeof string !== "string")
-			string = String(string);
+		string = String(string);
 
 		this.#stopScroll();
 
@@ -267,20 +258,15 @@ class TM1637Display {
 	}
 
 	#update() {
+		this.#command(CMD_DATA);
+		this.#start();
 		try {
-			this.#command(CMD_DATA);
-			this.#start();
-			try {
-				this.#writeByte(CMD_ADDRESS);
-				for (let i = 0; i < this.#ram.length; i++)
-					this.#writeByte(this.#ram[i]);
-			}
-			finally {
-				this.#stop();
-			}
+			this.#writeByte(CMD_ADDRESS);
+			for (let i = 0; i < this.#ram.length; i++)
+				this.#writeByte(this.#ram[i]);
 		}
-		catch (e) {
-			this.#onError?.(e);
+		finally {
+			this.#stop();
 		}
 	}
 
@@ -294,15 +280,18 @@ class TM1637Display {
 			this.#offset = (this.#offset + this.#direction) % cycleLength;
 			if (this.#offset < 0)
 				this.#offset += cycleLength;
-			this.#render();
+			try {
+				this.#render();
+			}
+			catch (e) {
+				this.#onError?.(e);
+			}
 		}, this.#rate);
 	}
 
 	#stopScroll() {
-		if (this.#timer) {
-			Timer.clear(this.#timer);
-			this.#timer = undefined;
-		}
+		Timer.clear(this.#timer);
+		this.#timer = undefined;
 	}
 
 	#command(command) {
