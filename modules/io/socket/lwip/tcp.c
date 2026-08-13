@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2025  Moddable Tech, Inc.
+ * Copyright (c) 2019-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -37,6 +37,23 @@
 #include "mc.xs.h"			// for xsID_* values
 #include "builtinCommon.h"
 #include "modLwipSafe.h"
+#include "modTimer.h"
+
+#ifndef MODDEF_TCP_OUTPUTBUFFER_IDLE
+	#define MODDEF_TCP_OUTPUTBUFFER_IDLE (20)
+#endif
+#ifndef MODDEF_TCP_OUTPUTBUFFER_MAX
+	#define MODDEF_TCP_OUTPUTBUFFER_MAX (TCP_MSS)
+#endif
+
+struct TCPOutBufferRecord {
+	struct TCPOutBufferRecord *next;
+	uint16_t		size;			// capacity
+	uint16_t		bytes;			// filled
+	uint8_t			data[];
+};
+typedef struct TCPOutBufferRecord TCPOutBufferRecord;
+typedef struct TCPOutBufferRecord *TCPOutBuffer;
 
 struct TCPBufferRecord {
 	struct TCPBufferRecord *next;
@@ -59,6 +76,13 @@ struct TCPRecord {
 	struct tcp_pcb	*skt;
 	xsSlot			obj;
 	TCPBuffer		buffers;
+	TCPOutBuffer	out;
+	TCPOutBuffer	outTail;
+	uint32_t		unwritten;
+	uint32_t		unacked;
+	uint32_t		writeRemaining;
+	modTimer		timer;
+	uint8_t			more;
 	uint8_t			triggerable;
 	uint8_t			triggered;
 	int8_t			useCount;
@@ -87,6 +111,11 @@ static void tcpDeliver(void *the, void *refcon, uint8_t *message, uint16_t messa
 static void xs_tcp_mark(xsMachine* the, void* it, xsMarkRoot markRoot);
 static void doClose(xsMachine *the, xsSlot *instance);
 
+static uint32_t tcpWritable(TCP tcp);
+static void tcpFlush(TCP tcp, uint8_t force);
+static void tcpFreeOutput(TCP tcp);
+static void tcpIdle(modTimer timer, void *refcon, int refconSize);
+
 static const xsHostHooks ICACHE_RODATA_ATTR xsTCPHooks = {
 	xs_tcp_destructor,
 	xs_tcp_mark,
@@ -102,6 +131,8 @@ void xs_tcp_constructor(xsMachine *the)
 	int port;
 	struct tcp_pcb *skt;
 	TCPBuffer buffers = NULL;
+	TCPOutBuffer out = NULL, outTail = NULL;
+	uint32_t unwritten = 0, unacked = 0;
 	ip_addr_t address;
 
 	xsmcVars(1);
@@ -145,6 +176,19 @@ void xs_tcp_constructor(xsMachine *the)
 				triggered |= kTCPWritable;
 			if ((triggerable & kTCPReadable) && buffers)
 				triggered |= kTCPReadable;
+
+			builtinCriticalSectionBegin();
+			out = from->out;
+			outTail = from->outTail;
+			unwritten = from->unwritten;
+			unacked = from->unacked;
+			from->out = from->outTail = NULL;
+			from->unwritten = from->unacked = 0;
+			builtinCriticalSectionEnd();
+
+			if (unwritten)
+				triggered |= kTCPOutput;
+
 			from->skt = NULL;
 			from->buffers = NULL;
 			from->triggered = 0;
@@ -210,19 +254,21 @@ void xs_tcp_constructor(xsMachine *the)
 	tcp->skt = skt;
 	tcp->buffers = buffers;
 	tcp->ready = ready;
+	tcp->out = out;
+	tcp->outTail = outTail;
+	tcp->unwritten = unwritten;
+	tcp->unacked = unacked;
 
 	tcp_arg(skt, tcp);
 	tcp_err(skt, tcpError);
 	tcp_recv(skt, tcpReceive);
+	tcp_sent(skt, tcpSent);
 
 	tcp->triggerable = triggerable;
 	if (triggerable) {
 		tcp->onReadable = onReadable;
 		tcp->onWritable = onWritable;
 		tcp->onError = onError;
-
-		if (onWritable)
-			tcp_sent(skt, tcpSent);
 	}
 
 	if (connect) {
@@ -237,6 +283,13 @@ void xs_tcp_destructor(void *data)
 {
 	TCP tcp = data;
 	if (!tcp) return;
+
+	if (tcp->timer) {
+		modTimerRemove(tcp->timer);
+		tcp->timer = NULL;
+	}
+
+	tcpFreeOutput(tcp);
 
 	if (tcp->skt) {
 		// Marshaled: TCP_EVENT_RECV reads pcb->recv and pcb->callback_arg at
@@ -283,6 +336,11 @@ void doClose(xsMachine *the, xsSlot *instance)
 	if (tcp && xsmcGetHostDataValidate(*instance, (void *)&xsTCPHooks)) {
 		tcp->ready = false;
 
+		if (tcp->timer) {
+			modTimerRemove(tcp->timer);
+			tcp->timer = NULL;
+		}
+
 		if (tcp->skt)
 			tcp_clear_callbacks_safe(tcp->skt);		// marshaled; see xs_tcp_destructor
 		tcp->triggerable = 0;
@@ -290,19 +348,22 @@ void doClose(xsMachine *the, xsSlot *instance)
 		xsmcSetHostData(*instance, NULL);
 		xsForget(tcp->obj);
 		xsmcSetHostDestructor(*instance, NULL);
-#if TCP_ATOMICS
-		modAtomicsExchange_n(&tcp->triggered, 0);
-#else
 		builtinCriticalSectionBegin();
 		tcp->triggered = 0;
 		builtinCriticalSectionEnd();
-#endif
 		tcpRelease(tcp);
 	}
 }
 
 void xs_tcp_close(xsMachine *the)
 {
+	TCP tcp = xsmcGetHostData(xsThis);
+
+	if (tcp && xsmcGetHostDataValidate(xsThis, (void *)&xsTCPHooks)) {
+		tcp->more = false;
+		tcpFlush(tcp, true);
+	}
+
 	doClose(the, &xsThis);
 }
 
@@ -390,7 +451,7 @@ void xs_tcp_write(xsMachine *the)
 	TCP tcp = xsmcGetHostDataValidate(xsThis, (void *)&xsTCPHooks);
 	xsUnsignedValue needed;
 	void *buffer;
-	uint8_t value;
+	uint8_t value, more = false;
 
 	if (tcp->error || !tcp->skt)
 		return;
@@ -398,6 +459,15 @@ void xs_tcp_write(xsMachine *the)
 	if (!tcp->ready)
 		xsUnknownError("not ready");
 
+	if ((xsmcArgc > 1) && xsmcTest(xsArg(1))) {
+		if (xsmcGet(xsResult, xsArg(1), xsID_more))
+			more = xsmcToBoolean(xsResult);
+
+		if (xsmcGet(xsResult, xsArg(1), xsID_byteLength)) {
+			int byteLength = xsmcToInteger(xsResult);
+			tcp->writeRemaining = (byteLength > 0) ? (uint32_t)byteLength : 0;
+		}
+	}
 
 	if (kIOFormatBuffer == tcp->format)
 		xsmcGetBufferReadable(xsArg(0), &buffer, &needed);
@@ -407,20 +477,87 @@ void xs_tcp_write(xsMachine *the)
 		buffer = &value;
 	}
 
-	if (needed > tcp_sndbuf(tcp->skt))
+	if (needed > tcpWritable(tcp))
 		xsUnknownError("would block");
 
-	if (ERR_OK != tcp_write_safe(tcp->skt, buffer, needed, TCP_WRITE_FLAG_COPY | TCP_WRITE_FLAG_MORE)) {
-		xsTrace("tcp write failed\n");
-		tcpTrigger(tcp, kTCPError);
-		return;
+	uint16_t size = tcp->skt->mss;
+	if ((0 == size) || (size > MODDEF_TCP_OUTPUTBUFFER_MAX))
+		size = MODDEF_TCP_OUTPUTBUFFER_MAX;
+	if (tcp->writeRemaining && (tcp->writeRemaining < size))
+		size = (uint16_t)tcp->writeRemaining;
+
+	// only the last buffer can have room
+	TCPOutBuffer fill = tcp->outTail;
+	uint32_t remaining = needed;
+	if (fill && (fill->bytes < fill->size)) {
+		uint16_t space = fill->size - fill->bytes;
+		remaining = (remaining > space) ? remaining - space : 0;
 	}
+	else
+		fill = C_NULL;
+
+	// allocate before copy
+	TCPOutBuffer first = C_NULL, last = C_NULL;
+	while (remaining) {
+		TCPOutBuffer out = c_malloc(sizeof(TCPOutBufferRecord) + size);
+		if (!out) {
+			while (first) {
+				TCPOutBuffer next = first->next;
+				c_free(first);
+				first = next;
+			}
+			xsUnknownError("no memory");
+		}
+
+		out->next = C_NULL;
+		out->size = size;
+		out->bytes = 0;
+
+		if (last)
+			last->next = out;
+		else
+			first = out;
+		last = out;
+
+		remaining = (remaining > size) ? remaining - size : 0;
+	}
+
+	if (first) {
+		if (tcp->outTail)
+			tcp->outTail->next = first;
+		else
+			tcp->out = first;
+		tcp->outTail = last;
+		if (!fill)
+			fill = first;
+	}
+
+	uint8_t *src = buffer;
+	remaining = needed;
+	while (remaining) {
+		uint16_t use = fill->size - fill->bytes;
+		if (use > remaining)
+			use = (uint16_t)remaining;
+
+		c_memcpy(fill->bytes + fill->data, src, use);
+		fill->bytes += use;
+		src += use;
+		remaining -= use;
+
+		if (remaining)
+			fill = fill->next;
+	}
+
+	tcp->unwritten += needed;
+	tcp->more = more;
+	if (!more)
+		tcp->writeRemaining = 0;
+	else if (tcp->writeRemaining)
+		tcp->writeRemaining = (tcp->writeRemaining > needed) ? tcp->writeRemaining - needed : 0;
 
 	tcpTrigger(tcp, kTCPOutput);
 
-	modInstrumentationAdjust(NetworkBytesWritten, needed);
-	
-	xsmcSetInteger(xsResult, tcp_sndbuf(tcp->skt));
+	xsmcSetInteger(xsResult, tcpWritable(tcp));
 }
 
 void xs_tcp_get_remoteAddress(xsMachine *the)
@@ -453,23 +590,105 @@ void xs_tcp_set_format(xsMachine *the)
 	tcp->format = format;
 }
 
+uint32_t tcpWritable(TCP tcp)
+{
+	if (!tcp->skt || tcp->error)
+		return 0;
+
+	uint32_t available = tcp_sndbuf(tcp->skt);
+	return (available > tcp->unwritten) ? available - tcp->unwritten : 0;
+}
+
+void tcpFlush(TCP tcp, uint8_t force)
+{
+	if (!tcp->skt || tcp->error)
+		return;
+
+	uint8_t output = false;
+	while (tcp->out) {
+		TCPOutBuffer out = tcp->out;
+		if (!out->bytes)
+			break;
+
+		if ((out->bytes < out->size) && !force && tcp->unacked)
+			break;
+
+		if (out->bytes > tcp_sndbuf(tcp->skt))
+			break;
+
+		err_t err = tcp_write_safe(tcp->skt, out->data, out->bytes, (out->next || tcp->more) ? TCP_WRITE_FLAG_MORE : 0);
+		if (ERR_OK != err) {
+			if (ERR_MEM == err)
+				break;
+
+			xsMachine *the = tcp->the;
+			xsLog("tcp write failed %d\n", err);
+			if (tcp->timer) {
+				modTimerRemove(tcp->timer);
+				tcp->timer = NULL;
+			}
+			tcpTrigger(tcp, kTCPError);
+			return;
+		}
+
+		tcp->unwritten -= out->bytes;
+		modInstrumentationAdjust(NetworkBytesWritten, out->bytes);
+
+		builtinCriticalSectionBegin();
+		tcp->unacked += out->bytes;
+		builtinCriticalSectionEnd();
+
+		tcp->out = out->next;
+		if (!tcp->out)
+			tcp->outTail = NULL;
+		c_free(out);
+
+		output = true;
+	}
+
+	if (output)
+		tcp_output_safe(tcp->skt);
+
+	if (tcp->unwritten) {
+		if (!tcp->timer)
+			tcp->timer = modTimerAdd(MODDEF_TCP_OUTPUTBUFFER_IDLE, 0, tcpIdle, &tcp, sizeof(tcp));
+		else if (output)
+			modTimerReschedule(tcp->timer, MODDEF_TCP_OUTPUTBUFFER_IDLE, 0);
+	}
+	else if (tcp->timer) {
+		modTimerRemove(tcp->timer);
+		tcp->timer = NULL;
+	}
+}
+
+void tcpIdle(modTimer timer, void *refcon, int refconSize)
+{
+	TCP tcp = *(TCP *)refcon;
+
+	tcp->timer = NULL;
+	tcpFlush(tcp, true);
+}
+
+void tcpFreeOutput(TCP tcp)
+{
+	while (tcp->out) {
+		TCPOutBuffer out = tcp->out;
+		tcp->out = out->next;
+		c_free(out);
+	}
+	tcp->outTail = NULL;
+	tcp->unwritten = 0;
+}
+
 void tcpHold(TCP tcp)
 {
-#if TCP_ATOMICS
-	modAtomicsAddFetch(&tcp->useCount, 1);
-#else
 	builtinCriticalSectionBegin();
 	tcp->useCount += 1;
 	builtinCriticalSectionEnd();
-#endif
 }
 
 void tcpRelease(TCP tcp)
 {
-#if TCP_ATOMICS
-	if (0 == modAtomicsSubFetch(&tcp->useCount, 1))
-		xs_tcp_destructor(tcp);
-#else
 	uint8_t unused;
 
 	builtinCriticalSectionBegin();
@@ -478,29 +697,26 @@ void tcpRelease(TCP tcp)
 	builtinCriticalSectionEnd();
 	if (unused)
 		xs_tcp_destructor(tcp);
-#endif
-
 }
 
 void tcpDeliver(void *the, void *refcon, uint8_t *message, uint16_t messageLength)
 {
 	TCP tcp = refcon;
-#if TCP_ATOMICS
-	uint8_t triggered = modAtomicsExchange_n(&tcp->triggered, 0);
-#else
 	builtinCriticalSectionBegin();
 	uint8_t triggered = tcp->triggered;
 	tcp->triggered = 0;
 	builtinCriticalSectionEnd();
-#endif
+
 	if (triggered & kTCPError) {
 		triggered &= ~(kTCPOutput | kTCPWritable);
 		tcp->error = true;
 		tcp->ready = false;
 	}
 
-	if ((triggered & kTCPOutput) && tcp->skt)
-		tcp_output_safe(tcp->skt);
+	if (tcp->error)
+		tcpFreeOutput(tcp);
+	else if (triggered & kTCPOutput)
+		tcpFlush(tcp, false);
 
 	if ((triggered & tcp->triggerable & kTCPReadable) && tcp->buffers) {
 		TCPBuffer walker;
@@ -520,7 +736,7 @@ void tcpDeliver(void *the, void *refcon, uint8_t *message, uint16_t messageLengt
 	else if (!tcp->error) {
 		if ((triggered & tcp->triggerable & kTCPWritable) && tcp->skt) {
 			xsBeginHost(the);
-				xsmcSetInteger(xsResult, tcp_sndbuf(tcp->skt));
+				xsmcSetInteger(xsResult, tcpWritable(tcp));
 				xsCallFunction1(xsReference(tcp->onWritable), tcp->obj, xsResult);
 			xsEndHost(the);
 		}
@@ -615,25 +831,27 @@ err_t tcpReceive(void *arg, struct tcp_pcb *pcb, struct pbuf *pb, err_t err)
 
 err_t tcpSent(void *arg, struct tcp_pcb *pcb, u16_t len)
 {
-	if (NULL == arg)		// callbacks cleared during teardown
+	TCP tcp = arg;
+
+	if (NULL == tcp)		// callbacks cleared during teardown
 		return ERR_OK;
 
-	tcpTrigger((TCP)arg, kTCPWritable);
+	builtinCriticalSectionBegin();
+	tcp->unacked = (tcp->unacked > len) ? tcp->unacked - len : 0;
+	builtinCriticalSectionEnd();
+
+	// kTCPOutput releases a partial buffer held waiting for this acknowledgement
+	tcpTrigger(tcp, kTCPOutput | kTCPWritable);
 	return ERR_OK;
 }
 
 void tcpTrigger(TCP tcp, uint8_t trigger)
 {
-#if TCP_ATOMICS
-	uint8_t triggered = modAtomicsFetchOr(&tcp->triggered, trigger);
-#else
-	uint8_t triggered;
-
 	builtinCriticalSectionBegin();
-	triggered = tcp->triggered;
+	uint8_t triggered = tcp->triggered;
 	tcp->triggered |= trigger;
 	builtinCriticalSectionEnd();
-#endif
+
 	if (!triggered) {
 		tcpHold(tcp);
 		modMessagePostToMachine(tcp->the, NULL, 0, tcpDeliver, tcp);
@@ -814,7 +1032,8 @@ void xs_listener_read(xsMachine *the)
 	tcp_arg(tcp->skt, tcp);
 	tcp_err(tcp->skt, tcpError);
 	tcp_recv(tcp->skt, tcpReceive);
-	
+	tcp_sent(tcp->skt, tcpSent);
+
 	tcp->ready = true;
 }
 
