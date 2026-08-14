@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025  Moddable Tech, Inc.
+ * Copyright (c) 2024-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK.
  * 
@@ -12,8 +12,6 @@
  *
  */
 
-import HTTPServer from "embedded:network/http/server"
-import Listener from "embedded:io/socket/listener";
 import Camera from "embedded:io/image/in/camera";
 import Net from "net";
 
@@ -43,8 +41,8 @@ camera.start();
 const router = new Map;
 
 const port = 8080;
-new HTTPServer({
-	io: Listener,
+new device.network.http.server.io({
+	...device.network.http.server,
 	port,
 	onConnect(connection) {
 		connection.accept({

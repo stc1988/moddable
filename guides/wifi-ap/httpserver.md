@@ -18,7 +18,7 @@ See the [HTTP Server Guide](../http-server/index.md) for more information.
 import WebPage from "embedded:network/http/server/route/webpage";
 
 const httpServer = new device.network.http.server.io({
-	...device.network.http.client.server,
+	...device.network.http.server,
 	port: 8080,
 	onConnect(connection) {
 		connection.accept({

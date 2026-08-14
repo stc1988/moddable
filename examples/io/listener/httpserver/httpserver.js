@@ -244,10 +244,17 @@ class Connection {
 								continue;
 							}
 						}
-						this.#options.onReadable?.call(this, Math.min(this.#readable, this.#chunk));
+						if (this.#options.onReadable)
+							this.#options.onReadable.call(this, Math.min(this.#readable, this.#chunk));
+						else
+							this.read();
 					}
-					else
-						this.#options.onReadable?.call(this, Math.min(this.#readable, this.#remaining));
+					else {
+						if (this.#options.onReadable)
+							this.#options.onReadable.call(this, Math.min(this.#readable, this.#remaining));
+						else
+							this.read();
+					}
 					return;
 
 				case "receiveChunkTrailer":

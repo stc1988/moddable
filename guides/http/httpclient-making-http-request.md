@@ -15,7 +15,7 @@ The `onDone()` callback calls the `close()` method of the HTTP Client to release
 
 ```js
 const http = new device.network.http.client.io({
-	...device.network.http.client.client,
+	...device.network.http.client,
 	host: "example.com"
 });
 http.request({

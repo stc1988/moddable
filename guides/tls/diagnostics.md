@@ -11,10 +11,10 @@ The TLS implementation provides two options to help diagnose problems with TLS c
 The TLS implementation can log its progress through various steps of establishing a connection. This may provide insight into why the connection is failing. To enable logging, set `trace` to true in the `tls` options object.
 
 ```js
-const http = new device.network.https.io({
-	...device.network.http.client,
+const http = new device.network.https.client.io({
+	...device.network.https.client,
 	tls: {
-		...device.network.http.client.tls,
+		...device.network.https.client.tls,
 		trace: true
 	},
 	host: "example.com"
