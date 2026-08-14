@@ -410,18 +410,42 @@ class HTTPServer {
 	#onConnect;
 	#listener;
 	#connections = new Set;
+	#router;
 
 	constructor(options) {
 		this.#onConnect = options.onConnect;
+		this.#router = options.router;
+		if (!(!this.#onConnect ^ !this.#router))
+			throw new Error("invalid");
 
-		this.#listener = new options.io({
+		this.#listener = new options.socket.io({
+			...options.socket,
 			port: options.port ?? 80,
 			target: this,
 			onReadable(count) {
 				while (count--) {
 					try {
 						const connection = new Connection(this.read(), connection => this.target.#connections?.delete(connection));
-						this.target.#onConnect(connection);
+						if (this.target.#router) {
+							connection.accept({
+								onRequest: request => {
+									const route = this.target.#router(request);
+									if (route)
+										connection.route = route;
+									else {
+										connection.route = {
+											onResponse(response) {
+												response.status = 404;
+												response.headers.set("content-length", 0);
+												this.respond(response);
+											}
+										};
+									}
+								}
+							});
+						}
+						else
+							this.target.#onConnect(connection);
 					}
 					catch {
 						trace("igoring error!");
