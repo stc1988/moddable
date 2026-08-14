@@ -1,7 +1,7 @@
 ---
 name: Send Request Headers using HTTP Client
 SPDX-FileCopyrightText: Copyright (c) 2026 Moddable Tech, Inc.
-updated: 2026-08-04
+updated: 2026-08-14
 ---
 
 Use the JavaScript [`Map`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map) class to create a collection of HTTP headers, then pass that to `request()`.
@@ -13,8 +13,8 @@ const headers = new Map([
 	["user-agent", "http client example"]
 ]);
 
-const http = new device.network.http.io({
-	...device.network.http,
+const http = new device.network.http.client.io({
+	...device.network.http.client,
 	host: "httpbin.org"
 });
 http.request({

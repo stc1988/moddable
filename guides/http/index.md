@@ -1,7 +1,7 @@
 ---
 name: HTTP
 SPDX-FileCopyrightText: Copyright (c) 2026 Moddable Tech, Inc.
-updated: 2026-08-04
+updated: 2026-08-14
 ---
 
 The high-level web standard [`fetch()`](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) API and the low-level ECMA-419 embedded standard [HTTP Client](https://419.ecma-international.org/#http-client-class-pattern) APIs are both available to Embedded JavaScript developers using the Moddable SDK. In fact, `fetch()` is implemented using the HTTP Client.
@@ -60,11 +60,11 @@ Then, import the module in your JavaScript source code:
 import { fetch } from "web/fetch/streams";
 ```
 
-To use the HTTP Client instead, include its manifest. Including the manifest initializes the host provider `device.network.http`:
+To use the HTTP Client instead, include its manifest. Including the manifest initializes the host provider `device.network.http.client`:
 
 	$(MODDABLE)/examples/io/tcp/httpclient/manifest_httpclient.json
 
-For secure requests over HTTPS, include the HTTPS Client manifest instead. It initializes the host provider `device.network.https`:
+For secure requests over HTTPS, include the HTTPS Client manifest instead. It initializes the host provider `device.network.https.client`:
 
 	$(MODDABLE)/examples/io/tcp/httpsclient/manifest_httpsclient.json
 

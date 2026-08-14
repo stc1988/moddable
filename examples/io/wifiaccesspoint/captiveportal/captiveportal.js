@@ -18,8 +18,6 @@ import WiFi from "embedded:network/interface/wifi";
 import UDP from "embedded:io/socket/udp";
 import DNSServer from "embedded:network/dns/server/udp";
 
-import Listener from "embedded:io/socket/listener";
-import HTTPServer from "embedded:network/http/server";
 import WebPage from "embedded:network/http/server/route/webpage";
 import WebSocketHandshake from "embedded:network/http/server/route/ws/handshake";
 import WebSocket from "WebSocket";
@@ -201,8 +199,8 @@ class CaptivePortal {
 
 	#initializeHTTPServer() {
 		const portal = this;
-		return new HTTPServer({
-			io: Listener,
+		return new device.network.http.server.io({
+			...device.network.http.server,
 			port: this.#port,
 			onConnect(connection) {
 				connection.accept({

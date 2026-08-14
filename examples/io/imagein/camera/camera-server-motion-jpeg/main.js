@@ -12,9 +12,7 @@
  *
  */
 
-import HTTPServer from "embedded:network/http/server"
 import WebPage from "embedded:network/http/server/route/webpage";
-import Listener from "embedded:io/socket/listener";
 import Camera from "embedded:io/image/in/camera";
 import Net from "net";
 
@@ -50,8 +48,8 @@ const router = new Map;
 const connections = new Set;
 const boundary = "419cameraboundary";
 
-const server = new HTTPServer({
-	io: Listener,
+const server = new device.network.http.server.io({
+	...device.network.http.server,
 	port: 8080,
 	onConnect(connection) {
 		connection.accept({

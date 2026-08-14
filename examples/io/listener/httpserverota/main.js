@@ -12,8 +12,6 @@
  *
  */
 
-import HTTPServer from "embedded:network/http/server"
-import Listener from "embedded:io/socket/listener";
 import OTA from "embedded:update";
 import flash from "embedded:storage/flash";
 import Timer from "timer";
@@ -29,8 +27,8 @@ const notFound = {
 	data: ArrayBuffer.fromString("Not found\n"),
 };
 
-new HTTPServer({
-	io: Listener,
+new device.network.http.server.io({
+	...device.network.http.server,
 	port,
 	onConnect(connection) {
 		connection.accept({
