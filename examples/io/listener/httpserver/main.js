@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025  Moddable Tech, Inc.
+ * Copyright (c) 2022-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK.
  * 
@@ -12,9 +12,6 @@
  *
  */
 
-import HTTPServer from "embedded:network/http/server"
-import Listener from "embedded:io/socket/listener";
-
 import ServerSentEvents from "embedded:network/http/server/route/serversentevents";
 import WebPage from "embedded:network/http/server/route/webpage";
 import WebSocketHandshake from "embedded:network/http/server/route/ws/handshake";
@@ -22,21 +19,10 @@ import WebSocketHandshake from "embedded:network/http/server/route/ws/handshake"
 import WebSocket from "WebSocket";
 
 const router = new Map;
-const notFound = {
-	...WebPage,		// STATIC ROUTE
-	data: ArrayBuffer.fromString("Not found"),
-};
-
-let server = new HTTPServer({
-	io: Listener,
+const server = new device.network.http.server.io({
+	...device.network.http.server,
 	port: 8080,
-	onConnect(connection) {
-		connection.accept({
-			onRequest(request) {
-				this.route = router.get(request.path) ?? notFound;
-			},
-		})
-	}
+	router: request => router.get(request.path)
 });
 
 const reply = ArrayBuffer.fromString("1 2 3 4 5 6 7 8\n");

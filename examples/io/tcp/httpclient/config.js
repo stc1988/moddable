@@ -20,6 +20,15 @@ globalThis.device = Object.freeze({
 	network: {
 		...globalThis.device?.network,
 		http: {
+			...globalThis.device?.network?.http,		// server might be here already
+			client: {
+				io: HTTPClient,
+				dns,
+				socket: {
+					io: TCP
+				}
+			},
+			//@@ compatibility - REMOVE
 			io: HTTPClient,
 			dns,
 			socket: {
