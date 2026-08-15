@@ -202,47 +202,42 @@ class CaptivePortal {
 		return new device.network.http.server.io({
 			...device.network.http.server,
 			port: this.#port,
-			onConnect(connection) {
-				connection.accept({
-					onRequest(request) {
-						if ("/ws" === request.path) {
-							this.route = {
-								...WebSocketHandshake,
-								onDone() {
-									portal.#attachWebSocket(new WebSocket({attach: this.detach()}));
-								}
-							};
-							return;
-						}
+			router: request => {
+				if ("GET" !== request.method)
+					return;
 
-						const page = portal.#onPage(request.path);
-						if (page) {
-							this.route = {
-								...WebPage,
-								data: page.content,
-								headers: new Map([
-									["content-type", page.mimeType],
-									["cache-control", "no-store"],
-									["connection", "close"]
-								])
-							};
+				if ("/ws" === request.path) {
+					return {
+						...WebSocketHandshake,
+						onDone() {
+							portal.#attachWebSocket(new WebSocket({attach: this.detach()}));
 						}
-						else {
-							const dest = `http://${portal.#ap.address}`;
-							this.route = {
-								...WebPage,
-								data: ArrayBuffer.fromString(`<HTML><HEAD><META http-equiv="refresh" content="0; URL=${dest}"></HEAD></HTML>`),
-								status: 200,
-								headers: new Map([
-									["location", dest],
-									["content-type", "text/html"],
-									// ["cache-control", "no-store"],
-									["connection", "close"]
-								])
-							};
-						}
-					}
-				});
+					};
+				}
+
+				const page = portal.#onPage(request.path);
+				if (page) {
+					return {
+						...WebPage,
+						data: page.content,
+						headers: new Map([
+							["content-type", page.mimeType],
+							["cache-control", "no-store"]
+						])
+					};
+				}
+
+				const dest = `http://${portal.#ap.address}`;
+				return {
+					...WebPage,
+					data: ArrayBuffer.fromString(`<HTML><HEAD><META http-equiv="refresh" content="0; URL=${dest}"></HEAD></HTML>`),
+					status: 200,
+					headers: new Map([
+						["location", dest],
+						["content-type", "text/html"],
+						["cache-control", "no-store"]
+					])
+				};
 			}
 		});
 	}
