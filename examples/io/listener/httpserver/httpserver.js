@@ -39,7 +39,7 @@ class Connection {
 
 	constructor(from, done) {
 		this.#from = from;
-		this.#options.done = done;			
+		this.#options.done = done;
 	}
 	close() {
 		this.#options?.done?.(this);
@@ -59,7 +59,7 @@ class Connection {
 		this.#options.onWritable = options.onWritable; 
 		this.#options.onDone = options.onDone;
 		this.#options.onError = options.onError; 
-		
+
 		this.#socket = new from.constructor({
 			from,
 			onReadable: count => this.#onReadable(count),
@@ -228,7 +228,7 @@ class Connection {
 
 						this.#line = "";
 					}
-					else {					
+					else {
 						if (undefined !== this.#chunk)
 							this.#remaining = undefined;		// ignore content-length if chunked
 
@@ -258,7 +258,7 @@ class Connection {
 							if (!(this.#chunk >= 0))
 								return void this.#onError("badly formed");
 							this.#line = undefined;
-							
+
 							if (0 === this.#chunk) {
 								this.#state = "receiveChunkTrailer";
 								this.#line = "";
@@ -290,7 +290,7 @@ class Connection {
 	}
 	#onWritable(count) {
 		this.#writable = count;
-		
+
 		if (this.#state.startsWith("receive"))
 			return;		// initial on-writable
 
