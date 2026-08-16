@@ -1,5 +1,8 @@
 {
-	"include": "$(MODDABLE)/examples/manifest_net.json",
+	"include": [
+		"$(MODDABLE)/examples/manifest_net.json",
+		"$(MODDABLE)/modules/network/net/manifest.json"
+	],
 	"platforms": {
 		"qca4020": {
 			"modules": {

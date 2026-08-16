@@ -2,7 +2,8 @@
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/examples/manifest_net.json",
-		"$(MODDABLE)/modules/network/mdns/manifest.json"
+		"$(MODDABLE)/modules/network/mdns/manifest.json",
+		"$(MODDABLE)/modules/network/net/manifest.json"
 	],
 	"modules": {
 		"*": [

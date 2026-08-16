@@ -4,7 +4,8 @@
 		"$(MODDABLE)/modules/network/ethernet/manifest_net_ethernet.json",
 		"$(MODDABLE)/modules/network/sntp/manifest.json",
 		"$(MODULES)/crypt/tls.json",
-		"$(MODULES)/network/http/manifest.json"
+		"$(MODULES)/network/http/manifest.json",
+		"$(MODDABLE)/modules/network/net/manifest.json"
 	],
 	"modules": {
 		"~": [

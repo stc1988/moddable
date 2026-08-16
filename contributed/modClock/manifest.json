@@ -12,7 +12,8 @@
 		"$(MODULES)/network/mdns/manifest.json",
 		"$(MODULES)/pins/i2c/manifest.json",
 		"$(MODULES)/pins/digital/monitor/manifest.json",
-		"$(MODULES)/drivers/rtc/manifest.json"
+		"$(MODULES)/drivers/rtc/manifest.json",
+		"$(MODDABLE)/modules/network/net/manifest.json"
 	],
 	"creation": {
 		"stack": 500,

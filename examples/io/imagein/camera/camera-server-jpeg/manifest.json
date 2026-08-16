@@ -4,7 +4,8 @@
 		"$(MODDABLE)/examples/manifest_net.json",
 		"$(MODDABLE)/modules/io/imagein/camera/manifest.json",
 		"$(MODDABLE)/examples/io/listener/httpserver/manifest_httpserver.json",
-		"$(MODDABLE)/modules/data/text/encoder/manifest.json"
+		"$(MODDABLE)/modules/data/text/encoder/manifest.json",
+		"$(MODDABLE)/modules/network/net/manifest.json"
 	],
 	"modules": {
 		"*": [
