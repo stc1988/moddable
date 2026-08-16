@@ -10,7 +10,7 @@ globalThis.device = {
 
 const socket = {
 	io: TLSSocket,
-	TCP: device.network.http.socket,
+	TCP: device.network.http.client.socket,
 	tls: {
 		applicationLayerProtocol: "http/1.1"
 	}
@@ -18,14 +18,14 @@ const socket = {
 
 device.network.https = {
 	client: {
-		io: device.network.http.io,
-		dns: device.network.http.dns,
+		io: device.network.http.client.io,
+		dns: device.network.http.client.dns,
 		port: 443,
 		socket
 	},
 	//@@ compatibilty - REMOVE
-	io: device.network.http.io,
-	dns: device.network.http.dns,
+	io: device.network.http.client.io,
+	dns: device.network.http.client.dns,
 	port: 443,
 	socket
 };

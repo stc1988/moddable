@@ -55,11 +55,11 @@ class EventSource {
 		const protocol = url.protocol;
 		this.#host = url.hostname;
 		if (protocol == "http:") {
-			this.#config = device.network.http;
+			this.#config = device.network.http.client;
 			this.#port = url.port || 80;
 		}
 		else if (protocol == "https:") {
-			this.#config = device.network.https;
+			this.#config = device.network.https.client;
 			this.#port = url.port || 443;
 		}
 		else

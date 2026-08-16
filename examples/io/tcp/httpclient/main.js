@@ -14,8 +14,8 @@
 
 import TextDecoder from "text/decoder"
 
-const http = new device.network.http.io({ 
-	...device.network.http,
+const http = new device.network.http.client.io({
+	...device.network.http.client,
 	host: "example.com"
 });
 for (let i = 0; i < 3; i++) {

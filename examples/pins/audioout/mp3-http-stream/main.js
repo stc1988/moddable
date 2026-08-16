@@ -25,7 +25,7 @@ const audio = new AudioOut({
 // audio.enqueue(0, AudioOut.Volume, 64);
 
 new MP3Streamer({
-	http: device.network.http,
+	http: device.network.http.client,
 	host: "ice4.somafm.com",
 	path: "/indiepop-128-mp3",
 	audio: {

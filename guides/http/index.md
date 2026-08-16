@@ -74,7 +74,7 @@ If your project uses the `fetch` global, `mcpack` automatically includes the man
 
 To use the stream-enabled version of `fetch()`, include its manifest as described above under `Building with mcconfig`
 
-If your project accesses the HTTP Client through `device.network.http.client` or `device.network.https.clent`, `mcpack` includes the necessary manifests automatically.
+If your project accesses the HTTP Client through `device.network.http.client` or `device.network.https.client`, `mcpack` includes the necessary manifests automatically.
 
 ## Learn More
 

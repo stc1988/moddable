@@ -46,7 +46,7 @@ export default class {
 	
 		return new streamer({
 			...o,
-			http: device.network.https,
+			http: device.network.https.client,
 			request: {
 				method: 'POST',
 				headers: new Map([
