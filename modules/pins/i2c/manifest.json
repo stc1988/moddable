@@ -1,4 +1,5 @@
 {
+	"warning": "** ECMA-419 I2C recommended over classic 'pins/i2c' module **",
 	"platforms": {
 		"esp": {
 			"modules": {

@@ -1,4 +1,5 @@
 {
+	"warning": "** ECMA-419 Analog recommended over classic 'pins/analog' module **",
 	"modules": {
 		"pins/analog": "$(MODULES)/pins/analog/analog"
 	},

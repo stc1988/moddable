@@ -1,4 +1,5 @@
 {
+	"warning": "** ECMA-419 Audio In recommended over classic 'pins/audioin' module **",
 	"preload": "audioin",
 	"platforms": {
 		"esp32/*": {
