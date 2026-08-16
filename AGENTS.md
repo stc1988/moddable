@@ -226,6 +226,10 @@ A manifest describes the modules and resources of an application. Its properties
 - **Every module in the build must be listed in `modules`.** A file that is present on disk but unlisted is simply not in the build.
 - **Same-named properties concatenate across includes rather than replacing.** You cannot override a value inherited from an included manifest by redeclaring it.
 
+**To see what a build actually resolved to, read the generated `manifest_flat.json`** in the project's `build/tmp/<platform>/<target>/<build>/<project>/` directory, rather than reasoning about the merge by hand. It is the fully merged manifest — `modules`, `include`, `preload`, `creation`, and the rest — after every include and platform section has been applied, which is the only practical way to answer "is this module actually in the build?" or "where did this value come from?". `mcconfig` writes it even without `-m`, so it is a fast check on device targets where a real build is slow.
+
+Reach for it whenever you change `modules` or `include`, because the build will not tell you: **an `import` of a module that no manifest supplies is not a build error.** It compiles and links cleanly, and fails only at runtime when the import is evaluated. A clean `-t build` is therefore no evidence that a manifest edit was correct — grep the `modules` of `manifest_flat.json` for the paths you expect instead.
+
 See also [documentation/tools/defines.md](./documentation/tools/defines.md) for how `defines` becomes `MODDEF_`-prefixed C `#define`s.
 
 ### `creation` — configuring RAM
@@ -238,7 +242,7 @@ See also [documentation/tools/defines.md](./documentation/tools/defines.md) for 
 - The memory sizes — `static`, `chunk`, `heap`, `stack` — come from the platform or target manifest under `build/devices/`. Compare [build/devices/pico/manifest.json](./build/devices/pico/manifest.json) (`static: 131072`) with [build/devices/esp32/targets/moddable_six/manifest.json](./build/devices/esp32/targets/moddable_six/manifest.json) (`static: 0` with explicit `chunk` and `heap` pools). Different targets are configured very differently.
 - The simulator manifests set no `creation` at all.
 
-To see what a build actually resolved to, read the generated `manifest_flat.json` in the project's `build/tmp/<platform>/<target>/<build>/<project>/` directory rather than reasoning about the merge by hand.
+The memory sizing a build actually resolved to is in its `manifest_flat.json`, along with everything else the merge produced — see [Manifests](#manifests) above.
 
 - **`static` is the total byte budget for the JavaScript runtime** on a microcontroller — a hard ceiling covering the stack, objects, byte code, and strings. It exists so that a script cannot exhaust the memory the host OS needs.
 - **`static` is ignored by the simulator**, which allocates on demand. A project can therefore run cleanly under `-p sim` and fail for memory on a device, with nothing in the symptom pointing back at the manifest. If you only ever test in the simulator, you will not see this.
