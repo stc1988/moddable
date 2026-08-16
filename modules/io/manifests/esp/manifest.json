@@ -14,7 +14,8 @@
 	],
 	"modules": {
 		"*": [
-			"$(IO)/common/builtinCommon"
+			"$(IO)/common/builtinCommon",
+			"$(MODULES)/pins/digital/esp/modGPIO"
 		],
 		"embedded:io/socket/tcp": "$(IO)/socket/lwip/tcp",
 		"embedded:io/socket/udp": "$(IO)/socket/lwip/udp",
