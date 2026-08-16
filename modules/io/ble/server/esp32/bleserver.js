@@ -20,7 +20,7 @@
 
 class GATTServerConnection extends Native("xs_gattserverconnection_destructor") {
 	constructor() {throw new Error};
-	notify(characteristic, value) { return native("xs_gattserverconnection_notify").call(this, characteristic, value); }
+	notify(characteristic, value, callback) { return native("xs_gattserverconnection_notify").call(this, characteristic, value, callback); }
 	close() { return native("xs_gattserverconnection_close").call(this); }
 	get maximumWrite() { return native("xs_gattserverconnection_get_maximumWrite").call(this); }
 	get remoteAddress() { return native("xs_gattserverconnection_get_remoteAddress").call(this); }
