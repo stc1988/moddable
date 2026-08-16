@@ -4,11 +4,6 @@
 		"$(MODDABLE)/examples/manifest_net.json",
 		"./manifest_captiveportal.json"
 	],
-	"platforms": {
-		"pico": {
-			"include": "$(MODDABLE)/modules/io/manifests/pico/manifest_net.json"
-		}
-	},
 	"modules": {
 		"*": "./main"
 	},

@@ -3,7 +3,6 @@
 		"IO": "$(MODDABLE)/modules/io"
 	},
 	"include": [
-		"$(MODDABLE)/examples/manifest_net.json",
 		"$(IO)/analog/manifest.json",
 		"$(IO)/digital/manifest.json",
 		"$(IO)/i2c/manifest.json",
@@ -17,9 +16,6 @@
 			"$(IO)/common/builtinCommon",
 			"$(MODULES)/pins/digital/esp/modGPIO"
 		],
-		"embedded:io/socket/tcp": "$(IO)/socket/lwip/tcp",
-		"embedded:io/socket/udp": "$(IO)/socket/lwip/udp",
-		"embedded:io/socket/listener": "$(IO)/socket/lwip/listener",
 
 		"system": "$(IO)/system/*"
 	},

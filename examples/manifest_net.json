@@ -7,7 +7,8 @@
 			"include": [
 				"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json",
 				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
-				"$(MODULES)/io/wifi/manifest.json"
+				"$(MODULES)/io/wifi/manifest.json",
+				"$(MODDABLE)/modules/io/socket/manifest.json"
 			],
 			"modules": {
 				"setup/network": "$(BUILD)/devices/esp/setup/network"
@@ -18,7 +19,8 @@
 			"include": [
 				"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json",
 				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
-				"$(MODULES)/io/wifi/manifest.json"
+				"$(MODULES)/io/wifi/manifest.json",
+				"$(MODDABLE)/modules/io/socket/manifest.json"
 			],
 			"modules": {
 				"setup/network": "$(BUILD)/devices/esp32/setup/network"
@@ -30,7 +32,8 @@
 				"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json",
 				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 				"$(MODULES)/io/wifi/manifest.json",
-				"$(MODDABLE)/modules/network/ethernet/manifest_net_ethernet.json"
+				"$(MODDABLE)/modules/network/ethernet/manifest_net_ethernet.json",
+				"$(MODDABLE)/modules/io/socket/manifest.json"
 			],
 			"modules": {
 				"setup/network": "$(BUILD)/devices/esp32/setup/network"
@@ -44,19 +47,14 @@
 			"include": [
 				"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json",
 				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
-				"$(MODULES)/io/wifi/manifest.json"
+				"$(MODULES)/io/wifi/manifest.json",
+				"$(MODDABLE)/modules/io/socket/manifest.json"
 			],
 			"modules": {
-				"setup/network": "$(BUILD)/devices/pico/setup/network",
-				"embedded:io/socket/tcp": "$(MODULES)/io/socket/lwip/tcp",
-				"embedded:io/socket/udp": "$(MODULES)/io/socket/lwip/udp",
-				"embedded:io/socket/listener": "$(MODULES)/io/socket/lwip/listener"
+				"setup/network": "$(BUILD)/devices/pico/setup/network"
 			},
 			"preload": [
-				"setup/network",
-				"embedded:io/socket/tcp",
-				"embedded:io/socket/udp",
-				"embedded:io/socket/listener"
+				"setup/network"
 			]
 		},
 		"qca4020": {
@@ -73,39 +71,38 @@
 		},	
 		"zephyr": {
 			"include": [
-				"$(MODDABLE)/modules/io/wifi/manifest.json"
+				"$(MODDABLE)/modules/io/wifi/manifest.json",
+				"$(MODDABLE)/modules/io/socket/manifest.json"
 			],
 			"modules": {
-				"setup/network": "$(BUILD)/devices/zephyr/setup/network",
-				"embedded:io/socket/tcp": "$(MODULES)/io/socket/$(PLATFORM)/tcp",
-				"embedded:io/socket/udp": "$(MODULES)/io/socket/$(PLATFORM)/udp",
-				"embedded:io/socket/listener": "$(MODULES)/io/socket/$(PLATFORM)/listener"
+				"setup/network": "$(BUILD)/devices/zephyr/setup/network"
 			},
 			"preload": [
-				"setup/network",
-				"embedded:io/socket/tcp",
-				"embedded:io/socket/udp"
+				"setup/network"
 			]
 		},
 		"mac": {
 			"include": [
 				"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json",
 				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
-				"$(MODULES)/io/wifi/manifest.json"
+				"$(MODULES)/io/wifi/manifest.json",
+				"$(MODDABLE)/modules/io/socket/manifest.json"
 			]
 		},
 		"lin": {
 			"include": [
 				"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json",
 				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
-				"$(MODULES)/io/wifi/manifest.json"
+				"$(MODULES)/io/wifi/manifest.json",
+				"$(MODDABLE)/modules/io/socket/manifest.json"
 			]
 		},
 		"win": {
 			"include": [
 				"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json",
 				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
-				"$(MODULES)/io/wifi/manifest.json"
+				"$(MODULES)/io/wifi/manifest.json",
+				"$(MODDABLE)/modules/io/socket/manifest.json"
 			]
 		},
 		"...": {
