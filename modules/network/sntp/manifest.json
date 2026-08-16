@@ -9,5 +9,6 @@
 	},
 	"preload": [
 		"sntp"
-	]
+	],
+	"warning": "** ECMA-419 NTP Client recommended over classic 'sntp' module **"
 }

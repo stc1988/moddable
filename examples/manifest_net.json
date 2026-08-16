@@ -7,7 +7,7 @@
 			"include": [
 				"$(MODULES)/network/net/manifest.json",
 				"$(MODULES)/network/socket/manifest.json",
-				"$(MODULES)/network/sntp/manifest.json",
+				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 				"$(MODULES)/io/wifi/manifest.json"
 			],
 			"modules": {
@@ -19,7 +19,7 @@
 			"include": [
 				"$(MODULES)/network/net/manifest.json",
 				"$(MODULES)/network/socket/manifest.json",
-				"$(MODULES)/network/sntp/manifest.json",
+				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 				"$(MODULES)/io/wifi/manifest.json"
 			],
 			"modules": {
@@ -31,7 +31,7 @@
 			"include": [
 				"$(MODULES)/network/net/manifest.json",
 				"$(MODULES)/network/socket/manifest.json",
-				"$(MODULES)/network/sntp/manifest.json",
+				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 				"$(MODULES)/io/wifi/manifest.json",
 				"$(MODDABLE)/modules/network/ethernet/manifest_net_ethernet.json"
 			],
@@ -47,13 +47,21 @@
 			"include": [
 				"$(MODULES)/network/net/manifest.json",
 				"$(MODULES)/network/socket/manifest.json",
-				"$(MODULES)/network/sntp/manifest.json",
+				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 				"$(MODULES)/io/wifi/manifest.json"
 			],
 			"modules": {
-				"setup/network": "$(BUILD)/devices/pico/setup/network"
+				"setup/network": "$(BUILD)/devices/pico/setup/network",
+				"embedded:io/socket/tcp": "$(MODULES)/io/socket/lwip/tcp",
+				"embedded:io/socket/udp": "$(MODULES)/io/socket/lwip/udp",
+				"embedded:io/socket/listener": "$(MODULES)/io/socket/lwip/listener"
 			},
-			"preload": "setup/network"
+			"preload": [
+				"setup/network",
+				"embedded:io/socket/tcp",
+				"embedded:io/socket/udp",
+				"embedded:io/socket/listener"
+			]
 		},
 		"qca4020": {
 			"include": [
@@ -87,7 +95,7 @@
 			"include": [
 				"$(MODULES)/network/net/manifest.json",
 				"$(MODULES)/network/socket/manifest.json",
-				"$(MODULES)/network/sntp/manifest.json",
+				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 				"$(MODULES)/io/wifi/manifest.json"
 			]
 		},
@@ -95,7 +103,7 @@
 			"include": [
 				"$(MODULES)/network/net/manifest.json",
 				"$(MODULES)/network/socket/manifest.json",
-				"$(MODULES)/network/sntp/manifest.json",
+				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 				"$(MODULES)/io/wifi/manifest.json"
 			]
 		},
@@ -103,7 +111,7 @@
 			"include": [
 				"$(MODULES)/network/net/manifest.json",
 				"$(MODULES)/network/socket/manifest.json",
-				"$(MODULES)/network/sntp/manifest.json",
+				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 				"$(MODULES)/io/wifi/manifest.json"
 			]
 		},

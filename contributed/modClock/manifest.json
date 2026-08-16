@@ -6,6 +6,7 @@
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/examples/manifest_net.json",
+		"$(MODDABLE)/modules/network/sntp/manifest.json",
 		"$(MODDABLE)/modules/network/wifi/manifest.json",
 		"$(MODULES)/files/preference/manifest.json",
 		"$(MODULES)/network/mdns/manifest.json",

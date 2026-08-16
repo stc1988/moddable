@@ -5,6 +5,7 @@
         "$(MODDABLE)/modules/network/mqtt/manifest.json",
         "$(MODDABLE)/modules/network/ping/manifest.json",
         "$(MODDABLE)/modules/network/websocket/manifest.json",
-        "$(MODDABLE)/modules/network/wifi/manifest.json"
+        "$(MODDABLE)/modules/network/wifi/manifest.json",
+        "$(MODDABLE)/modules/network/sntp/manifest.json"
 	]
 }
