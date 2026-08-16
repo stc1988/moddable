@@ -39,7 +39,8 @@
 				"$(MODULES)/base/microseconds/manifest.json",
 				"$(MODDABLE)/modules/files/resourceiterator/manifest.json",
 				"$(MODDABLE)/modules/io/manifest.json",
-				"$(MODULES)/pins/smbus/manifest.json"
+				"$(MODULES)/pins/smbus/manifest.json",
+				"$(MODDABLE)/modules/network/wifi/manifest.json"
 			],
 			"modules": {
 				"*": [

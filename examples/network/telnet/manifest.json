@@ -31,7 +31,8 @@
 			"include": [
 				"$(MODDABLE)/modules/files/file/manifest.json",
 				"$(MODULES)/pins/digital/manifest.json",
-				"$(MODDABLE)/modules/pins/i2c/manifest.json"
+				"$(MODDABLE)/modules/pins/i2c/manifest.json",
+				"$(MODDABLE)/modules/network/wifi/manifest.json"
 			],
 			"modules": {
 				"pins/digital": "$(MODULES)/pins/digital/digital",
@@ -50,7 +51,8 @@
 			"include": [
 				"$(MODDABLE)/modules/files/file/manifest.json",
 				"$(MODULES)/pins/digital/manifest.json",
-				"$(MODDABLE)/modules/pins/i2c/manifest.json"
+				"$(MODDABLE)/modules/pins/i2c/manifest.json",
+				"$(MODDABLE)/modules/network/wifi/manifest.json"
 			],
 			"modules": {
 				"pins/digital": "$(MODULES)/pins/digital/digital",
