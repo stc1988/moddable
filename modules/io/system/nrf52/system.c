@@ -32,6 +32,3 @@ void xs_system_restart(xsMachine *the)
 {
 }
 
-void xs_system_resolve(xsMachine *the)
-{
-}
