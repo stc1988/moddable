@@ -1,14 +1,20 @@
 /*
  * Copyright (c) 2026  Moddable Tech, Inc.
  *
- *   This file is part of the Moddable SDK.
- *
- *   This work is licensed under the
- *       Creative Commons Attribution 4.0 International License.
- *   To view a copy of this license, visit
- *       <http://creativecommons.org/licenses/by/4.0>.
- *   or send a letter to Creative Commons, PO Box 1866,
- *   Mountain View, CA 94042, USA.
+ *   This file is part of the Moddable SDK Runtime.
+ * 
+ *   The Moddable SDK Runtime is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU Lesser General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ * 
+ *   The Moddable SDK Runtime is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU Lesser General Public License for more details.
+ * 
+ *   You should have received a copy of the GNU Lesser General Public License
+ *   along with the Moddable SDK Runtime.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -20,7 +26,7 @@ import DNSServer from "embedded:network/dns/server/udp";
 
 import WebPage from "embedded:network/http/server/route/webpage";
 import WebSocketHandshake from "embedded:network/http/server/route/ws/handshake";
-import WebSocket from "WebSocket";
+import WebSocketClient from "embedded:network/websocket/client";
 
 const ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
 function randomText(length) {
@@ -182,8 +188,12 @@ class CaptivePortal {
 	}
 
 	#sendWS(msg) {
+		if (!this.#ws)
+			return;
+
 		try {
-			this.#ws?.send(JSON.stringify(msg));
+			this.#ws.target.pending.push(new Uint8Array(ArrayBuffer.fromString(JSON.stringify(msg))));
+			this.#flushWS();
 		}
 		catch (e) {
 			this.#fail(e);
@@ -210,7 +220,7 @@ class CaptivePortal {
 					return {
 						...WebSocketHandshake,
 						onDone() {
-							portal.#attachWebSocket(new WebSocket({attach: this.detach()}));
+							portal.#attachWebSocket(this.detach());
 						}
 					};
 				}
@@ -230,7 +240,7 @@ class CaptivePortal {
 				const dest = `http://${portal.#ap.address}`;
 				return {
 					...WebPage,
-					data: ArrayBuffer.fromString(`<HTML><HEAD><META http-equiv="refresh" content="0; URL=${dest}"></HEAD></HTML>`),
+					data: `<HTML><HEAD><META http-equiv="refresh" content="0; URL=${dest}"></HEAD></HTML>`,
 					status: 200,
 					headers: new Map([
 						["location", dest],
@@ -242,24 +252,71 @@ class CaptivePortal {
 		});
 	}
 
-	#attachWebSocket(ws) {
-		this.#ws = ws;
-		ws.addEventListener("open", () => this.#sendWS({event: "ws initialize"}));
-		ws.addEventListener("message", event => {
-			try {
-				const msg = JSON.parse(event.data);
-				this.#handleWSMessage(msg);
+	#attachWebSocket(socket) {
+		const portal = this;
+		let message;
+
+		this.#ws = new WebSocketClient({
+			attach: socket,
+			target: {open: false, writable: 0, pending: []},
+			onReadable(count, options) {
+				if (count) {
+					const data = this.read(count);
+					message = message ? message.concat(data) : data;
+				}
+				if (options.more)
+					return;
+
+				const complete = message;
+				message = undefined;
+				if (options.binary || !complete)
+					return;
+
+				try {
+					portal.#handleWSMessage(JSON.parse(String.fromArrayBuffer(complete)));
+				}
+				catch (e) {
+					portal.#fail(e);
+				}
+			},
+			onWritable(count) {
+				const state = this.target;
+				state.writable = count;
+				if (!state.open) {
+					state.open = true;
+					portal.#sendWS({event: "ws initialize"});
+				}
+				portal.#flushWS();
+			},
+			onControl(opcode) {
+				if (WebSocketClient.close === opcode)
+					portal.#ws = null;
+			},
+			onError() {
+				portal.#ws = null;
+				portal.#fail(new Error("WebSocket error"));
 			}
-			catch (e) {
-				this.#fail(e);
-			}
 		});
-		ws.addEventListener("close", () => {
-			this.#ws = null;
-		});
-		ws.addEventListener("error", () => {
-			this.#fail(new Error("WebSocket error"));
-		});
+	}
+
+	#flushWS() {
+		const ws = this.#ws;
+		if (!ws)
+			return;
+
+		const state = ws.target;
+		while (state.pending.length && state.writable) {
+			const pending = state.pending[0];
+			const more = pending.byteLength > state.writable;
+			const data = more ? pending.subarray(0, state.writable) : pending;
+
+			state.writable = ws.write(data, {binary: false, more});
+
+			if (more)
+				state.pending[0] = pending.subarray(data.byteLength);
+			else
+				state.pending.shift();
+		}
 	}
 
 	#handleWSMessage(msg) {
