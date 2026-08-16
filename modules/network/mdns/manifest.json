@@ -7,5 +7,6 @@
 			"$(MODULES)/network/mdns/*"
 		]
 	},
-	"preload": "mdns"
+	"preload": "mdns",
+	"warning": "** ECMA-419 DNS-SD recommended over classic 'mdns' module **"
 }

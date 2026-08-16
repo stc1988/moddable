@@ -9,5 +9,6 @@
 	},
 	"preload": [
 		"http"
-	]
+	],
+	"warning": "** ECMA-419 HTTP Client and Server recommended over classic 'http' module **"
 }

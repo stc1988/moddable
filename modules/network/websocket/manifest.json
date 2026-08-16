@@ -9,5 +9,6 @@
 			"./websocket"
 		]
 	},
-	"preload": "websocket"
+	"preload": "websocket",
+	"warning": "** ECMA-419 WebSocket Client recommended over classic 'websocket' module **"
 }

@@ -10,5 +10,6 @@
 	},
 	"preload": [
 		"mqtt"
-	]
+	],
+	"warning": "** ECMA-419 MQTT Client recommended over classic 'mqtt' module **"
 }
