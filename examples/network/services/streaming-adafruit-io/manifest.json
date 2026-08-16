@@ -2,7 +2,8 @@
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/examples/manifest_net.json",
-		"$(MODDABLE)/modules/crypt/tls.json"
+		"$(MODDABLE)/modules/crypt/tls.json",
+		"$(MODDABLE)/modules/network/http/manifest.json"
 	],
 	"config": {
 		"username": "YOUR_USERNAME_HERE",
@@ -12,13 +13,9 @@
 	},
 	"modules": {
 		"*": [
-			"./main",
-			"$(MODULES)/network/http/*"
+			"./main"
 		]
 	},
-	"preload": [
-		"http"
-	],
 	"resources": {
 		"*": [
 			"$(MODULES)/crypt/data/ca106"

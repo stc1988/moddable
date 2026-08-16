@@ -15,16 +15,15 @@
 		"$(MODDABLE)/examples/manifest_net.json",
 		"$(MODDABLE)/examples/manifest_commodetto.json",
 		"$(MODDABLE)/modules/crypt/tls.json",
-		"$(MODDABLE)/modules/files/flash/manifest.json"
+		"$(MODDABLE)/modules/files/flash/manifest.json",
+		"$(MODDABLE)/modules/network/http/manifest.json"
 	],
 	"modules": {
 		"*": [
-			"./main",
-			"$(MODULES)/network/http/*"
+			"./main"
 		]
 	},
 	"preload": [
-		"http",
 		"main"
 	],
 	"resources":{

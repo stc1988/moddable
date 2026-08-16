@@ -3,12 +3,12 @@
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/examples/manifest_net.json",
 		"$(MODDABLE)/examples/manifest_commodetto.json",
-		"$(MODDABLE)/modules/network/net/manifest.json"
+		"$(MODDABLE)/modules/network/net/manifest.json",
+		"$(MODDABLE)/modules/network/telnet/manifest.json"
 	],
 	"modules": {
 		"*": [
-			"./main",
-			"$(MODULES)/network/telnet/*"
+			"./main"
 		],
 		"cli": "$(MODULES)/base/cli/cli",
 		"cli/pixelsout": "$(MODULES)/base/cli/commands/pixelsout",
@@ -16,7 +16,6 @@
 	},
 	"preload": [
 		"main",
-		"telnet",
 		"cli/*"
 	],
 	"platforms": {

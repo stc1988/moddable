@@ -5,15 +5,13 @@
         "$(MODULES)/files/preference/manifest.json",
         "$(MODULES)/network/mdns/manifest.json",
 		"$(MODDABLE)/modules/network/wifi/manifest.json",
-		"$(MODDABLE)/modules/network/net/manifest.json"
+		"$(MODDABLE)/modules/network/net/manifest.json",
+		"$(MODDABLE)/modules/network/http/manifest.json"
 	],
 	"modules": {
 		"*": [
 			"./main",
             "$(MODULES)/network/http/*"
 		]
-	},
-	"preload": [
-		"http"
-	]
+	}
 }

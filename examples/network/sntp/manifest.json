@@ -6,11 +6,7 @@
 	],
 	"modules": {
 		"*": [
-			"./main",
-			"$(MODULES)/network/sntp/*"
+			"./main"
 		]
-	},
-	"preload": [
-		"sntp"
-	]
+	}
 }

@@ -4,13 +4,13 @@
 		"$(MODULES)/pins/digital/monitor/manifest.json",
 
 		"$(MODDABLE)/examples/manifest_net.json",
-		"$(MODULES)/network/mdns/manifest.json"
+		"$(MODULES)/network/mdns/manifest.json",
+		"$(MODDABLE)/modules/network/http/manifest.json"
 	],
 	"modules": {
 		"*": [
 			"$(MODULES)/drivers/neopixel/*",
 			"$(MODULES)/drivers/neostrand/*",
-			"$(MODULES)/network/http/*",
 			"./main"
 		],
 		"piu/Timeline": "$(MODULES)/piu/All/piuTimeline"
@@ -18,8 +18,7 @@
 	"preload": [
 		"neopixel",
 		"neostrand",
-		"piu/Timeline",
-		"http"
+		"piu/Timeline"
 	],
     "platforms": {
         "esp32": {

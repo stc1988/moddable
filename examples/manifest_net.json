@@ -5,7 +5,6 @@
 	"platforms": {
 		"esp": {
 			"include": [
-				"$(MODULES)/network/socket/manifest.json",
 				"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json",
 				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 				"$(MODULES)/io/wifi/manifest.json"
@@ -17,7 +16,6 @@
 		},
 		"esp32": {
 			"include": [
-				"$(MODULES)/network/socket/manifest.json",
 				"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json",
 				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 				"$(MODULES)/io/wifi/manifest.json"
@@ -29,7 +27,6 @@
 		},
 		"esp32/wt32_eth01": {
 			"include": [
-				"$(MODULES)/network/socket/manifest.json",
 				"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json",
 				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 				"$(MODULES)/io/wifi/manifest.json",
@@ -45,7 +42,6 @@
 		},
 		"pico": {
 			"include": [
-				"$(MODULES)/network/socket/manifest.json",
 				"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json",
 				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 				"$(MODULES)/io/wifi/manifest.json"
@@ -93,7 +89,6 @@
 		},
 		"mac": {
 			"include": [
-				"$(MODULES)/network/socket/manifest.json",
 				"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json",
 				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 				"$(MODULES)/io/wifi/manifest.json"
@@ -101,7 +96,6 @@
 		},
 		"lin": {
 			"include": [
-				"$(MODULES)/network/socket/manifest.json",
 				"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json",
 				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 				"$(MODULES)/io/wifi/manifest.json"
@@ -109,7 +103,6 @@
 		},
 		"win": {
 			"include": [
-				"$(MODULES)/network/socket/manifest.json",
 				"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json",
 				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 				"$(MODULES)/io/wifi/manifest.json"

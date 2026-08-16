@@ -13,7 +13,8 @@
 		"$(MODULES)/pins/i2c/manifest.json",
 		"$(MODULES)/pins/digital/monitor/manifest.json",
 		"$(MODULES)/drivers/rtc/manifest.json",
-		"$(MODDABLE)/modules/network/net/manifest.json"
+		"$(MODDABLE)/modules/network/net/manifest.json",
+		"$(MODDABLE)/modules/network/socket/manifest.json"
 	],
 	"creation": {
 		"stack": 500,
@@ -42,7 +43,6 @@
 		"buttons",
 		"styles",
 		"sevenseg",
-		"sntp",
 		"http",
 		"preference",
 		"net",

@@ -5,7 +5,8 @@
 		"$(MODDABLE)/modules/network/sntp/manifest.json",
 		"$(MODULES)/crypt/tls.json",
 		"$(MODULES)/network/http/manifest.json",
-		"$(MODDABLE)/modules/network/net/manifest.json"
+		"$(MODDABLE)/modules/network/net/manifest.json",
+		"$(MODDABLE)/modules/network/http/manifest.json"
 	],
 	"modules": {
 		"~": [
@@ -13,9 +14,7 @@
 			"$(BUILD)/devices/esp32/setup/network"
 		],
 		"*": [
-			"./main",
-			"$(MODULES)/network/http/*",
-			"$(MODULES)/network/sntp/*"
+			"./main"
 		],
 		"ethernet/connection": "./ethernetconnection"
 	},
@@ -24,10 +23,6 @@
 			"$(MODULES)/crypt/data/ca176"
 		]
 	},
-	"preload": [
-		"http",
-		"sntp"
-	],
 	"platforms": {
 		"esp32": {},
 		"...": {
