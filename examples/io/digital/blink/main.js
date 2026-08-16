@@ -12,6 +12,8 @@
  *
  */
 
+import Timer from "timer";
+
 if (undefined === device?.pin?.led)
 	throw new Error("no LED pin provided by device");
 
@@ -23,7 +25,7 @@ const led = new Digital({
 });
 
 let state = 0;
-System.setInterval(() => {
+Timer.repeat(() => {
 	led.write(state);
 	state ^= 1;
 }, 200);

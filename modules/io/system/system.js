@@ -18,25 +18,11 @@
  *
  */
 
-import Timer from "timer";
 import device from "embedded:provider/builtin";
 
 class System {
 	static deepSleep() { return native("xs_system_deepSleep").call(this); }
 	static restart() { return native("xs_system_restart").call(this); }
-
-	static setTimeout(callback, delay) {
-		return Timer.set(callback, delay);
-	}
-	static clearTimeout(id) {
-		Timer.clear(id);
-	}
-	static setInterval(callback, delay) {
-		return Timer.repeat(callback, delay);
-	}
-	static clearInterval(id) {
-		Timer.clear(id);
-	}
 }
 
 globalThis.System = System;

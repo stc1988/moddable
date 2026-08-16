@@ -12,7 +12,8 @@
  *
  */
 
- import UDP from "embedded:io/socket/udp";
+import UDP from "embedded:io/socket/udp";
+import Timer from "timer";
 
 class SNTP  {
 	#udp;
@@ -39,14 +40,14 @@ class SNTP  {
 			host: options.host,
 			onResolved: (name, address) => {
 				request.call(this.#udp, address);
-				this.#timer = System.setInterval(() => request.call(this.#udp, address), 5 * 1000);
+				this.#timer = Timer.repeat(() => request.call(this.#udp, address), 5 * 1000);
 			},
 			onError: () => this.#onError?.()
 		});
 	}
 	close() {
 		if (this.#timer)
-			System.clearInterval(this.#timer);
+			Timer.clear(this.#timer);
 
 		this.#dns?.close();
 		this.#dns = undefined;
@@ -58,7 +59,7 @@ class SNTP  {
 		while (count--)
 			packet = new DataView(this.read());
 
-		System.clearInterval(target.#timer);
+		Timer.clear(target.#timer);
 		target.#timer = undefined;
 
 		target.#onTime((packet.getUint32(40) - 2208988800) * 1000);		// convert from NTP to Unix Epoch time in milliseconds

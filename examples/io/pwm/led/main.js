@@ -12,6 +12,8 @@
  *
  */
 
+import Timer from "timer";
+
 const led1 = new device.io.PWM({
    pin: device.pin.led
 });
@@ -25,7 +27,7 @@ const range = (2 ** led1.resolution) - 1;
 let value = 0;
 let step = 5;
 
-System.setInterval(() => {
+Timer.repeat(() => {
    value += step;
 
    if (value < 0 || value > range) {

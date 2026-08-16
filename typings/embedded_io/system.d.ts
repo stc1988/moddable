@@ -19,17 +19,12 @@
 */
 
 declare module "embedded:io/system" {
-  import Timer from "timer";
   /**
-   * @experimetnal
+   * @experimental
    */
   class System {
     static deepSleep(us: number, mode: number): void;
     static restart(): void;
-    static setTimeout: typeof Timer.set;
-    static clearTimeout: typeof Timer.clear;
-    static setInterval: typeof Timer.repeat;
-    static clearInterval: typeof Timer.clear;
   }
   export default System;
 }

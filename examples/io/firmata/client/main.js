@@ -92,7 +92,7 @@ export default function() {
 //			});
 //
 //			let value = 0;
-//			System.setInterval(() => {
+//			Timer.repeat(() => {
 //				led.write(value);
 //				value ^= 1;
 //			}, 500);

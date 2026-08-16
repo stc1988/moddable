@@ -13,6 +13,7 @@
  */
 
 import Touch from "embedded:sensor/touch/FT6x06";
+import Timer from "timer";
 
 const touch = new Touch({
 			sensor: {
@@ -24,7 +25,7 @@ touch.configure({
 	flip: "hv"
 });
 
-System.setInterval(() => {
+Timer.repeat(() => {
 	const points = touch.sample();
 
 	points?.forEach(point => {
