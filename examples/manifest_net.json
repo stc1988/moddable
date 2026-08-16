@@ -7,6 +7,7 @@
 			"include": [
 				"$(MODULES)/network/net/manifest.json",
 				"$(MODULES)/network/socket/manifest.json",
+				"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json",
 				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 				"$(MODULES)/io/wifi/manifest.json"
 			],
@@ -19,6 +20,7 @@
 			"include": [
 				"$(MODULES)/network/net/manifest.json",
 				"$(MODULES)/network/socket/manifest.json",
+				"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json",
 				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 				"$(MODULES)/io/wifi/manifest.json"
 			],
@@ -31,6 +33,7 @@
 			"include": [
 				"$(MODULES)/network/net/manifest.json",
 				"$(MODULES)/network/socket/manifest.json",
+				"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json",
 				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 				"$(MODULES)/io/wifi/manifest.json",
 				"$(MODDABLE)/modules/network/ethernet/manifest_net_ethernet.json"
@@ -47,6 +50,7 @@
 			"include": [
 				"$(MODULES)/network/net/manifest.json",
 				"$(MODULES)/network/socket/manifest.json",
+				"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json",
 				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 				"$(MODULES)/io/wifi/manifest.json"
 			],
@@ -95,6 +99,7 @@
 			"include": [
 				"$(MODULES)/network/net/manifest.json",
 				"$(MODULES)/network/socket/manifest.json",
+				"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json",
 				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 				"$(MODULES)/io/wifi/manifest.json"
 			]
@@ -103,6 +108,7 @@
 			"include": [
 				"$(MODULES)/network/net/manifest.json",
 				"$(MODULES)/network/socket/manifest.json",
+				"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json",
 				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 				"$(MODULES)/io/wifi/manifest.json"
 			]
@@ -111,6 +117,7 @@
 			"include": [
 				"$(MODULES)/network/net/manifest.json",
 				"$(MODULES)/network/socket/manifest.json",
+				"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json",
 				"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 				"$(MODULES)/io/wifi/manifest.json"
 			]

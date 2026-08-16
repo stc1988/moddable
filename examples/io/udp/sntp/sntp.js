@@ -19,6 +19,7 @@ class SNTP  {
 	#onTime;
 	#onError;
 	#timer;
+	#dns;
 	constructor(options) {
 		this.#udp = new UDP({
 			target: this,
@@ -31,19 +32,24 @@ class SNTP  {
 
 		this.#onError = options.onError;
 
-		System.resolve(options.host, (name, address) => {
-			if (!address) {
-				this.#onError?.();
-				return;
-			}
-
-			request.call(this.#udp, address);
-			this.#timer = System.setInterval(() => request.call(this.#udp, address), 5 * 1000);
+		this.#dns = new device.network.dns.resolver.io({
+			...device.network.dns.resolver
+		});
+		this.#dns.resolve({
+			host: options.host,
+			onResolved: (name, address) => {
+				request.call(this.#udp, address);
+				this.#timer = System.setInterval(() => request.call(this.#udp, address), 5 * 1000);
+			},
+			onError: () => this.#onError?.()
 		});
 	}
 	close() {
 		if (this.#timer)
 			System.clearInterval(this.#timer);
+
+		this.#dns?.close();
+		this.#dns = undefined;
 	}
 	#onReadable(count) {
 		const target = this.target;

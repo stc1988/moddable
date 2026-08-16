@@ -4,7 +4,11 @@
 		"$(MODDABLE)/modules/network/dns/manifest.json"
 	],
 	"modules": {
-		"embedded:network/dns/resolver/udp": "./dns"
+		"embedded:network/dns/resolver/udp": "./dns",
+		"dns/config": "./config"
 	},
-	"preload": "embedded:network/dns/resolver/udp"
+	"preload": [
+		"embedded:network/dns/resolver/udp",
+		"dns/config"
+	]
 }
