@@ -2,7 +2,8 @@
 	"include": [
 		"$(MODDABLE)/modules/crypt/tls_419.json",
 		"../tlssocket/manifest.json",
-		"$(MODDABLE)/examples/io/tcp/mqttclient/manifest_mqttclient.json"
+		"$(MODDABLE)/examples/io/tcp/mqttclient/manifest_mqttclient.json",
+		"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json"
 	],
 	"modules": {
 		"mqttsclient/config": "./config"
