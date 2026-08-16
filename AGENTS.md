@@ -1,6 +1,6 @@
 # AGENTS.md
 Copyright 2026 Moddable Tech, Inc.<BR>
-Revised: August 4, 2026
+Revised: August 15, 2026
 
 > **Note**: This document was written by an LLM for LLMs.
 
@@ -50,11 +50,15 @@ export MODDABLE="/path/to/this/repo"
 export PATH="${MODDABLE}/build/bin/mac/release:$PATH"    # or lin, win
 ```
 
+**Check `$MODDABLE` before building anything.** It is commonly already set in the shell, and pointing at a *different* checkout than the one you are editing. Every tool resolves `$(MODDABLE)` in manifests, so a stale value silently builds and tests the wrong tree while your edits appear to have no effect. Confirm it matches your working directory, and override it per command if it does not.
+
 Tools are not checked in. Build them once before doing anything else:
 
 ```shell
 cd $MODDABLE/build/makefiles/mac && make                 # or lin, win, wasm
 ```
+
+The tools are built per checkout, into `$MODDABLE/build/bin/<platform>/release`. A second checkout needs its own `make` run; borrowing another checkout's binaries risks mismatching the XS version in the tree you are building.
 
 ESP32 work additionally needs `IDF_PATH` pointing at an ESP-IDF installation, plus `source $IDF_PATH/export.sh` in each shell. See [documentation/Moddable SDK - Getting Started.md](./documentation/Moddable%20SDK%20-%20Getting%20Started.md) and [documentation/devices/esp32.md](./documentation/devices/esp32.md). Similarly, building for other microcontroller families requires installation and configuration of their SDKs (see Getting Started).
 
@@ -71,7 +75,7 @@ mcconfig -dl -m -p sim
 
 - `-d` debug build, `-i` release-instrumented, neither means release
 - `-dl` debug build using xsdb, `-dn` debug build with no debugger launched (see below)
-- `-m` run `make` (without it, `mcconfig` only generates the makefile)
+- `-m` run `make`. **Required with every `-t` target, not just the default.** Without it `mcconfig` writes the makefile, prints nothing, and exits 0 — which is indistinguishable from a successful build or a program that produced no output. If a command you expected to do work returns instantly and silently, this is why.
 - `-p <platform>` target platform; defaults to the host
 - `-t build|deploy|xsbug|clean|all` target, default `all`
 - trailing `key="value"` pairs merge into the manifest `config` section, readable as `import config from "mc/config"`
@@ -82,6 +86,14 @@ Two `-t` targets are worth knowing, because using them instead of the default is
 - **`-t xsbug` starts a debug session against the build that already exists**, skipping compile and deploy entirely. On a device this avoids re-flashing the binary, which dominates the edit-run cycle. Despite the name it works with `-dl` and xsdb, not just the xsbug GUI.
 
 Splitting the two — `-t build` to compile, then `-t xsbug` to run — is usually the right shape for automated or scripted work: only the build is slow, and it needs no timing guesswork, while launch and connect take well under a second.
+
+```shell
+cd <project>
+mcconfig -d -m -p sim -t build                           # compile; note the -m
+mcconfig -dl -m -p sim -t xsbug                          # run the build just made, under xsdb
+```
+
+The debug flag has to agree across the two: `-t xsbug` launches the build matching the flag you pass it, so a `-d`/`-dl` build is what `-dl -t xsbug` will find. A release build is not debuggable at all.
 
 **`mcpack`** builds projects that have a `package.json`. It generates a manifest and chains to `mcconfig` (for applications) or `mcrun` (for mods):
 
@@ -118,6 +130,14 @@ If you are looking for a log line and finding nothing, the usual cause is that n
 
 Instead, drive the session explicitly: run under xsdb and issue `quit` when you have what you need, or start the program in the background and terminate it yourself. When scripting xsdb, allow time for the target to connect and reach your code before sending commands — commands sent too early are answered with `The program is not stopped.`
 
+Piping commands to xsdb on stdin is enough for an unattended run — let it run for a while, then `quit`:
+
+```shell
+{ sleep 25; echo quit; } | mcconfig -dl -m -p sim -t xsbug
+```
+
+Traces are interleaved with the `(xsdb)` prompt and carry terminal escape sequences, so filter them with `grep -a` — plain `grep` may treat the stream as binary and print nothing but `Binary file (standard input) matches`.
+
 ### xsdb
 
 xsdb is a command line JavaScript debugger modeled on gdb, working against both devices and the simulator. Its documentation names three intended audiences, the third being "code generators, such as LLMs" — so it is the tool to reach for here rather than adding `trace()` calls and rebuilding.
@@ -127,6 +147,7 @@ cd $MODDABLE/tools/xsbug-log && npm install               # first time only; xsd
 cd $MODDABLE/examples/piu/balls && mcconfig -dl -m -p sim
 ```
 
+- **There is no `xsdb` executable.** xsdb *is* [tools/xsbug-log](./tools/xsbug-log), and `mcconfig -dl` launches it for you — you never invoke it by name. `which xsdb` finding nothing means nothing is wrong; do not conclude the debugger is missing from the checkout and fall back to `trace()` and rebuilds.
 - **`help` at the `(xsdb)` prompt lists every command**, grouped into control flow, breakpoints, inspection, navigation, settings, and control. The full command surface is discoverable at runtime, so it is not reproduced here.
 - **`set output json`** switches to structured JSON output intended to be parsed rather than scraped. `set output text` gives gdb-style output. Prefer JSON when consuming output programmatically.
 - Settings persist per project in a hidden `.xsdb.json` file in the project directory — breakpoints, output mode, break-on-exception, break-at-startup. Behavior can differ between projects for this reason. The file is gitignored.
