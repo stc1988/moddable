@@ -86,6 +86,7 @@ struct PiuScreenStruct {
 	xsNumberValue transparency;
 	xsBooleanValue circular;
 	PiuPointRecord fingerprint;
+	PiuMarginsRecord margins;
 };
 
 struct PiuScreenMessageStruct {
@@ -141,6 +142,7 @@ enum {
 	CGDataProviderRef provider = CGDataProviderCreateWithData(nil, screen->buffer, screen->width * screen->height * screenBytesPerPixel, nil);
     CGImageRef image = CGImageCreate(screen->width, screen->height, 8, 32, screen->width * screenBytesPerPixel, colorSpace, kCGBitmapByteOrder32Big | kCGImageAlphaNoneSkipLast, provider, nil, NO, kCGRenderingIntentDefault);
 	PiuRectangle hole = &(*piuScreen)->hole;
+	PiuMargins margins = &(*piuScreen)->margins;
 	if (!PiuRectangleIsEmpty(hole)) {
 		CGContextAddRect(context, dstRect);
 		CGContextAddRect(context, CGRectMake(hole->x, dstRect.size.height - hole->height - hole->y, hole->width, hole->height));
@@ -148,6 +150,16 @@ enum {
 	}
 	else if ((*piuScreen)->circular) {
 		CGContextAddEllipseInRect(context, dstRect);
+		CGContextEOClip(context);
+	}
+	else if (margins->left || margins->right || margins->top || margins->bottom) {
+		CGRect clipRect = CGRectMake(
+			CGRectGetMinX(dstRect) + margins->left,
+			CGRectGetMinY(dstRect) + margins->bottom,
+			CGRectGetWidth(dstRect) - margins->left - margins->right,
+			CGRectGetHeight(dstRect) - margins->top - margins->bottom
+		);
+		CGContextAddRect(context, clipRect);
 		CGContextEOClip(context);
 	}
 	CGContextTranslateCTM(context, dstRect.size.width/2, dstRect.size.height/2);
@@ -454,6 +466,20 @@ void PiuScreenDictionary(xsMachine* the, void* it)
 	}
 	if (xsFindBoolean(xsArg(1), xsID_circular, &boolean)) {
 		(*self)->circular = boolean;
+	}
+	if (xsFindResult(xsArg(1), xsID_margins)) {
+		if (xsFindInteger(xsResult, xsID_left, &integer)) {
+			(*self)->margins.left = integer;
+		}
+		if (xsFindInteger(xsResult, xsID_right, &integer)) {
+			(*self)->margins.right = integer;
+		}
+		if (xsFindInteger(xsResult, xsID_top, &integer)) {
+			(*self)->margins.top = integer;
+		}
+		if (xsFindInteger(xsResult, xsID_bottom, &integer)) {
+			(*self)->margins.bottom = integer;
+		}
 	}
 }
 
