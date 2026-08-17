@@ -25,6 +25,7 @@
 			"max_connections": 1
 		}
 	},
+	"warning": "** ECMA-419 BLE Peripheral recommended over classic 'bleserver' module **",
 	"platforms": {
 		"esp32": {
 			"modules": {

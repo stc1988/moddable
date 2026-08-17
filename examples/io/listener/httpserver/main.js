@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025  Moddable Tech, Inc.
+ * Copyright (c) 2022-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK.
  * 
@@ -12,31 +12,19 @@
  *
  */
 
-import HTTPServer from "embedded:network/http/server"
-import Listener from "embedded:io/socket/listener";
-
-import ServerSentEvents from "embedded:network/http/server/options/serversendevents";
-import WebPage from "embedded:network/http/server/options/webpage";
-import WebSocketHandshake from "embedded:network/http/server/options/websocket";
+import ServerSentEvents from "embedded:network/http/server/route/serversentevents";
+import WebPage from "embedded:network/http/server/route/webpage";
+import WebSocketHandshake from "embedded:network/http/server/route/ws/handshake";
 
 import WebSocket from "WebSocket";
 
-const router = new Map;
-const notFound = {
-	...WebPage,		// STATIC ROUTE
-	data: ArrayBuffer.fromString("Not found"),
-};
+import Timer from "timer";
 
-let server = new HTTPServer({
-	io: Listener,
+const router = new Map;
+const server = new device.network.http.server.io({
+	...device.network.http.server,
 	port: 8080,
-	onConnect(connection) {
-		connection.accept({
-			onRequest(request) {
-				this.route = router.get(request.path) ?? notFound;
-			},
-		})
-	}
+	router: request => ("GET" === request.method) && router.get(request.path)
 });
 
 const reply = ArrayBuffer.fromString("1 2 3 4 5 6 7 8\n");
@@ -57,10 +45,10 @@ router.set("/", {
 		this.write(reply);
 	},
 	onDone() {
-		trace("done\n");
+		trace("'/' done\n");
 	},
 	onError() {
-		trace("error\n");
+		trace("'/' error\n");
 	}
 });
 
@@ -77,17 +65,23 @@ router.set("/sse", {
 			data: "one\n1\nwon",
 			event: "event-one"
 		});
+		Timer.set(() => {
+			this.write({
+				data: "two\n2\ntoo\ntutu",
+				event: "event-two"
+			});
+		}, 2000);
 	},
 	onDone() {
-		debugger;
+		trace("sse done\n");
 	},
 	onError() {
-		debugger;
+		trace("sse error\n");
 	}
 });
 router.set("/sse.html", { 
 	...WebPage,
-	data: ArrayBuffer.fromString(`
+	data: `
 <script>
 console.log("starting EventSource");
 var es = new EventSource("http://localhost:${server.port}/sse");
@@ -103,7 +97,7 @@ es.addEventListener("event-two", (e) => {
 
 </script>  
 Hullo SSE
-`)
+`
 });
 
 /*
@@ -118,7 +112,7 @@ router.set("/ws", {
 			ws.send("HELLO");
 		});
 		ws.addEventListener("message", event => {
-			let data = event.data;
+			const data = event.data;
 			if (data instanceof ArrayBuffer)
 				trace(`onmessage binary ${data.byteLength}\n`);
 			else

@@ -1,14 +1,14 @@
 ---
 name: Wi-Fi Access Point
 SPDX-FileCopyrightText: Copyright (c) 2026 Moddable Tech, Inc.
-updated: 2026-08-07
+updated: 2026-08-10
 ---
 
 The Wi-Fi Access Point APIs create a Wi-Fi base station running on an embedded device. Other devices can connect to the access point to access its services. Wi-Fi Access Points on embedded devices are commonly used for local device provisioning flows. The Moddable SDK provides the [Captive Portal module](../../examples/io/wifiaccesspoint/captiveportal/) for provisioning, building on a Wi-Fi Access Point. The Wi-Fi Access Point APIs are an [ECMA-419 Network Interface](https://419.ecma-international.org/#network-interface-class-pattern) with extensions that are expected to be defined as part of ECMA-419 5th Edition.
 
 Most microcontrollers allow a device to be a Wi-Fi Access Point and at the same time also be connected to another Wi-Fi Access Point. Wi-Fi performance is often reduced when both are in use.
 
-The Moddable SDK provides Wi-Fi Access Point support for ESP32, ESP8266, Raspberry Pi Pico, and Zephyr.
+The Moddable SDK provides Wi-Fi Access Point support for ESP32, ESP8266, Raspberry Pi Pico, and Zephyr. There is a [simulator implementation](../../modules/io/wifiaccesspoint/sim/readme.md) to exercise Wi-Fi Access Point APIs without hardware.
 
 ## Using ECMA-419 Wi-Fi Access Point Network Interface
 

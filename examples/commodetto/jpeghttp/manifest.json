@@ -4,17 +4,16 @@
 		"$(MODDABLE)/examples/manifest_net.json",
 		"$(MODDABLE)/examples/manifest_commodetto.json",
 		"$(COMMODETTO)/manifest_bufferout.json",
-		"$(COMMODETTO)/manifest_pixelsout.json"
+		"$(COMMODETTO)/manifest_pixelsout.json",
+		"$(MODDABLE)/modules/network/http/manifest.json"
 	],
 	"modules": {
 		"*": [
-			"./main",
-			"$(MODULES)/network/http/*"
+			"./main"
 		],
 		"commodetto/readJPEG": "$(COMMODETTO)/commodettoReadJPEG"
 	},
 	"preload": [
-		"http",
 		"main"
 	]
 }

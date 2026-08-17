@@ -1,7 +1,7 @@
 ---
 name: Send Request Body using HTTP Client
 SPDX-FileCopyrightText: Copyright (c) 2026 Moddable Tech, Inc.
-updated: 2026-08-04
+updated: 2026-08-14
 ---
 
 Signal the presence of a request body by including the "content-length" header. Implement `onWritable()` to provide the request body in fragments.
@@ -9,8 +9,8 @@ Signal the presence of a request body by including the "content-length" header. 
 ```js
 const body = ArrayBuffer.fromString("This is a test. ".repeat(500));
 
-const http = new device.network.http.io({
-	...device.network.http,
+const http = new device.network.http.client.io({
+	...device.network.http.client,
 	host: "httpbin.org"
 });
 http.request({
@@ -43,8 +43,8 @@ http.request({
 Sometimes you don't know the size of the request body when the transfer begins, such as when the request body is generated dynamically. In this case, set the "transfer-encoding" header to "chunked" to indicate the presence of a request body of unknown size. Do not set the "content-length" header. Signal the end of the request body by calling `write()` with no arguments after all fragments have been written.
 
 ```js
-const http = new device.network.http.io({
-	...device.network.http,
+const http = new device.network.http.client.io({
+	...device.network.http.client,
 	host: "httpbin.org"
 });
 http.request({
@@ -79,8 +79,8 @@ You can call `write()` outside `onWritable()`. To know how much space is availab
 ```js
 import Timer from "timer";
 
-const http = new device.network.http.io({
-	...device.network.http,
+const http = new device.network.http.client.io({
+	...device.network.http.client,
 	host: "httpbin.org"
 });
 http.request({

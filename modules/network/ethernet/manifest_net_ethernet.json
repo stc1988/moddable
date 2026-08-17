@@ -5,7 +5,7 @@
 	"include": [
 		"$(ETHERNET)/manifest.json",
 		"$(MODULES)/network/net/manifest.json",
-		"$(MODULES)/network/sntp/manifest.json",
+		"$(MODDABLE)/examples/io/udp/ntp/manifest_ntp.json",
 		"$(MODULES)/network/socket/manifest.json"
 	],
 	"platforms": {

@@ -28,8 +28,15 @@
 	#define tcp_bind_safe tcp_bind
 	#define tcp_listen_safe tcp_listen
 	#define tcp_connect_safe(skt, ipaddr, port, connected) tcp_connect(skt, ipaddr, port, connected)
-	// ESP8266 has a sort-of memory leak when using tcp_close without tcp_abort (see https://github.com/esp8266/Arduino/issues/230)
-	#define tcp_close_safe(pb) {if (CLOSED == (pb)->state) tcp_close(pb); else {tcp_close(pb); tcp_abort(pb);}}
+	// ESP8266 has a sort-of memory leak when using tcp_close without tcp_abort (see https://github.com/esp8266/Arduino/issues/230).
+	// tcp_close frees the pcb outright in the CLOSED, LISTEN, and SYN_SENT states, so tcp_abort must not follow in those.
+	#define tcp_close_safe(pb) \
+		{ \
+		enum tcp_state tcpCloseState = (pb)->state; \
+		tcp_close(pb); \
+		if ((CLOSED != tcpCloseState) && (LISTEN != tcpCloseState) && (SYN_SENT != tcpCloseState)) \
+			tcp_abort(pb); \
+		}
 	// single-threaded here, so no marshaling needed
 	#define tcp_clear_callbacks_safe(pb) {tcp_arg(pb, NULL); tcp_recv(pb, NULL); tcp_sent(pb, NULL); tcp_err(pb, NULL);}
 	#define tcp_output_safe tcp_output
@@ -41,9 +48,13 @@
 	#define udp_sendto_safe(skt, data, size, dst, port, err) \
 		{ \
 		struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, size, PBUF_RAM); \
-		c_memcpy(p->payload, data, size); \
-		*err = udp_sendto(skt, p, dst, port); \
-		pbuf_free_safe(p); \
+		if (!p) \
+			*err = ERR_MEM; \
+		else { \
+			c_memcpy(p->payload, data, size); \
+			*err = udp_sendto(skt, p, dst, port); \
+			pbuf_free_safe(p); \
+		} \
 		}
 	#define pbuf_free_safe pbuf_free
 	#define dns_gethostbyname_safe dns_gethostbyname

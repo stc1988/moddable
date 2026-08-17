@@ -36,7 +36,7 @@ export default class {
 	
 		return new MP3Streamer({
 			...o,
-			http: device.network.https,
+			http: device.network.https.client,
 			request: {
 				method: 'POST',
 				headers: new Map([

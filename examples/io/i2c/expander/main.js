@@ -13,6 +13,7 @@
  */
 
 import Expander from "embedded:io/provider/MCP23X17";
+import Timer from "timer";
 
 const expander = new Expander({
 	i2c: device.I2C.default,
@@ -37,7 +38,7 @@ const outputs = new expander.DigitalBank({
 });
 
 let state = 0;
-System.setInterval(() => {
+Timer.repeat(() => {
 	outputs.write(state);
 	state = ~state
 }, 250);

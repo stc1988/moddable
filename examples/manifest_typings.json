@@ -55,6 +55,9 @@
 		"embedded:network/interface/*": [
 			"$(TYPINGS)/embedded_network/interface/*"
 		],
+		"embedded:network/interface/wifi/*": [
+			"$(TYPINGS)/embedded_network/interface/wifi/*"
+		],
 		"embedded:network/ntp/*": [
 			"$(TYPINGS)/embedded_network/ntp/*"
 		],

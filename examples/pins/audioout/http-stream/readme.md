@@ -20,7 +20,7 @@ The following is a simple example of using `WavStream` to play a stream.
 const audio = new AudioOut({});
 
 new WavStream({
-	http: device.network.http,
+	http: device.network.http.client,
 	host: "www.example.com",
 	path: "/myaudio_11025.wav",
 	audio: {
@@ -67,7 +67,7 @@ Streaming stalls are inevitable. When the streamers run out of audio to play, th
 
 The options object may contain the following properties. The `http`, `host`, `path`, and `audio.out` properties are required.
 
-- `http` - the HTTP client configuration. This usually comes from the host provider at `device.network.http`
+- `http` - the HTTP client configuration. This usually comes from the host provider at `device.network.http.client`
 - `host` - the HTTP host to connect to stream from
 - `port` - the remote port to connect to
 - `path` - the path of the HTTP resource to stream

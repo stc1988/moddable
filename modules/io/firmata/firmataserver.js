@@ -52,6 +52,7 @@ import Listener from "embedded:io/socket/listener";
 import Serial from "embedded:io/serial";
 import TCP from "embedded:io/socket/tcp";
 import Poco from "commodetto/Poco";
+import Timer from "timer";
 
 const I2CBus = Object.freeze({
 	sda: 5,
@@ -419,7 +420,7 @@ export class Firmata {
 			case 0x7A:					// SAMPLING_INTERVAL
 				this.interval = bytes[1] | (bytes[2] << 7);
 				if (this.timer)
-					System.clearInterval(this.timer);
+					Timer.clear(this.timer);
 				delete this.timer;
 				this.rebuildPoll();
 				break;
@@ -467,11 +468,11 @@ export class Firmata {
 	rebuildPoll() {
 		if (this.analogReport || this.i2cReport) {
 			if (!this.timer)
-				this.timer = System.setInterval(this.poll.bind(this), this.interval || 19);
+				this.timer = Timer.repeat(this.poll.bind(this), this.interval || 19);
 		}
 		else {
 			if (this.timer)
-				System.clearInterval(this.timer);
+				Timer.clear(this.timer);
 			delete this.timer;
 		}
 	}

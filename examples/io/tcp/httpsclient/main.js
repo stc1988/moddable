@@ -14,8 +14,8 @@
 
 import TextDecoder from "text/decoder"
 
-const https = new device.network.https.io({ 
-	...device.network.https,
+const https = new device.network.https.client.io({
+	...device.network.https.client,
 	host: "www.example.edu"
 });
 for (let i = 0; i < 3; i++) {

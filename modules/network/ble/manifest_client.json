@@ -28,6 +28,7 @@
 			"client": true
 		}
 	},
+	"warning": "** ECMA-419 BLE Central recommended over classic 'bleclient' module **",
 	"platforms": {
 		"esp32": {
 			"modules": {

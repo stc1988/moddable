@@ -92,7 +92,7 @@ class ApplicationBehavior {
 	}
 	onPlay(application) {
 		model.streamer = new MP3Streamer({
-			http: device.network.http,
+			http: device.network.http.client,
 			host: "ice2.somafm.com",
 			path: `/${model.current.id}-128-mp3`,
 			audio: {

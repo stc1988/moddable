@@ -1,4 +1,5 @@
 import { ReadableStream } from "streams";
+import Timer from "timer";
 
 // TBD: interrupt
 
@@ -10,7 +11,7 @@ export function SensorStreamMixin(Base) {
 					const sensor = new Base({
 						...dictionary
 					});
-					System.setInterval(() => {
+					Timer.repeat(() => {
 						const samples = sensor.sample();
 						if (samples) {
 							if (Array.isArray(samples))

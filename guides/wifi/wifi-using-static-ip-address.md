@@ -1,7 +1,7 @@
 ---
 name: Use Static IP Address
 SPDX-FileCopyrightText: Copyright (c) 2026 Moddable Tech, Inc.
-updated: 2026-08-04
+updated: 2026-08-10
 ---
 
 The IP address assigned to the Wi-Fi connection is determined by host and network policies. Usually, an IP address is dynamically assigned by DHCP. You can use a static IP address by calling `configure()`.
@@ -11,12 +11,9 @@ This example calls `configure()` to use a static IP address immediately after th
 ```js
 import WiFi from "embedded:network/interface/wifi";
 
-const wifi = new WiFi({});
-wifi.connect({
-	SSID: "my SSID",
-	password: "my password",
+const wifi = new WiFi({
 	onChanged() {
-		if (this.connection >= 400)
+		if (this.connection >= 500)
 			trace(`Connection ready @ ${this.address}.\n`);
 		else if (this.connection >= 300) {
 			trace(`Connected to Wi-Fi.\n`);
@@ -31,6 +28,10 @@ wifi.connect({
 		else if (this.connection <= 200)
 			trace(`Wi-Fi connection failed.\n`);
 	}
+});
+wifi.connect({
+	SSID: "my SSID",
+	password: "my password"
 });
 ```
 

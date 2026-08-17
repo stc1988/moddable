@@ -255,9 +255,15 @@ static err_t udp_sendto_INLWIP(struct tcpip_api_call_data *tcpMsg)
 {
 	LwipMsg msg = (LwipMsg)tcpMsg;
 	struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, msg->len, PBUF_RAM);
+	if (!p) {
+		msg->err = ERR_MEM;
+		return ERR_OK;
+	}
 	c_memcpy(p->payload, msg->data, msg->len);
 	msg->err = udp_sendto(msg->udpPCB, p, &msg->addr, msg->port);
 	pbuf_free_safe(p);
+
+	return ERR_OK;
 }
 
 void udp_sendto_safe(struct udp_pcb *udpPCB, const void *data, uint16_t len, ip_addr_t *dst, uint16_t port, err_t *err)

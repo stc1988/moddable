@@ -34,8 +34,8 @@ export default class HumeAIEVIModel extends ChatWebSocketWorker {
 		this.speaking = true;
 	}
 	connect(message) {
-		const client = new device.network.https.io({ 
-			...device.network.https,
+		const client = new device.network.https.client.io({
+			...device.network.https.client,
 			host: this.host
 		});
 		const headers = this.headers

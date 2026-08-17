@@ -22,7 +22,6 @@ import config from "mc/config";
 import Time from "time";
 import Ethernet from "ethernet";
 import Net from "net";
-import SNTP from "sntp";
 
 export default function (done) {	
 
@@ -51,15 +50,19 @@ export default function (done) {
                 if (!config.sntp)
                     return done();
 
-                new SNTP({host: config.sntp}, function(message, value) {
-                    if (1 === message) {
-                        trace("got time\n");
-                        Time.set(value);
-                    }
-                    else if (message < 0)
+                const ntp = new device.network.ntp.client.io({
+                    ...device.network.ntp.client,
+                    servers: [config.sntp]
+                });
+
+                ntp.getTime((error, value) => {
+                    if (error)
                         trace("can't get time\n");
-                    else
-                        return;
+                    else {
+                        trace("got time\n");
+                        Time.set(value / 1000);
+                    }
+                    ntp.close();
                     done();
                 });
                 break;

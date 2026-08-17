@@ -465,7 +465,6 @@ void xs_wifiaccesspoint_close(xsMachine *the)
 void xs_wifiaccesspoint_configure(xsMachine *the)
 {
 	xsmcGetHostDataValidate(xsThis, (void *)&xsAPHooks);
-	xsUnknownError("configure requires restart");
 }
 
 void xs_wifiaccesspoint_connection_get(xsMachine *the)

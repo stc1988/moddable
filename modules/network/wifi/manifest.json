@@ -1,4 +1,5 @@
 {
+	"warning": "** ECMA-419 Wi-Fi network interface recommended over classic 'wifi' module **",
     "platforms": {
         "esp": {
             "modules": {

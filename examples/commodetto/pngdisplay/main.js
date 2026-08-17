@@ -12,8 +12,6 @@
  *
  */
 
-import HTTPServer from "embedded:network/http/server";
-import Listener from "embedded:io/socket/listener";
 import WiFi from "embedded:network/interface/wifi";
 import WiFiAccessPoint from "embedded:network/interface/wifi/accesspoint";
 import PNG from "commodetto/ReadPNG";
@@ -98,8 +96,8 @@ export default function() {
 		}
 	});
 
-	new HTTPServer({
-		io: Listener,
+	new device.network.http.server.io({
+		...device.network.http.server,
 		port: 80,
 		onConnect(connection) {
 			connection.accept({

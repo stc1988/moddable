@@ -21,7 +21,6 @@
 import config from "mc/config";
 import Time from "time";
 import WiFi from "embedded:network/interface/wifi";
-import SNTP from "sntp";
 
 export default function (done) {
 	if (!config.ssid) {
@@ -47,15 +46,19 @@ export default function (done) {
 			if (!config.sntp || (Date.now() > 1672722071_000))
 				return done();
 
-			new SNTP({host: config.sntp}, function(message, value) {
-				if (SNTP.time === message) {
-					trace(`got unix time ${value} from ${config.sntp}\n`);
-					Time.set(value);
-				}
-				else if (SNTP.error === message)
+			const ntp = new device.network.ntp.client.io({
+				...device.network.ntp.client,
+				servers: [config.sntp]
+			});
+
+			ntp.getTime((error, value) => {
+				if (error)
 					trace("can't get time\n");
-				else
-					return;
+				else {
+					trace(`got unix time ${value / 1000} from ${config.sntp}\n`);
+					Time.set(value / 1000);
+				}
+				ntp.close();
 				done();
 			});
 		}

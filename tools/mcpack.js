@@ -199,6 +199,9 @@ const httpGlobal = {
 const httpsGlobal = {
 	include: "$(MODDABLE)/examples/io/tcp/httpsclient/manifest_httpsclient.json"
 };
+const httpServerGlobal = {
+	include: "$(MODDABLE)/examples/io/listener/httpserver/manifest_httpserver.json"
+};
 const wsGlobal = {
 	include: "$(MODDABLE)/examples/io/tcp/websocketclient/manifest_websocketclient.json"
 };
@@ -432,8 +435,9 @@ export default class extends TOOL {
 			"WebSocketStream": webSocketStreamGlobal,
 			"navigator.serial": webSerialGlobal,
 			"navigator.bluetooth": webBluetoothGlobal,
-			"device.network.http": httpGlobal,
-			"device.network.https": httpsGlobal,
+			"device.network.http.client": httpGlobal,
+			"device.network.https.client": httpsGlobal,
+			"device.network.http.server": httpServerGlobal,
 			"device.network.ws": wsGlobal,
 			"device.network.wss": wssGlobal,
 			"device.network.mqtt": mqttGlobal,

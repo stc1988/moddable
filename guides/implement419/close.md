@@ -1,14 +1,14 @@
 ---
-name: `close()` and `[Symbol.dispose]`
+name: close() and [Symbol.dispose]
 SPDX-FileCopyrightText: Copyright (c) 2026 Moddable Tech, Inc.
-updated: 2026-08-04
+updated: 2026-08-07
 ---
 
 The `close()` method is responsible for releasing all resources held by the instance. Callers expect the resources to be released immediately so that they can be reused by another instance.
 
 ---
 
-`close()` is defined by ECMA-419 to be safe to call more than once. That means that if `close()` is called more than once, all executions beyond the first should do nothing. A simple way to achieve this is to set any resources to `undefined` in `close()` and then use [optional chaining](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Optional_chaining) to check if they are `undefined`.
+`close()` is defined by ECMA-419 to be safe to call more than once. That means that if `close()` is called more than once, all executions beyond the first should do nothing. A simple way to achieve this is to set any resources to `undefined` in `close()` and use [optional chaining](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Optional_chaining) to check if they are `undefined`.
 
 ```js
 class ExampleSensor {

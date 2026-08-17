@@ -1,7 +1,8 @@
 {
 	"include": [
 		"$(MODDABLE)/examples/manifest_net.json",
-		"$(MODULES)/network/websocket/manifest.json"
+		"$(MODULES)/network/websocket/manifest.json",
+		"$(MODDABLE)/modules/network/socket/manifest.json"
 	],
 	"modules": {
 		"*": [
@@ -10,5 +11,6 @@
 	},
 	"preload": [
 		"mqtt"
-	]
+	],
+	"warning": "** ECMA-419 MQTT Client recommended over classic 'mqtt' module **"
 }

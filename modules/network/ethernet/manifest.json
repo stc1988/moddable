@@ -6,6 +6,7 @@
     "config": {
 		"ethernet": true
 	},
+	"warning": "** ECMA-419 Ethernet network interface recommended over classic 'ethernet' module **",
     "platforms": {
         "esp32": {
            "build": {

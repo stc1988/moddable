@@ -1,7 +1,7 @@
 ---
-name: Setting Options with `configure()`
+name: Setting Options with configure()
 SPDX-FileCopyrightText: Copyright (c) 2026 Moddable Tech, Inc.
-updated: 2026-08-04
+updated: 2026-08-11
 ---
 
 ECMA-419 uses [`configure()`](https://419.ecma-international.org/#peripheral-class-pattern-configure-method) extensively to change the settings of an instance. The committee chose the general-purpose `configure()` over dozens of special-purpose, limited-use APIs. This keeps the API small and understandable. It provides a simple way to extend the API for features specific to a single hardware component. It can also be more efficient as setting several properties at once often allows combining what would otherwise be several hardware transactions. In addition, `configure()` reflects a common hardware programming paradigm, the omnipresent [`ioctl`](https://www.man7.org/linux/man-pages/man2/ioctl.2.html).
@@ -31,14 +31,16 @@ class DisplayExample {
 	configure(options) {
 		let flags = this.flags;
 		if ("flip" in options) {
-			const value = ["", "h", "v", "hv"].indexOf(options.flip);
+			const value = ["", "h", "v",
+				"hv"].indexOf(options.flip);
 			if (value < 0)
 				throw new Error(`invalid flip: ${options.flip}`);
 			flags = (flags & ~0x03) | value;
 		}
 		if ("rotation" in options) {
 			flags &= (~0x03 << 2);
-			flags |= (Math.idiv(options.rotation, 90) & 0x03) << 2;
+			flags |=
+				(Math.idiv(options.rotation, 90) & 0x03) << 2;
 		}
 		if (flags !== this.flags) {
 			/* set modified flags on hardware */

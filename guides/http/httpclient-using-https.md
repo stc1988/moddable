@@ -1,14 +1,14 @@
 ---
 name: Make Secure Request using HTTP Client
 SPDX-FileCopyrightText: Copyright (c) 2026 Moddable Tech, Inc.
-updated: 2026-08-04
+updated: 2026-08-14
 ---
 
-To make a secure HTTPS request using the HTTP Client, simply change both occurrences of `device.network.http` to `device.network.https`. There are no changes to calling `request()`.
+To make a secure HTTPS request using the HTTP Client, simply change both occurrences of `device.network.http.client` to `device.network.https.client`. There are no changes to calling `request()`.
 
 ```js
-const http = new device.network.https.io({ 
-	...device.network.https,
+const http = new device.network.https.client.io({ 
+	...device.network.https.client,
 	host: "example.com"
 });
 http.request({

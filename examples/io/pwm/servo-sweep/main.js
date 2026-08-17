@@ -13,6 +13,7 @@
  */
 
 import PWM from "embedded:io/pwm";
+import Timer from "timer";
 
 const target_period = 18;
 const degree0 = 0.5;
@@ -30,7 +31,7 @@ const maxValue = Math.floor((degree180 / target_period) * range);
 let value = minValue;
 let step = 2;
 
-System.setInterval(() => {
+Timer.repeat(() => {
    value += step;
 
    if (value < minValue || value > maxValue){

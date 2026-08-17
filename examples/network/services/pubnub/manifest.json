@@ -1,19 +1,17 @@
 {
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
-		"$(MODDABLE)/examples/manifest_net.json"
+		"$(MODDABLE)/examples/manifest_net.json",
+		"$(MODDABLE)/modules/network/http/manifest.json",
+		"$(MODDABLE)/modules/base/uuid/manifest.json"
 	],
 	"modules": {
 		"*": [
 			"./main",
-			"$(MODULES)/network/http/*",
-			"$(MODULES)/network/services/pubnub/*",
-			"$(MODULES)/base/uuid/*"
+			"$(MODULES)/network/services/pubnub/*"
 		]
 	},
 	"preload": [
-		"http",
-		"pubnub",
-		"uuid"
+		"pubnub"
 	]
 }

@@ -1,7 +1,7 @@
 ---
 name: Reconnect Automatically
 SPDX-FileCopyrightText: Copyright (c) 2026 Moddable Tech, Inc.
-updated: 2026-08-04
+updated: 2026-08-10
 ---
 
 The Wi-Fi module does not automatically attempt to reconnect when the connection is dropped. This allows your project to fully manage the Wi-Fi connection policy.
@@ -11,13 +11,9 @@ Detect connection failures by using `onChanged()` to to watch for `this.connecti
 ```js
 import WiFi from "embedded:network/interface/wifi";
 
-const wifi = new WiFi({});
-function connect() {
-	wifi.connect({
-		SSID: "my SSID",
-		password: "my password",
+const wifi = new WiFi({
 		onChanged() {
-			if (this.connection >= 400) {
+			if (this.connection >= 500) {
 				trace(`Connection ready.\n`);
 				trace(`Assigned IP address ${this.address}.\n`);
 				this.success = true;
@@ -32,6 +28,11 @@ function connect() {
 				}
 			}
 		}
+});
+function connect() {
+	wifi.connect({
+		SSID: "my SSID",
+		password: "my password",
 	});
 };
 connect();

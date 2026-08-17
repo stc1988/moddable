@@ -22,7 +22,7 @@ const audio = new AudioOut({});
 
 function streamWav() {
 	new WavStreamer({
-		http: device.network.http,
+		http: device.network.http.client,
 		host: "test.moddable.com",
 		path: "/audio/ChristmasMusic/jingle.wav",
 		audio: {
@@ -52,7 +52,7 @@ function streamWav() {
 
 function streamSBC() {
 	new SBCStreamer({
-		http: device.network.http,
+		http: device.network.http.client,
 		host: "test.moddable.com",
 		path: "/audio/ChristmasMusic/jesu.sbc",
 		audio: {

@@ -3,20 +3,19 @@
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/examples/manifest_net.json",
 		"$(MODDABLE)/examples/manifest_commodetto.json",
-		"$(MODDABLE)/contributed/serial/drivers/sim7100/manifest.json"
+		"$(MODDABLE)/contributed/serial/drivers/sim7100/manifest.json",
+		"$(MODDABLE)/modules/network/http/manifest.json"
 	],
 	"creation": {
 		"static": 53000
 	},
 	"modules": {
 		"*": [
-			"./main",
-			"$(MODULES)/network/http/*"
+			"./main"
 		],
 		"commodetto/readJPEG": "$(COMMODETTO)/commodettoReadJPEG"
 	},
 	"preload": [
-		"http",
 		"main"
 	],
 	"platforms": {

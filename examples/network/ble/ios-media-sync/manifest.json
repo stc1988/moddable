@@ -6,12 +6,12 @@
 		"$(MODDABLE)/modules/network/ble/ams-client/manifest.json",
 		"$(MODDABLE)/modules/crypt/tls.json",
 		"$(COMMODETTO)/manifest_bufferout.json",
-		"$(COMMODETTO)/manifest_pixelsout.json"
+		"$(COMMODETTO)/manifest_pixelsout.json",
+		"$(MODDABLE)/modules/network/http/manifest.json"
 	],
 	"modules": {
 		"*": [
-			"./main",
-			"$(MODULES)/network/http/*"
+			"./main"
 		],
 		"commodetto/readJPEG": "$(COMMODETTO)/commodettoReadJPEG"
 	},

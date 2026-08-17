@@ -1,10 +1,10 @@
 ---
 name: Include Private Certificates
 SPDX-FileCopyrightText: Copyright (c) 2026 Moddable Tech, Inc.
-updated: 2026-08-04
+updated: 2026-08-14
 ---
 
-A certificate can be passed directly to a network constructor as part of the options object. The easiest way to do this is to append the certificate to the platform default secure connection settings for the protocol you are using. For example, when making secure HTTP requests, you use `device.network.https`. That contains a `tls` property with the default TLS configuration.
+A certificate can be passed directly to a network constructor as part of the options object. The easiest way to do this is to append the certificate to the platform default secure connection settings for the protocol you are using. For example, when making secure HTTP requests, you use `device.network.https.client`. That contains a `tls` property with the default TLS configuration.
 
 This example passes one private certificate to be used by this HTTPS session. Certificates are always in DER format and stored in a [Byte Buffer](https://419.ecma-international.org/#byte-buffer) (see [DER and PEM Certificates](./pemdir.md)).
 
@@ -12,10 +12,10 @@ You can also pass an array of certificates for the `ca` property.
 
 ```js
 const myPrivateCert = loadCertificate();
-const http = new device.network.https.io({
-	...device.network.https,
+const http = new device.network.https.client.io({
+	...device.network.https.client,
 	tls: {
-		...device.network.https.tls,
+		...device.network.https.client.tls,
 		ca: myPrivateCert
 
 	},
@@ -66,10 +66,10 @@ This works in the same way for secure MQTT and WebSocket connections as well.
 
 ```js
 const {privateClientCert, privateClientKey} = loadCertificateAndKey();
-const http = new device.network.https.io({
-	...device.network.https,
+const http = new device.network.https.client.io({
+	...device.network.https.client,
 	tls: {
-		...device.network.https.tls,
+		...device.network.https.client.tls,
 		clientCertificate: privateClientCert,
 		clientKey: privateClientKey
 	},

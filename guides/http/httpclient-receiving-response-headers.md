@@ -1,7 +1,7 @@
 ---
 name: Receive Response Headers using HTTP Client
 SPDX-FileCopyrightText: Copyright (c) 2026 Moddable Tech, Inc.
-updated: 2026-08-04
+updated: 2026-08-14
 ---
 
 HTTP response headers are provided to the `onHeaders()` callback as a standard JavaScript [`Map`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map).
@@ -9,8 +9,8 @@ HTTP response headers are provided to the `onHeaders()` callback as a standard J
 This example traces all the headers to the console.
 
 ```js
-const http = new device.network.http.io({
-	...device.network.http,
+const http = new device.network.http.client.io({
+	...device.network.http.client,
 	host: "example.com"
 });
 http.request({
@@ -33,8 +33,8 @@ http.request({
 The HTTP Client implementation must accumulate all the headers received into a `Map`. Some headers, such as cookies, can be quite large. If you are only interested in certain headers, you can provide a list of the headers you need in the `headersMask` property. This allows the HTTP Client to ignore headers not in the `headersMask`.
 
 ```js
-const http = new device.network.http.io({ 
-	...device.network.http,
+const http = new device.network.http.client.io({ 
+	...device.network.http.client,
 	host: "example.com"
 });
 http.request({
