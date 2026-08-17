@@ -119,12 +119,14 @@ function createLadder(button) {
 }
 
 // Expose ladder buttons as device.peripheral.button.A–F
+/*		a new destination is necesary.
 device.peripheral.button.A = createLadder(0);
 device.peripheral.button.B = createLadder(1);
 device.peripheral.button.C = createLadder(2);
 device.peripheral.button.D = createLadder(3);
 device.peripheral.button.E = createLadder(4);
 device.peripheral.button.F = createLadder(5);
+*/
 
 if (config.touchpad?.pins) {
 	device.peripheral.Touchpad = {};
