@@ -178,7 +178,6 @@ txFlag fxIsLinkerSymbolStringUsed(txLinker* linker, txString theString)
 	txSize aSum;
 	txSize aModulo;
 	txLinkerSymbol* aSymbol;
-	txID anID;
 
 	aString = theString;
 	aLength = 0;
