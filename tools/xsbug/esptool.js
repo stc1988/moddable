@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Moddable Tech, Inc.
+ * Copyright (c) 2019-2026 Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Tools.
  *
@@ -63,13 +63,13 @@ const Bootloader = Object.freeze({
 const baudROM = 115200;
 const baudDownload = 921600;
 
-const sizes_esp8266 =  ["512KB", "256KB", "1MB", "2MB", "4MB", "2MB-c1", "4MB-c1", "8MB", "16MB"];
-const sizes_esp32 =  ["1MB", "2MB", "4MB", "8MB", "16MB"];
-const modes = ["qio", "qout", "dio", "dout"];
-const frequencies = ["40m", "26m", "20m", undefined,
+const sizes_esp8266 =  Object.freeze(["512KB", "256KB", "1MB", "2MB", "4MB", "2MB-c1", "4MB-c1", "8MB", "16MB"]);
+const sizes_esp32 =  Object.freeze(["1MB", "2MB", "4MB", "8MB", "16MB"]);
+const modes = Object.freeze(["qio", "qout", "dio", "dout"]);
+const frequencies = Object.freeze(["40m", "26m", "20m", undefined,
 						undefined, undefined, undefined, undefined,
 						undefined, undefined, undefined, undefined,
-						undefined, undefined, undefined, "80m"];
+						undefined, undefined, undefined, "80m"]);
 
 class EspTool {
 	#device;
@@ -854,7 +854,7 @@ function tracePacket(prefix, bytes) {
 	See ESP32ROM.STUB_CODE and ESP8266ROM.STUB_CODE
 */
 
-const ESP8266ROM = {
+const ESP8266ROM = Object.freeze({
    text_start: 1074847744,
    data_start: 1073720228,
    entry: 1074847748,
@@ -1379,9 +1379,9 @@ const ESP8266ROM = {
       0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x11, 0x12, 0x00, 0x08, 0x07, 0x09, 0x06, 0x0A, 0x05, 0x0B, 0x04,
       0x0C, 0x03, 0x0D, 0x02, 0x0E, 0x01, 0x0F, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x04,
       0x00, 0x00, 0x00, ),
-}
+});
 
-const ESP32ROM = {
+const ESP32ROM = Object.freeze({
    text_start: 1074393088 ,
    data_start: 1073736612 ,
    entry: 1074394468 ,
@@ -1573,6 +1573,6 @@ const ESP32ROM = {
       0x22, 0xA0, 0xDB, 0x1D, 0xF0, 0x00, 0x7C, 0xF2, 0x1D, 0xF0, 0x00, 0x00, ),
    data: Uint8Array.of(
       0x08, 0xC0, 0xFE, 0x3F, ),
-}
+});
 
 export default EspTool;
