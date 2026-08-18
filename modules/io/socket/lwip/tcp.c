@@ -129,7 +129,7 @@ void xs_tcp_constructor(xsMachine *the)
 	uint8_t connect = 0, triggerable = 0, triggered = 0, nodelay = 0, format = kIOFormatBuffer, ready = 0;
 	xsSlot *onReadable, *onWritable, *onError;
 	int port;
-	struct tcp_pcb *skt;
+	struct tcp_pcb *skt = NULL;
 	TCPBuffer buffers = NULL;
 	TCPOutBuffer out = NULL, outTail = NULL;
 	uint32_t unwritten = 0, unacked = 0;
@@ -341,8 +341,11 @@ void doClose(xsMachine *the, xsSlot *instance)
 			tcp->timer = NULL;
 		}
 
-		if (tcp->skt)
-			tcp_clear_callbacks_safe(tcp->skt);		// marshaled; see xs_tcp_destructor
+		if (tcp->skt) {
+			tcp_clear_callbacks_safe(tcp->skt);
+			tcp_close_safe(tcp->skt);
+			tcp->skt = NULL;
+		}
 		tcp->triggerable = 0;
 
 		xsmcSetHostData(*instance, NULL);
@@ -947,11 +950,12 @@ void xs_listener_constructor(xsMachine *the)
 		xsUnknownError("socket bind");
 	}
 
-	skt = tcp_listen_safe(skt);
-	if (!skt) {
+	struct tcp_pcb *lstn = tcp_listen_safe(skt);
+	if (!lstn) {
 		tcp_close_safe(skt);
 		xsRangeError("no memory");
 	}
+	skt = lstn;
 
 	listener = c_calloc(1, sizeof(ListenerRecord));
 	if (!listener) {

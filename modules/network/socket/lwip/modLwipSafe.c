@@ -108,7 +108,9 @@ err_t tcp_bind_safe(struct tcp_pcb *tcpPCB, const ip_addr_t *ipaddr, u16_t port)
 static err_t tcp_close_INLWIP(struct tcpip_api_call_data *tcpMsg)
 {
 	LwipMsg msg = (LwipMsg)tcpMsg;
-	tcp_close(msg->tcpPCB);
+	if (ERR_OK != tcp_close(msg->tcpPCB))
+		tcp_abort(msg->tcpPCB);
+	return ERR_OK;
 }
 
 void tcp_close_safe(struct tcp_pcb *tcpPCB)
