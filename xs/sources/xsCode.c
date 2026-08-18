@@ -43,6 +43,8 @@
 	txByteCode* nextCode;\
 	txInteger id;\
 	txInteger stackLevel
+
+#define kNoLine ((txUnsigned)~0)
 	
 struct sxByteCode {
 	mxByteCodePart;
@@ -1947,7 +1949,7 @@ void fxNodeDispatchCode(void* it, void* param)
 	txNode* self = it;
 	txCoder* coder = param;
 	fxCheckParserStack(coder->parser, self->line);
-	if (self->line >= 0)
+	if (self->line != kNoLine)
 		fxCoderAddLine(coder, 0, XS_CODE_LINE, self); 
 	(*self->description->dispatch->code)(it, param);
 }
@@ -1957,7 +1959,7 @@ void fxNodeDispatchCodeAssign(void* it, void* param, txFlag flag)
 	txNode* self = it;
 	txCoder* coder = param;
 	fxCheckParserStack(coder->parser, self->line);
-	if (self->line >= 0)
+	if (self->line != kNoLine)
 		fxCoderAddLine(coder, 0, XS_CODE_LINE, self); 
 	(*self->description->dispatch->codeAssign)(self, param, flag);
 }
@@ -1967,7 +1969,7 @@ void fxNodeDispatchCodeDelete(void* it, void* param)
 	txNode* self = it;
 	txCoder* coder = param;
 	fxCheckParserStack(coder->parser, self->line);
-	if (self->line >= 0)
+	if (self->line != kNoLine)
 		fxCoderAddLine(coder, 0, XS_CODE_LINE, self); 
 	(*self->description->dispatch->codeDelete)(self, param);
 }
@@ -1977,7 +1979,7 @@ void fxNodeDispatchCodeReference(void* it, void* param, txFlag flag)
 	txNode* self = it;
 	txCoder* coder = param;
 	fxCheckParserStack(coder->parser, self->line);
-	if (self->line >= 0)
+	if (self->line != kNoLine)
 		fxCoderAddLine(coder, 0, XS_CODE_LINE, self); 
 	(*self->description->dispatch->codeReference)(self, param, flag);
 }
@@ -1987,7 +1989,7 @@ txFlag fxNodeDispatchCodeThis(void* it, void* param, txFlag flag)
 	txNode* self = it;
 	txCoder* coder = param;
 	fxCheckParserStack(coder->parser, self->line);
-	if (self->line >= 0)
+	if (self->line != kNoLine)
 		fxCoderAddLine(coder, 0, XS_CODE_LINE, self); 
 	return (*self->description->dispatch->codeThis)(self, param, flag);
 }
@@ -3390,7 +3392,7 @@ void fxFunctionNodeCode(void* it, void* param)
 	
 	if ((self->flags & mxEvalFlag) && !(self->flags & mxStrictFlag))
 		coder->evalFlag = 1;
-	coder->line = -1;
+	coder->line = kNoLine;
 	coder->programFlag = 0;
 	coder->scopeLevel = 0;
 	coder->firstBreakTarget = NULL;
@@ -3437,7 +3439,7 @@ void fxFunctionNodeCode(void* it, void* param)
 	else
 		fxCoderAddIndex(param, 0, XS_CODE_BEGIN_SLOPPY, fxCoderCountParameters(coder, self->params));
 	coder->path = C_NULL;
-	if (self->line >= 0)
+	if (self->line != kNoLine)
 		fxCoderAddLine(coder, 0, XS_CODE_LINE, it); 
 	if (self->scopeCount)
 		fxCoderAddIndex(param, 0, XS_CODE_RESERVE_1, self->scopeCount);
@@ -3762,7 +3764,7 @@ void fxModuleNodeCode(void* it, void* param)
 	txSymbol* name = /*(coder->parser->flags & mxDebugFlag) ? self->path :*/ C_NULL;
 	txFlag flag = 0;
 	
-	coder->line = -1;
+	coder->line = kNoLine;
 	coder->programFlag = 0;
 	coder->scopeLevel = 0;
 	coder->firstBreakTarget = NULL;
@@ -3782,7 +3784,7 @@ void fxModuleNodeCode(void* it, void* param)
 		fxCoderAddBranch(param, 0, XS_CODE_CODE_1, target);
 		fxCoderAddIndex(param, 0, XS_CODE_BEGIN_STRICT, 0);
 		coder->path = C_NULL;
-		if (self->line >= 0)
+		if (self->line != kNoLine)
 			fxCoderAddLine(coder, 0, XS_CODE_LINE, it); 
 		if (self->scopeCount)
 			fxCoderAddIndex(param, 0, XS_CODE_RESERVE_1, self->scopeCount);
@@ -3803,7 +3805,7 @@ void fxModuleNodeCode(void* it, void* param)
 		fxCoderAddByte(param, -1, XS_CODE_POP);
 	
 		target = fxCoderCreateTarget(param);
-		coder->line = -1;
+		coder->line = kNoLine;
 		coder->programFlag = 0;
 		coder->scopeLevel = 0;
 		coder->firstBreakTarget = NULL;
@@ -3822,7 +3824,7 @@ void fxModuleNodeCode(void* it, void* param)
 	fxCoderAddBranch(param, 0, XS_CODE_CODE_1, target);
 	fxCoderAddIndex(param, 0, XS_CODE_BEGIN_STRICT, 0);
 	coder->path = C_NULL;
-	if (self->line >= 0)
+	if (self->line != kNoLine)
 		fxCoderAddLine(coder, 0, XS_CODE_LINE, it); 
 	if (self->scopeCount)
 		fxCoderAddIndex(param, 0, XS_CODE_RESERVE_1, self->scopeCount);
@@ -4217,7 +4219,7 @@ void fxProgramNodeCode(void* it, void* param)
 	txProgramNode* self = it;
 	txCoder* coder = param;
 	
-	coder->line = -1;
+	coder->line = kNoLine;
 	coder->programFlag = 1;
 	coder->scopeLevel = 0;
 	coder->firstBreakTarget = NULL;
@@ -4228,7 +4230,7 @@ void fxProgramNodeCode(void* it, void* param)
 	else
 		fxCoderAddIndex(param, 0, XS_CODE_BEGIN_SLOPPY, 0);
 	coder->path = C_NULL;
-	if (self->line >= 0)
+	if (self->line != kNoLine)
 		fxCoderAddLine(coder, 0, XS_CODE_LINE, it); 
 	if (coder->parser->flags & mxEvalFlag) {
 		coder->evalFlag = 1;

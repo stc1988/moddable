@@ -174,16 +174,13 @@ void fxCheckModGlobal(txLinker* linker, txString name, txString key)
 txFlag fxIsLinkerSymbolStringUsed(txLinker* linker, txString theString)
 {
 	txString aString;
-	txSize aLength;
 	txSize aSum;
 	txSize aModulo;
 	txLinkerSymbol* aSymbol;
 
 	aString = theString;
-	aLength = 0;
 	aSum = 0;
 	while(*aString != 0) {
-		aLength++;
 		aSum = (aSum << 1) + *aString++;
 	}
 	aSum &= 0x7FFFFFFF;
