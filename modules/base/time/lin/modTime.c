@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2023  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -27,6 +27,8 @@ void xs_time_set(xsMachine *the)
 
 void xs_time_timezone_get(xsMachine *the)
 {
+	tzset();
+	xsResult = xsInteger((xsIntegerValue)-c_timezone);
 }
 
 void xs_time_timezone_set(xsMachine *the)
@@ -35,6 +37,13 @@ void xs_time_timezone_set(xsMachine *the)
 
 void xs_time_dst_get(xsMachine *the)
 {
+	c_timeval tv;
+
+	c_gettimeofday(&tv, NULL);
+	c_time_t when = (c_time_t)tv.tv_sec;
+	c_tm tm = *c_localtime(&when);
+
+	xsResult = xsInteger((xsIntegerValue)(tm.tm_gmtoff + c_timezone));
 }
 
 void xs_time_dst_set(xsMachine *the)
