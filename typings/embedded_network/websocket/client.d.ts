@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2025 Moddable Tech, Inc.
+* Copyright (c) 2025-2026 Moddable Tech, Inc.
 *
 *   This file is part of the Moddable SDK Tools.
 *
@@ -61,6 +61,7 @@ declare module "embedded:network/websocket/client" {
     read(buffer: ByteBuffer): number;
 
     format: "buffer" | "number";
+    protocol: string | undefined;
     target?: any;
 
     static readonly text: 1;

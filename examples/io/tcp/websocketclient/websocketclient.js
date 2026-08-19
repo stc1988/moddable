@@ -112,6 +112,7 @@ class WebSocketClient {
 		delete options.timer;
 		delete options.closer;
 		delete options.pending;
+		this.#options = undefined;
 	}
 	write(data, options) {
 		const mask = this.#mask;
@@ -322,6 +323,8 @@ class WebSocketClient {
 							this.#options.flags |= 2;		//@@ validate data
 						else if (("upgrade" == name) && ("websocket" == data.toLowerCase()))
 							this.#options.flags |= 4;
+						else if ("sec-websocket-protocol" === name)
+							this.#options.protocol = data;
 					}
 
 					this.#line = "";
@@ -587,6 +590,9 @@ class WebSocketClient {
 			this.#format = true;
 		else
 			throw new RangeError;
+	}
+	get protocol() {
+		return this.#options.protocol;
 	}
 	
 	static text = 1;
