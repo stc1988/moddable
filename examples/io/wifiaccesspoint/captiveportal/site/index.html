@@ -14,6 +14,8 @@ log("WebSocket Created");
 socket.addEventListener("open", () => {
 	log("Connected");
 	socket.send(JSON.stringify({event: "scan"}));
+	socket.send(JSON.stringify({event: "timezone", ...getTimeZoneOffsets()}));
+	socket.send(JSON.stringify({event: "language", language: navigator.language}));
 });
 socket.addEventListener("message", event => {
 	const msg = JSON.parse(event.data);
@@ -36,6 +38,18 @@ socket.addEventListener("close", event => {
 socket.addEventListener("error", event => {
 	log("Error:", event.type);
 });
+
+function getTimeZoneOffsets(now = new Date()) {
+    const year = now.getFullYear();
+    const standard = Math.max(
+        (new Date(year, 0, 1)).getTimezoneOffset(),
+        (new Date(year, 6, 1)).getTimezoneOffset()
+    );
+    return {
+        timezone: -standard * 60,
+        dst: (standard - now.getTimezoneOffset()) * 60
+    };
+}
 </script>
 </body>
 </html>
