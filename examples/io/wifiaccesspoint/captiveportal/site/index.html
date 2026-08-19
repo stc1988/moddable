@@ -14,7 +14,7 @@ log("WebSocket Created");
 socket.addEventListener("open", () => {
 	log("Connected");
 	socket.send(JSON.stringify({event: "scan"}));
-	socket.send(JSON.stringify({event: "timezone", ...getTimeZoneOffsets()}));
+	socket.send(JSON.stringify({event: "timezone", time: Date.now(), ...getTimeZoneOffsets()}));
 	socket.send(JSON.stringify({event: "language", language: navigator.language}));
 });
 socket.addEventListener("message", event => {

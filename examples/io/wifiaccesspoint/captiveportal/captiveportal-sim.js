@@ -172,7 +172,7 @@ class CaptivePortal {
 	#onGhostJoined() {
 		this.#setPhase("connected");
 		this.#steps = [
-			() => this.#info(),					// timezone and language of remote
+			() => this.#info(),					// time/zone and language of remote
 			() => this.#request("/"),				// the browser opens the portal
 			() => this.#request("/no-such-page"),	// and something that must fall through to the redirect
 			() => this.#requestScan(),				// "scan" over the WebSocket
@@ -199,7 +199,8 @@ class CaptivePortal {
 	}
 	#info() {
 		this.#onInfo?.({
-			event: "timezone",
+			event: "time",
+			time: Date.now(),
 			timezone: Time.timezone,
 			dst: Time.dst
 		});
