@@ -1345,7 +1345,7 @@ void fxThrowMessage(txMachine* the, txString path, txInteger line, txError error
     c_vsnprintf(message, sizeof(message), format, arguments);
     va_end(arguments);
 
-	//??
+	// if message ends with truncated UTF-8, remove it
 	length = (txSize)c_strlen(message) - 1;
 	while (length && (0x80 & message[length]))
 		message[length--] = 0;
