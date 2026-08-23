@@ -2174,7 +2174,8 @@ class ModulesRule extends Rule {
 		else if (parts.extension == ".d.ts")
 			this.appendFile(tool.dtsFiles, target, source, include);
 		else if (parts.extension == ".json") {
-			if (parts.name.startsWith("manifest"))
+			// build and package configuration, never modules. they are matched by wildcards like "$(TYPINGS)/*" and would otherwise be compiled into the application
+			if (parts.name.startsWith("manifest") || parts.name.startsWith("tsconfig") || ("package" == parts.name) || ("package-lock" == parts.name))
 				;
 			else if ("nodered2mcu" === query.transform)
 				this.appendFile(tool.nodered2mcuFiles, target, source, include);
