@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2025  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Tools.
  * 
@@ -43,6 +43,7 @@ static txFlag fxIsLinkerSymbolStringUsed(txLinker* linker, txString theString);
 static txFlag fxIsLinkerSymbolUsed(txLinker* linker, txID id);
 static void fxStripCallback(txLinker* linker, txCallback which);
 static void fxStripClass(txLinker* linker, txMachine* the, txSlot* slot);
+static void fxStripCompartment(txLinker* linker, txMachine* the);
 static void fxStripInstance(txLinker* linker, txMachine* the, txSlot* slot);
 static void fxStripObject(txLinker* linker, txMachine* the, txSlot* slot);
 static void fxUnstripCallback(txLinker* linker, txCallback which);
@@ -494,8 +495,10 @@ void fxStripCallbacks(txLinker* linker, txMachine* the)
 		fxUnstripCallback(linker, fx_BigInt_prototype_toString);
 		fxUnstripCallback(linker, fx_BigInt_prototype_valueOf);
 	}
-	if (fxIsCallbackStripped(linker, fx_Compartment))
+	if (fxIsCallbackStripped(linker, fx_Compartment)) {
 		fxStripClass(linker, the, &mxCompartmentConstructor);
+		fxStripCompartment(linker, the);
+	}
 	if (fxIsCallbackStripped(linker, fx_DataView))
 		fxStripClass(linker, the, &mxDataViewConstructor);
 	if (fxIsCallbackStripped(linker, fx_Date))
@@ -665,6 +668,25 @@ void fxStripClass(txLinker* linker, txMachine* the, txSlot* slot)
 	mxGetID(mxID(_prototype));
 	fxStripInstance(linker, the, the->stack->value.reference);
 	mxPop();
+}
+
+void fxStripCompartment(txLinker* linker, txMachine* the)
+{
+	txSlot* global = mxGlobal.value.reference;
+	txSlot* date = mxBehaviorGetProperty(the, global, mxID(_Date), 0, XS_OWN);
+	txSlot* math = mxBehaviorGetProperty(the, global, mxID(_Math), 0, XS_OWN);
+	if (date && (XS_REFERENCE_KIND == date->kind) && (date->value.reference != mxDateConstructor.value.reference)) {
+		txSlot* property;
+		mxDateConstructor.value.reference = date->value.reference;
+		property = mxBehaviorGetProperty(the, mxDatePrototype.value.reference, mxID(_constructor), 0, XS_OWN);
+		if (property) {
+			property->kind = XS_REFERENCE_KIND;
+			property->value.reference = date->value.reference;
+		}
+	}
+	if (math && (XS_REFERENCE_KIND == math->kind) && (math->value.reference != mxMathObject.value.reference))
+		mxMathObject.value.reference = math->value.reference;
+	mxCompartmentGlobal = mxUndefined;
 }
 
 void fxStripDefaults(txLinker* linker, FILE* file)
