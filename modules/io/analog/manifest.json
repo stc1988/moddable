@@ -13,6 +13,9 @@
 			},
 			"preload": [
 				"embedded:io/analog"
+			],
+			"dependency": [
+				{ "idf": "esp_adc" }
 			]
 		}
 	},
