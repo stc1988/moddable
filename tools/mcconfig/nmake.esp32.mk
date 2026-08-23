@@ -650,7 +650,7 @@ deploy: DEPLOY_PRE DEPLOY_START DEPLOY_END
 idfVersionCheck:
 	python $(PROJ_DIR_TEMPLATE)\versionCheck.py $(EXPECTED_ESP_IDF) $(IDF_VERSION) || (echo "Expected ESP-IDF $(EXPECTED_ESP_IDF), found $(IDF_VERSION)" && exit 1)
 
-$(SDKCONFIG_H): $(SDKCONFIG_FILE)
+$(SDKCONFIG_H): $(SDKCONFIG_FILE) $(TMP_DIR)\xs_idf_components.txt
 	@echo Reconfiguring ESP-IDF...
 	if exist $(PROJ_DIR)\sdkconfig del $(PROJ_DIR)\sdkconfig
 	cd $(PROJ_DIR) 
