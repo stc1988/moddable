@@ -3106,20 +3106,6 @@ export class Tool extends TOOL {
 							manifest.dependencies.push(dep);
 						}
 					}
-					if (platform.components) {
-						var comp;
-						manifest.components = [];
-						for (let i=0; i<platform.components.length; i++) {
-							var comp = platform.components[i];
-							if (undefined === comp.name) {
-								trace(`# bad component name "${comp.name}"\n`);
-								continue;
-							}
-							if (!manifest.components.includes(comp.name))
-								manifest.components.push(comp);
-trace(`# esp32 component "${comp.name}\n`);
-						}
-					}
 				}
 			}
 		}
