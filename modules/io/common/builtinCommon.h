@@ -111,10 +111,6 @@ uint32_t builtinGetUnsignedInteger(xsMachine *the, xsSlot *slot);
 
 xsSlot *builtinGetCallback(xsMachine *the, xsIdentifier id);
 
-#ifdef __cplusplus
-}
-#endif
-
 #ifdef kPinBanks
 	#define builtinIsPinFree(pin) builtinArePinsFree(pin >> 5, 1 << (pin & 0x1F))
 	#define builtinUsePin(pin) builtinUsePins(pin >> 5, 1 << (pin & 0x1F))
@@ -131,6 +127,10 @@ xsSlot *builtinGetCallback(xsMachine *the, xsIdentifier id);
 	void builtinInitIO(void);
 #else
 	#define builtinInitIO()
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif
