@@ -41,7 +41,8 @@ declare module "embedded:network/http/client" {
   export interface HTTPRequest {
     read(byteLength?: number): ArrayBuffer|undefined;
     read(buffer: ByteBuffer): void;
-    write(value: ByteBuffer|undefined): void;
+    write(): number;
+    write(value: ByteBuffer|undefined): number;
   }
 
   class HTTPClient {
