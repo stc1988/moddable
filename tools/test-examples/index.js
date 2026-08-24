@@ -37,6 +37,11 @@ Moddable SDK Automated Test Harness
 Builds, deploys, and verifies Moddable SDK examples.
 Uses xsdb verify exception free launch.
 
+Examples with a 'package.json' are built using 'mcpack mcconfig'.
+If 'package.json' declares a 'build' script (e.g. TypeScript projects),
+'npm run build' is invoked first, and 'npm install' is run when
+'node_modules' is missing.
+
 Usage: node index.js <target> [options]
 
 Arguments:
@@ -191,11 +196,12 @@ function findExamples(dir) {
     let results = [];
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
-        if (entry.name.startsWith('.')) continue;
+        if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
         const fullPath = path.join(dir, entry.name);
         if (entry.isDirectory()) {
             const manifestPath = path.join(fullPath, 'manifest.json');
-            if (fs.existsSync(manifestPath)) {
+            const packageJsonPath = path.join(fullPath, 'package.json');
+            if (fs.existsSync(manifestPath) || fs.existsSync(packageJsonPath)) {
                 results.push(fullPath);
             } else {
                 results = results.concat(findExamples(fullPath));
@@ -282,7 +288,8 @@ function describeBuildFailure(output) {
         else if ((m = line.match(/^### ([A-Za-z][A-Za-z0-9]*Error: .+)$/)))
             tool ??= trimBang(m[1]);
         else if ((m = line.match(/^(.+?\.(?:c|cc|cpp|cxx|m|mm|h|hpp|S|js|ts)):(\d+)(?::\d+)?: (?:fatal )?error: (.+)$/)) ||
-                 (m = line.match(/^(.+?\.(?:c|cc|cpp|cxx|m|mm|h|hpp|S|js|ts))\((\d+)(?:,\d+)?\): (?:fatal )?error: (.+)$/)))
+                 (m = line.match(/^(.+?\.(?:c|cc|cpp|cxx|m|mm|h|hpp|S|js|ts))\((\d+)(?:,\d+)?\): (?:fatal )?error:? (.+)$/)) ||
+                 (m = line.match(/^(.+?)\((\d+),\d+\): error (TS\d+: .+)$/)))
             compile ??= `Compile error in ${path.basename(m[1])}:${m[2]}: ${trimBang(m[3])}`;
         else if ((m = line.match(/(section `[^`']+' will not fit in region `[^`']+')/)))
             link ??= `Link failed: ${m[1]} — the build is too large for this device`;
@@ -302,7 +309,9 @@ function lastMeaningfulLine(output) {
     const lines = output.replace(/\r/g, '\n').replace(ANSI, '').split('\n');
     for (let i = lines.length - 1; i >= 0; i--) {
         const line = lines[i].replace(/\(xsdb\)\s*/g, '').trim();
-        if (line && (line !== '{') && (line !== '}') && !line.startsWith('#'))
+        // "# " lines are build progress and "### -p" is the platform banner mcrun prints;
+        // the remaining "###" lines are what the tools say when they fail.
+        if (line && (line !== '{') && (line !== '}') && !/^# /.test(line) && !/^### -p /.test(line))
             return line;
     }
     return '';
@@ -336,17 +345,46 @@ function runTest(examplePath) {
         const startTime = Date.now();
         console.log(`\n========= Testing ${examplePath} =========`);
         const manifestPath = path.join(examplePath, 'manifest.json');
-        
+        const packageJsonPath = path.join(examplePath, 'package.json');
+        const isPackage = fs.existsSync(packageJsonPath);
+
         let manifestRaw = '';
         try {
             manifestRaw = fs.readFileSync(manifestPath, 'utf-8');
         } catch {}
-        
-        if (!manifestRaw.includes('manifest_base.json')) {
+
+        let packageJson = null;
+        if (isPackage) {
+            try {
+                packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+            } catch {}
+        }
+
+        // Package examples use mcpack, which always supplies the base manifest.
+        if (!isPackage && !manifestRaw.includes('manifest_base.json')) {
             return resolve({ success: null, code: 'NO_BASE_MANIFEST', reason: "Skipped: manifest does not include 'manifest_base.json' (not an application)", log: '', durationMs: 0 });
         }
-        
-        const isNet = manifestRaw.includes('manifest_net.json');
+
+        let isNet = manifestRaw.includes('manifest_net.json');
+        if (isPackage && !isNet) {
+            // mcpack auto-includes networking when the source uses fetch / WebSocket globals.
+            try {
+                const mainRel = (packageJson && typeof packageJson.main === 'string') ? packageJson.main : './main.js';
+                const mainPath = path.resolve(examplePath, mainRel);
+                if (fs.existsSync(mainPath)) {
+                    const mainSrc = fs.readFileSync(mainPath, 'utf-8');
+                    if (/\bfetch\s*\(/.test(mainSrc) || /\bnew\s+WebSocket\b/.test(mainSrc)) {
+                        isNet = true;
+                    }
+                }
+            } catch {}
+        }
+
+        // mcpack invocation: 'mcconfig' for apps/hosts, 'mcrun' for mods.
+        // Convention from examples/packages/readme.md: a mod's main entry is named 'mod.js'.
+        const isMod = isPackage && packageJson && typeof packageJson.main === 'string' && path.basename(packageJson.main) === 'mod.js';
+        const buildCmd = isPackage ? 'mcpack' : 'mcconfig';
+        const buildPrefix = isPackage ? [isMod ? 'mcrun' : 'mcconfig'] : [];
         
         let mcArgs = ['-dl', '-m', '-p', target];
         let onlyBuild = false;
@@ -366,20 +404,33 @@ function runTest(examplePath) {
         }
         
 
-        let originalXsdbConfig = null;
-        let xsdbConfigExisted = false;
-        const xsdbConfigPath = require('path').join(examplePath, '.xsdb.json');
-        
-        try {
-            if (require('fs').existsSync(xsdbConfigPath)) {
-                xsdbConfigExisted = true;
-                originalXsdbConfig = require('fs').readFileSync(xsdbConfigPath, 'utf8');
-            }
-            require('fs').writeFileSync(xsdbConfigPath, JSON.stringify({ exceptionsMode: 'off', outputFormat: 'json' }));
-        } catch {}
+        // xsdb reads .xsdb.json from $XSBUG_PROJECT, which the makefiles set to MAIN_DIR (the
+        // manifest's directory). For mcconfig examples, MAIN_DIR is examplePath. For mcpack
+        // examples, mcpack generates a manifest at $MODDABLE/build/tmp/<packageJson.name>/ and
+        // passes that path to mcconfig — so MAIN_DIR points there instead.
+        const xsdbConfigDirs = [examplePath];
+        if (isPackage && packageJson && typeof packageJson.name === 'string') {
+            const pkgParts = packageJson.name.split('/');
+            xsdbConfigDirs.push(path.join(moddableDir, 'build', 'tmp', ...pkgParts));
+        }
+
+        const xsdbConfigSnapshots = xsdbConfigDirs.map(dir => {
+            const p = path.join(dir, '.xsdb.json');
+            let existed = false;
+            let original = null;
+            try {
+                if (fs.existsSync(p)) {
+                    existed = true;
+                    original = fs.readFileSync(p, 'utf8');
+                }
+                fs.mkdirSync(dir, { recursive: true });
+                fs.writeFileSync(p, JSON.stringify({ exceptionsMode: 'off', outputFormat: 'json' }));
+            } catch {}
+            return { path: p, existed, original };
+        });
 
         const runMainBuild = () => {
-            const child = spawn('mcconfig', mcArgs, {
+            const child = spawn(buildCmd, [...buildPrefix, ...mcArgs], {
                 cwd: examplePath,
                 env: process.env,
                 shell: process.platform === 'win32'
@@ -482,13 +533,15 @@ function runTest(examplePath) {
             finished = true;
             cleanup();
 
-            try {
-                if (xsdbConfigExisted && originalXsdbConfig !== null) {
-                    require('fs').writeFileSync(xsdbConfigPath, originalXsdbConfig);
-                } else if (!xsdbConfigExisted && require('fs').existsSync(xsdbConfigPath)) {
-                    require('fs').unlinkSync(xsdbConfigPath);
-                }
-            } catch {}
+            for (const snap of xsdbConfigSnapshots) {
+                try {
+                    if (snap.existed && snap.original !== null) {
+                        fs.writeFileSync(snap.path, snap.original);
+                    } else if (!snap.existed && fs.existsSync(snap.path)) {
+                        fs.unlinkSync(snap.path);
+                    }
+                } catch {}
+            }
             
             if (child.stdin && child.stdin.writable) {
                 try { child.stdin.write("quit\n"); } catch {}
@@ -648,32 +701,85 @@ function runTest(examplePath) {
                     // Say what the build printed, rather than only the exit code it returned.
                     const why = describeBuildFailure(outputBuf);
                     const last = why ? '' : lastMeaningfulLine(outputBuf);
-                    finish(false,
-                        why || (last ? `mcconfig exited with code ${code}: ${clip(last)}` : `mcconfig exited with code ${code}`),
-                        'BUILD_FAILED', { exitCode: code });
+                    // A clean exit here means the tool did its job and quit without ever
+                    // running the application — a usage error, most likely.
+                    const summary = (code === 0) ? `${buildCmd} exited without launching the application` : `${buildCmd} exited with code ${code}`;
+                    finish(false, why || (last ? `${summary}: ${clip(last)}` : summary), 'BUILD_FAILED', { exitCode: code });
                 }
             }
         });
         };
 
-        if (cleanBuild) {
+        const runCleanThenBuild = () => {
+            if (!cleanBuild) {
+                runMainBuild();
+                return;
+            }
             console.log(`   [Test Harness] Cleaning target ${examplePath}...`);
             const cleanArgs = ['-d', '-t', 'clean', '-m', '-p', target];
-            const cleanChild = spawn('mcconfig', cleanArgs, {
+            const cleanChild = spawn(buildCmd, [...buildPrefix, ...cleanArgs], {
                 cwd: examplePath,
                 env: process.env,
                 shell: process.platform === 'win32'
             });
             cleanChild.on('close', (code) => {
                 if (code !== 0) {
-                    resolve({ success: false, code: 'CLEAN_FAILED', reason: `Clean failed (mcconfig -t clean exited with code ${code})`, log: `mcconfig clean exited with code ${code}`, durationMs: Date.now() - startTime });
+                    resolve({ success: false, code: 'CLEAN_FAILED', reason: `Clean failed (${buildCmd} -t clean exited with code ${code})`, log: `${buildCmd} clean exited with code ${code}`, durationMs: Date.now() - startTime });
                 } else {
                     runMainBuild();
                 }
             });
-        } else {
-            runMainBuild();
-        }
+        };
+
+        const runPackageSteps = (next) => {
+            if (!isPackage) {
+                next();
+                return;
+            }
+            const hasDeps = packageJson && packageJson.dependencies && Object.keys(packageJson.dependencies).length > 0;
+            const hasBuildScript = !!(packageJson && packageJson.scripts && packageJson.scripts.build);
+            const nodeModulesPath = path.join(examplePath, 'node_modules');
+            const needInstall = hasDeps && !fs.existsSync(nodeModulesPath);
+
+            const spawnStep = (label, cmd, args, after) => {
+                console.log(`   [Test Harness] Running ${label} in ${examplePath}...`);
+                let logBuf = '';
+                const stepChild = spawn(cmd, args, {
+                    cwd: examplePath,
+                    env: process.env,
+                    shell: process.platform === 'win32'
+                });
+                stepChild.stdout.on('data', (d) => { logBuf += d.toString(); });
+                stepChild.stderr.on('data', (d) => { logBuf += d.toString(); });
+                stepChild.on('error', (err) => {
+                    resolve({ success: false, code: 'STEP_FAILED', reason: `${label} failed: ${clip(err.message)}`, log: `${err.message}\n${logBuf}`, durationMs: Date.now() - startTime });
+                });
+                stepChild.on('close', (code) => {
+                    if (code !== 0) {
+                        const why = describeBuildFailure(logBuf) || lastMeaningfulLine(logBuf);
+                        resolve({ success: false, code: 'STEP_FAILED', reason: why ? `${label} failed: ${clip(why)}` : `${label} failed (exit code ${code})`, log: `${cmd} ${args.join(' ')} exited with code ${code}\n${logBuf}`, durationMs: Date.now() - startTime });
+                        return;
+                    }
+                    after();
+                });
+            };
+
+            const runBuildScript = () => {
+                if (!hasBuildScript) {
+                    next();
+                    return;
+                }
+                spawnStep('npm run build', 'npm', ['run', 'build'], next);
+            };
+
+            if (needInstall) {
+                spawnStep('npm install', 'npm', ['install'], runBuildScript);
+            } else {
+                runBuildScript();
+            }
+        };
+
+        runPackageSteps(runCleanThenBuild);
     });
 }
 
