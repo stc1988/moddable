@@ -191,8 +191,9 @@ class WebSocketClient {
 		if (0x88 === type) {		// close
 			if (this.#options.close & 2) {		// if we already received close, connection shuts down cleanly
 				this.#options.closer = Timer.set(() => {	// can't invoke callback from write. wait. gives time for message to transmit too.
+					const onClose = this.#options.onClose;
 					this.close();
-					this.#options.onClose?.call(this);
+					onClose?.call(this);
 				}, 1000);
 				this.#state = "closing";
 			}
@@ -422,8 +423,9 @@ class WebSocketClient {
 						}
 						if (8 === opcode) {
 							if (options.close & 1) {		// sent close, now receiving response: done
+								const onClose = this.#options.onClose;
 								this.close();
-								return void this.#options.onClose?.call(this);
+								return void onClose?.call(this);
 							}
 							else {						
 								options.close = 2;			// received request for clean close: reply
