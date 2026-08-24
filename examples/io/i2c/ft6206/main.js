@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2025  Moddable Tech, Inc.
+ * Copyright (c) 2019-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK.
  *
@@ -12,7 +12,7 @@
  *
  */
 
-import Touch from "embedded:sensor/touch/FT6x06";
+import Touch from "embedded:sensor/Touch/FT6x06";
 import Timer from "timer";
 
 const touch = new Touch({

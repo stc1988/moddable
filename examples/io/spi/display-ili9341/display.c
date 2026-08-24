@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Moddable Tech, Inc.
+ * Copyright (c) 2022-2026 Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -27,9 +27,7 @@
 #include "commodettoBitmap.h"
 #include "commodettoPocoBlit.h"
 #include "commodettoPixelsOut.h"
-
-extern void modDigitalBankWrite(void *bank, uint32_t value);
-extern xsHostHooks xsDigitalBankHooks;
+#include "digitalbank.h"
 
 static void xs_display_mark(xsMachine* the, void* it, xsMarkRoot markRoot);
 
@@ -70,7 +68,10 @@ struct DisplayRecord {
 	modSPIConfigurationRecord	*spi;
 	union {
 		xsSlot					*obj;
-		void					*bank;
+		struct {
+			xsDigitalBankHostHooks	hooks;
+			xsDigitalBankHostHooks	hostData;
+		} native;
 	} dc;
 	xsSlot						*state;
 	xsSlot						*async;
@@ -106,16 +107,18 @@ void xs_display_initialize(xsMachine* the)
 
 		disp->spi = xsmcGetHostDataValidate(xsArg(0), xs_spi_destructor);
 		disp->dispatch = (PixelsOutDispatch)&gPixelsOutDispatch;
-		disp->state = xsToReference(xsArg(2));
+		disp->state = xsmcToReference(xsArg(2));
 		disp->the = the;
 		disp->flags = kDisplayFlagFirstFrame;
 
-		if (&xsDigitalBankHooks == xsGetHostHooks(xsArg(1))) {
-			disp->dc.bank = xsmcGetHostData(xsArg(1));
+		xsDigitalBankHostHooks hooks = (xsDigitalBankHostHooks)xsGetHostHooks(xsArg(1)); 
+		if (hooks->hooks.signature && (0 == c_strcmp(hooks->hooks.signature, "digital"))) {
+			disp->dc.native.hooks = hooks;
+			disp->dc.native.hostData = xsmcGetHostData(xsArg(1));
 			disp->flags |= kDisplayFlagDCIsBank; 
 		}
 		else
-			disp->dc.obj = xsToReference(xsArg(1));
+			disp->dc.obj = xsmcToReference(xsArg(1));
 	}
 	else {
 		Display disp = xsmcGetHostData(xsThis);
@@ -212,7 +215,7 @@ void xs_display_send(xsMachine* the)
 
 	if (nonrelocatable && (kDisplayFlagAsync & disp->flags)) {
 		count = (xsUnsignedValue)(-(int)count);
-		disp->async = xsToReference(xsArg(0));
+		disp->async = xsmcToReference(xsArg(0));
 	}
 	else
 		disp->async = NULL;
@@ -343,7 +346,7 @@ void displayEnd(void *refCon)
 void displaySetDC(Display disp, xsIntegerValue dc)
 {
 	if (disp->flags & kDisplayFlagDCIsBank)
-		modDigitalBankWrite(disp->dc.bank, dc ? ~0 : 0);
+		(disp->dc.native.hooks->doWrite)(disp->dc.native.hostData, dc ? ~0 : 0);
 	else {
 		xsMachine *the = disp->the;
 		xsCall1(xsReference(disp->dc.obj), xsID_write, xsInteger(dc));
