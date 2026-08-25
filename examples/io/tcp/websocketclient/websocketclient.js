@@ -112,6 +112,7 @@ class WebSocketClient {
 		delete options.timer;
 		delete options.closer;
 		delete options.pending;
+		this.#options = undefined;
 	}
 	write(data, options) {
 		const mask = this.#mask;
@@ -190,8 +191,9 @@ class WebSocketClient {
 		if (0x88 === type) {		// close
 			if (this.#options.close & 2) {		// if we already received close, connection shuts down cleanly
 				this.#options.closer = Timer.set(() => {	// can't invoke callback from write. wait. gives time for message to transmit too.
+					const onClose = this.#options.onClose;
 					this.close();
-					this.#options.onClose?.call(this);
+					onClose?.call(this);
 				}, 1000);
 				this.#state = "closing";
 			}
@@ -322,6 +324,8 @@ class WebSocketClient {
 							this.#options.flags |= 2;		//@@ validate data
 						else if (("upgrade" == name) && ("websocket" == data.toLowerCase()))
 							this.#options.flags |= 4;
+						else if ("sec-websocket-protocol" === name)
+							this.#options.protocol = data;
 					}
 
 					this.#line = "";
@@ -419,8 +423,9 @@ class WebSocketClient {
 						}
 						if (8 === opcode) {
 							if (options.close & 1) {		// sent close, now receiving response: done
+								const onClose = this.#options.onClose;
 								this.close();
-								return void this.#options.onClose?.call(this);
+								return void onClose?.call(this);
 							}
 							else {						
 								options.close = 2;			// received request for clean close: reply
@@ -587,6 +592,9 @@ class WebSocketClient {
 			this.#format = true;
 		else
 			throw new RangeError;
+	}
+	get protocol() {
+		return this.#options.protocol;
 	}
 	
 	static text = 1;

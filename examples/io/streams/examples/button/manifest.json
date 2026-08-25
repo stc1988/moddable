@@ -1,4 +1,7 @@
 {
+	"build": {
+		"NAME": "button-io-streams"
+	},
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/modules/io/manifest.json"

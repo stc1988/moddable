@@ -1,4 +1,7 @@
 {
+	"build": {
+		"NAME": "button-pins"
+	},
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODULES)/pins/digital/manifest.json"

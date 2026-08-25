@@ -1,7 +1,7 @@
 ---
 name: Get Time and Date from Real-Time Clock
 SPDX-FileCopyrightText: Copyright (c) 2026 Moddable Tech, Inc.
-updated: 2026-08-04
+updated: 2026-08-19
 ---
 
 On devices with Real-Time Clock hardware, you can get the current time and date from the Real-Time Clock. The value returned is Unix Time in milliseconds.
@@ -31,6 +31,8 @@ You can use the Real-Time Clock to set the time and date of the device. This is 
 Note that the Real-Time Clock `time` value is milliseconds but `Time.set` expects seconds.
 
 ```js
+import Time from "time";
+
 const rtc = new device.rtc.io(device.rtc);
 Time.set(rtc.time / 1000);
 rtc.close();

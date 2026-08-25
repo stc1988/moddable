@@ -24,6 +24,7 @@ XS_GIT_VERSION ?= $(shell git -C $(MODDABLE) describe --tags --always --dirty 2>
 ESP_SDK_RELEASE ?= esp8266-2.3.0
 # ARDUINO_ROOT ?= $(ESP_BASE)/$(ESP_SDK_RELEASE)
 ESPRESSIF_SDK_ROOT ?= $(ESP_BASE)/ESP8266_RTOS_SDK
+ESPTOOL ?= esptool
 ESP_TOOLS_SDK_ROOT = $(ARDUINO_ROOT)/tools/sdk
 ARDUINO_ESP8266 = $(ARDUINO_ROOT)/cores/esp8266
 TOOLS_ROOT ?= $(ESP_BASE)/toolchain/$(HOST_OS)
@@ -42,8 +43,8 @@ endif
 ifeq ($(wildcard $(TOOLS_ROOT)),)
 $(error Xtensa lx106 architecture GCC toolchain directory not found at $$TOOLS_ROOT: $(TOOLS_ROOT). Set-up instructions at https://github.com/Moddable-OpenSource/moddable/blob/public/documentation/devices/esp8266.md)
 endif
-ifeq ($(shell which python),)
-$(error Python not found. Set-up instructions at https://github.com/Moddable-OpenSource/moddable/blob/public/documentation/devices/esp8266.md)
+ifeq ($(shell which $(ESPTOOL)),)
+$(error esptool not found at $$ESPTOOL: $(ESPTOOL). Set-up instructions at https://github.com/Moddable-OpenSource/moddable/blob/public/documentation/devices/esp8266.md)
 endif
 
 # serial port configuration
@@ -221,7 +222,6 @@ CPP = $(TOOLS_BIN)/xtensa-lx106-elf-g++
 LD  = $(CC)
 AR  = $(TOOLS_BIN)/xtensa-lx106-elf-ar
 OTA_TOOL = $(TOOLS_ROOT)/espota.py
-ESPTOOL = $(ESPRESSIF_SDK_ROOT)/components/esptool_py/esptool/esptool.py
 
 C_DEFINES = \
 	-D__ets__ \
@@ -321,15 +321,15 @@ ifeq ($(FLASH_SIZE),4M)
 endif
 
 ESPTOOL_FLASH_OPT = \
-	--flash_freq $(FLASH_SPEED)m \
-	--flash_mode $(FLASH_MODE) \
-	--flash_size $(FLASH_SIZE)B \
+	--flash-freq $(FLASH_SPEED)m \
+	--flash-mode $(FLASH_MODE) \
+	--flash-size $(FLASH_SIZE)B \
 	0x0000 $(ESP_BOOTLOADER_BIN) \
 	0x1000 $(BIN_DIR)/main.bin \
 	$(ESP_INIT_DATA_DEFAULT_BIN_OFFSET) $(ESP_DATA_DEFAULT_BIN)
 
 SET_PROGRAMMING_MODE =
-DO_PROGRAM = $(ESPTOOL) -b $(UPLOAD_SPEED) -p $(UPLOAD_PORT) write_flash $(ESPTOOL_FLASH_OPT)
+DO_PROGRAM = $(ESPTOOL) -b $(UPLOAD_SPEED) -p $(UPLOAD_PORT) write-flash $(ESPTOOL_FLASH_OPT)
 
 .PHONY: all
 

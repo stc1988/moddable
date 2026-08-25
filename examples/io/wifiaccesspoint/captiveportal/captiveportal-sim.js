@@ -29,6 +29,7 @@
 import WiFiAccessPoint from "embedded:network/interface/wifi/accesspoint";
 import WiFi from "embedded:network/interface/wifi";
 import Timer from "timer";
+import Time from "time";
 
 const kStep = 300;					// pause between the ghost client's steps
 const kGhostPassword = "simulated";	// what the ghost client types into the provisioning page
@@ -48,6 +49,7 @@ class CaptivePortal {
 	#onClose;
 	#onError;
 	#onStatus;
+	#onInfo;
 	#phase = "";
 	#credentials;
 	#ssid;
@@ -66,6 +68,7 @@ class CaptivePortal {
 		this.#onClose = options.onClose;
 		this.#onError = options.onError;
 		this.#onStatus = options.onStatus;
+		this.#onInfo = options.onInfo;
 		this.#ssid = options.SSID ?? "Moddable";
 		this.#password = options.password ?? randomText(10);
 
@@ -169,6 +172,7 @@ class CaptivePortal {
 	#onGhostJoined() {
 		this.#setPhase("connected");
 		this.#steps = [
+			() => this.#info(),					// time/zone and language of remote
 			() => this.#request("/"),				// the browser opens the portal
 			() => this.#request("/no-such-page"),	// and something that must fall through to the redirect
 			() => this.#requestScan(),				// "scan" over the WebSocket
@@ -193,6 +197,20 @@ class CaptivePortal {
 				this.#next();
 		}, kStep);
 	}
+	#info() {
+		this.#onInfo?.({
+			event: "time",
+			time: Date.now(),
+			timezone: Time.timezone,
+			dst: Time.dst
+		});
+		this.#onInfo?.({
+			event: "language",
+			language: "en-US"
+		});
+		
+	}
+
 	// what the HTTP server would have served for one request
 	#request(path) {
 		let page;

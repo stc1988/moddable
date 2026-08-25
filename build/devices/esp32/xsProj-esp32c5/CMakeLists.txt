@@ -22,5 +22,8 @@ if (WIN32)
 	set(CMAKE_OBJECT_PATH_MAX 260)
 endif ()
 
+# only build the components this application needs
+include(../xs_idf_components.txt OPTIONAL)
+
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(xs_esp32)

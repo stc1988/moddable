@@ -236,7 +236,9 @@ CC  = $(TOOLS_BIN)\xtensa-lx106-elf-gcc
 CPP = $(TOOLS_BIN)\xtensa-lx106-elf-g++
 LD  = $(CPP)
 AR  = $(TOOLS_BIN)\xtensa-lx106-elf-ar
-ESPTOOL = python $(ESPRESSIF_SDK_ROOT)\components\esptool_py\esptool\esptool.py
+!IF "$(ESPTOOL)"==""
+ESPTOOL = esptool
+!ENDIF
 
 AR_OPTIONS = rcs
 
@@ -315,14 +317,14 @@ ESP_INIT_DATA_DEFAULT_BIN_OFFSET = 0x3FC000
 !ENDIF
 
 ESPTOOL_FLASH_OPT = \
-	--flash_freq $(FLASH_SPEED)m \
-	--flash_mode $(FLASH_MODE) \
-	--flash_size $(FLASH_SIZE)B \
+	--flash-freq $(FLASH_SPEED)m \
+	--flash-mode $(FLASH_MODE) \
+	--flash-size $(FLASH_SIZE)B \
 	0x0000 $(ESP_BOOTLOADER_BIN) \
 	0x1000 $(BIN_DIR)\main.bin \
 	$(ESP_INIT_DATA_DEFAULT_BIN_OFFSET) $(ESP_DATA_DEFAULT_BIN)
 
-UPLOAD_TO_ESP = $(ESPTOOL) -b $(UPLOAD_SPEED) -p $(UPLOAD_PORT) write_flash $(ESPTOOL_FLASH_OPT)
+UPLOAD_TO_ESP = $(ESPTOOL) -b $(UPLOAD_SPEED) -p $(UPLOAD_PORT) write-flash $(ESPTOOL_FLASH_OPT)
 
 .PHONY: all	
 

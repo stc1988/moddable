@@ -234,8 +234,7 @@ class QwiicAlphanumericDisplay {
 	 * digit position (matching the SparkFun Arduino library behaviour).
 	 */
 	write(string) {
-		if (typeof string !== "string")
-			string = String(string);
+		string = String(string);
 
 		this.#stopScroll();
 		this.#content = string;
@@ -380,12 +379,7 @@ class QwiicAlphanumericDisplay {
 			const buf = new Uint8Array(17);
 			buf[0] = 0;					// RAM start address
 			buf.set(slice, 1);
-			try {
-				io.write(buf);
-			}
-			catch (e) {
-				this.#onError?.(e);
-			}
+			io.write(buf);
 		}
 	}
 
@@ -406,10 +400,8 @@ class QwiicAlphanumericDisplay {
 	}
 
 	#stopScroll() {
-		if (this.#timer) {
-			Timer.clear(this.#timer);
-			this.#timer = undefined;
-		}
+		Timer.clear(this.#timer);
+		this.#timer = undefined;
 	}
 
     static { 

@@ -716,7 +716,7 @@ void xs_directorystorage_write(xsMachine *the)
 			} break;
 
 		case kIOFormatUint32: {
-			uint32_t value = xsToUnsigned(xsArg(1));
+			uint32_t value = xsmcToUnsigned(xsArg(1));
 			success = writeEntry(domain, key, format, (uint8_t *)&value, 4);
 			} break;
 

@@ -11,7 +11,10 @@
 				"ota": {
 					"autosplit": 1
 				}
-			}
+			},
+			"dependency": [
+				{ "idf": "app_update" }
+			]
 		},
 		"...": {
 			"error": "ESP32 OTA is not supported on this platform"

@@ -20,7 +20,10 @@
 			},
 			"preload": [
 				"flash"
-			]		
+			]		,
+			"dependency": [
+				{ "idf": "app_update" }
+			]
 		},
 		"nrf52": {
 			"modules": {

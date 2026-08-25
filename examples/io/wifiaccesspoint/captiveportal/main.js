@@ -31,6 +31,9 @@ new CaptivePortal({
 	onStatus(phase, detail) {
 		trace(`portal: ${phase}${detail ? ` (${JSON.stringify(detail)})` : ""}\n`);
 	},
+	onInfo(msg) {
+		trace(`portal: info ${JSON.stringify(msg)}\n`);
+	},
 	onError(err) {
 		trace(`portal error: ${err.message}\n`);
 	}

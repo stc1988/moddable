@@ -352,8 +352,7 @@ export default class extends TOOL {
 		
 		path = this.environment.MODDABLE + this.slash + "modules" + this.slash + "network" + this.slash + "ble" + this.slash;
 		if ("esp32" == this.platform) {
-			let bluedroid = this.getenv("ESP32_BLUEDROID") === "1";
-			path += bluedroid ? this.platform : "nimble";
+			path += "nimble";
 /**/			let subclass = this.getenv("ESP32_SUBCLASS");
 /**/			if (undefined === subclass)
 /**/				subclass = "esp32";

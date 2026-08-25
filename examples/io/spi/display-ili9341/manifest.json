@@ -10,6 +10,7 @@
 	"modules": {
 		"embedded:display/LCD/ILI9341": "./display",
 		"commodetto/Poco": "$(COMMODETTO)/commodettoPoco",
+		"commodetto/PocoCore": "$(COMMODETTO)/commodettoPocoCore",
 		"commodetto/*": "$(COMMODETTO)/commodettoPocoBlit",
 		"commodetto/cfe": "$(COMMODETTO)/cfeBMF",
 		"piu/*": "$(PIU)/All/piu*",

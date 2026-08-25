@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Tools.
  * 
@@ -507,6 +507,7 @@ int main(int argc, char* argv[])
 			if (linker->stripFlag) {
 				fxPrepareHome(the);
 				fxStripCallbacks(linker, the);
+				fxCollectGarbage(the);
 			}
 			else
 				fxUnstripCallbacks(linker);

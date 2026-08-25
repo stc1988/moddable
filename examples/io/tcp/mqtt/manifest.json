@@ -2,13 +2,8 @@
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/examples/manifest_net.json",
-		"$(MODDABLE)/modules/io/manifest.json",
 		"./manifest_mqtt.json"
 	],
-	"creation": {
-		"stack": 384,
-		"static": 65536
-	},
 	"modules": {
 		"*": [
 			"./config",

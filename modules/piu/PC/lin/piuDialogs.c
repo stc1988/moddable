@@ -76,7 +76,7 @@ void PiuSystem_open(xsMachine* the, GtkFileChooserAction action)
  	xsStringValue name = NULL;
  	xsStringValue prompt = NULL;
 	GtkWidget *dialog;
-	GtkFileFilter *filter = NULL;
+//	GtkFileFilter *filter = NULL;
 	if ((argc > 0) && xsTest(xsArg(0))) {
 		if (xsFindString(xsArg(0), xsID_message, &string)) {
 			message = strdup(string);

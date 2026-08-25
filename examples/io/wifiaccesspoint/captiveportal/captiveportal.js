@@ -73,6 +73,7 @@ class CaptivePortal {
 	#onClose;
 	#onError;
 	#onStatus;
+	#onInfo;
 	#phase = "";
 	#credentials;
 	#ssid;
@@ -88,6 +89,7 @@ class CaptivePortal {
 		this.#onClose = options.onClose;
 		this.#onError = options.onError;
 		this.#onStatus = options.onStatus;
+		this.#onInfo = options.onInfo;
 		this.#port = options.port ?? 80;
 		this.#channel = options.channel;
 		this.#ssid = options.SSID ?? "Moddable";
@@ -332,6 +334,9 @@ class CaptivePortal {
 				break;
 			case "terminate":
 				this.#handleTerminate();
+				break;
+			default:
+				this.#onInfo?.(msg);
 				break;
 		}
 	}

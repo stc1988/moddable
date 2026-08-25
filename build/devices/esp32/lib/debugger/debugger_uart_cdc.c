@@ -143,12 +143,6 @@ static void debug_task(void *pvParameter)
 			bufferReady = 0;
 			buffer0_position = 0;
 
-			uart_driver_delete(USE_UART);
-
-#if MODDEF_ECMA419_ENABLED
-			builtinFreePin(USE_UART_TX);
-			builtinFreePin(USE_UART_RX);
-#endif
 			break;
 		}
 		if (strstr_l((char *)buffer1, buffer1_available, "<?xs#")) {
@@ -164,6 +158,10 @@ static void debug_task(void *pvParameter)
 	gProbing = 0;
 
 	if (isUART) {
+#if MODDEF_ECMA419_ENABLED
+		builtinUsePin(USE_UART_TX);
+		builtinUsePin(USE_UART_RX);
+#endif
 		while (true) {
 			if (0 == bufferReady) {
 				if (buffer1_available) {
@@ -196,6 +194,8 @@ static void debug_task(void *pvParameter)
 		}
 	}
 	else {
+		uart_driver_delete(USE_UART);
+
 		while (true) {
 			if (0 == bufferReady) {
 				if (buffer1_available) {
@@ -337,11 +337,6 @@ void setupDebugger(void)
 
 	uart_param_config(USE_UART, &uartConfig);
 	uart_set_pin(USE_UART, USE_UART_TX, USE_UART_RX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-
-#if MODDEF_ECMA419_ENABLED
-	builtinUsePin(USE_UART_TX);
-	builtinUsePin(USE_UART_RX);
-#endif
 
 	xTaskCreate(debug_task, "debug", (768 + XT_STACK_EXTRA) / sizeof(StackType_t), NULL, 8, NULL);
 }

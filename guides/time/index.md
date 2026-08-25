@@ -1,7 +1,7 @@
 ---
 name: Time
 SPDX-FileCopyrightText: Copyright (c) 2026 Moddable Tech, Inc.
-updated: 2026-08-04
+updated: 2026-08-19
 ---
 
 Embedded JavaScript projects work with time in several ways, and these guides cross a range of APIs — from the standard JavaScript `Date` object to Moddable SDK modules and ECMA-419 device drivers.
@@ -21,6 +21,7 @@ Embedded JavaScript projects work with time in several ways, and these guides cr
 - [Get Time Since System Start](./get-time-since-system-start.md)
 - [Get Microseconds](./get-microseconds.md)
 - [Set System Date and Time](./set-system-date-time.md)
+- [How Time and Timezone are Initialized](./how-time-initialized.md)
 
 ## Real-Time Clock
 
@@ -53,7 +54,7 @@ The remaining features require additional modules:
 
 When building with `mcconfig`, add the manifests needed to your project.
 
-When building with `mcpack`, either add the microsoft manifest to your project or use the needed modules in `import` statements. If your project accesses Network Time through `device.network.ntp.client`, `mcpack` includes the necessary manifests automatically.
+When building with `mcpack`, either add the corresponding manifest to your project or use the needed modules in `import` statements. If your project accesses Network Time through `device.network.ntp.client`, `mcpack` includes the necessary manifests automatically.
 
 
 ## Learn More
