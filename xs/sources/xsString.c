@@ -776,7 +776,7 @@ void fx_String_raw(txMachine* the)
 {
 	txInteger argCount = mxArgc;
 	txSlot* raw;
-	txInteger rawCount;
+	txNumber rawCount;
 	if (argCount > 0)
 		fxToInstance(the, mxArgv(0));
 	else
@@ -786,7 +786,7 @@ void fx_String_raw(txMachine* the)
 	raw = the->stack;
 	mxPushSlot(raw);
 	mxGetID(mxID(_length));
-	rawCount = fxToInteger(the, the->stack);
+	rawCount = fxToLength(the, the->stack);
 	mxPop();
 	if (rawCount <= 0) {
 		mxResult->value = mxEmptyString.value;
@@ -821,7 +821,7 @@ void fx_String_raw(txMachine* the)
 		item = list->next;
 		while (item) {
 			item->value.key.sum = mxStringLength(item->value.string);
-			size += item->value.key.sum;
+			size = fxAddChunkSizes(the, size, item->value.key.sum);
 			item = item->next;
 		}
 		size++;
