@@ -1,4 +1,7 @@
 {
+	"build": {
+		"NAME": "console-pzem-004t"
+	},
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/modules/drivers/sensors/pzem-004t/manifest.json"

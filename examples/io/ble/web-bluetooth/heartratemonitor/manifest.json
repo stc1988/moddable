@@ -1,4 +1,7 @@
 {
+	"build": {
+		"NAME": "heartratemonitor-web-bluetooth"
+	},
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/modules/io/ble/web-bluetooth/manifest.json"

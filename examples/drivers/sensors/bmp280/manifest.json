@@ -1,4 +1,7 @@
 {
+	"build": {
+		"NAME": "bmp280-sensors"
+	},
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/modules/io/manifest.json",

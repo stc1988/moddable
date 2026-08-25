@@ -1,4 +1,7 @@
 {
+	"build": {
+		"NAME": "simple-ccs811"
+	},
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/modules/io/manifest.json",

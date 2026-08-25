@@ -1,4 +1,7 @@
 {
+	"build": {
+		"NAME": "interrupt-hmc5883"
+	},
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/modules/drivers/sensors/hmc5883/manifest.json"

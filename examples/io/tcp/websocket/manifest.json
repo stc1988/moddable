@@ -1,4 +1,7 @@
 {
+	"build": {
+		"NAME": "websocket-tcp"
+	},
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/examples/manifest_net.json",

@@ -1,4 +1,7 @@
 {
+	"build": {
+		"NAME": "websocket-web-streams"
+	},
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODULES)/web/streams/all/manifest.json",
