@@ -22,7 +22,7 @@ declare module "embedded:io/smbus" {
   import I2C from "embedded:io/i2c"
 
   class SMBus extends I2C {
-    constructor(options: ConstructorParameters<typeof I2C> & {
+    constructor(options: ConstructorParameters<typeof I2C>[0] & {
       stop?: boolean;
     });
     readUint8(register: number): number;
