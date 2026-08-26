@@ -432,12 +432,12 @@ class HTTPServer {
 	#onConnect;
 	#listener;
 	#connections = new Set;
-	#router;
+	#onRoute;
 
 	constructor(options) {
 		this.#onConnect = options.onConnect;
-		this.#router = options.router;
-		if (!this.#onConnect === !this.#router)
+		this.#onRoute = options.onRoute;
+		if (!this.#onConnect === !this.#onRoute)
 			throw new Error("invalid");
 
 		this.#listener = new options.socket.io({
@@ -448,11 +448,11 @@ class HTTPServer {
 				while (count--) {
 					const connection = new Connection(this.read(), connection => this.target.#connections?.delete(connection));
 					this.target.#connections.add(connection);
-					if (this.target.#router) {
+					if (this.target.#onRoute) {
 						connection.accept({
 							onRequest: request => {
 								try {
-									connection.route = this.target.#router.call(this.target, request) || {
+									connection.route = this.target.#onRoute.call(this.target, request) || {
 										onResponse(response) {
 											response.status = 404;
 											response.headers.set("content-length", 0);

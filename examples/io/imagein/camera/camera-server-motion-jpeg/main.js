@@ -12,7 +12,7 @@
  *
  */
 
-import WebPage from "embedded:network/http/server/route/webpage";
+import StaticRoute from "embedded:network/http/server/route/static";
 import Camera from "embedded:io/image/in/camera";
 import Net from "net";
 
@@ -129,7 +129,7 @@ router.set("/camera", {
 
 //@@ update to use StaticRoute when available
 router.set("/", { 
-	...WebPage,
+	...StaticRoute,
 	msg: ArrayBuffer.fromString(`<img src="./camera">`)
 });
 

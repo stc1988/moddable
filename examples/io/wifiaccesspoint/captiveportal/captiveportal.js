@@ -24,7 +24,7 @@ import WiFi from "embedded:network/interface/wifi";
 import UDP from "embedded:io/socket/udp";
 import DNSServer from "embedded:network/dns/server/udp";
 
-import WebPage from "embedded:network/http/server/route/webpage";
+import StaticRoute from "embedded:network/http/server/route/static";
 import WebSocketHandshake from "embedded:network/http/server/route/ws/handshake";
 import WebSocketClient from "embedded:network/websocket/client";
 
@@ -214,7 +214,7 @@ class CaptivePortal {
 		return new device.network.http.server.io({
 			...device.network.http.server,
 			port: this.#port,
-			router: request => {
+			onRoute: request => {
 				if ("GET" !== request.method)
 					return;
 
@@ -230,7 +230,7 @@ class CaptivePortal {
 				const page = portal.#onPage(request.path);
 				if (page) {
 					return {
-						...WebPage,
+						...StaticRoute,
 						data: page.content,
 						headers: new Map([
 							["content-type", page.mimeType],
@@ -241,7 +241,7 @@ class CaptivePortal {
 
 				const dest = `http://${portal.#ap.address}`;
 				return {
-					...WebPage,
+					...StaticRoute,
 					data: `<HTML><HEAD><META http-equiv="refresh" content="0; URL=${dest}"></HEAD></HTML>`,
 					status: 200,
 					headers: new Map([

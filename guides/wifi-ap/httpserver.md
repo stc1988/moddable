@@ -15,7 +15,7 @@ This example creates a simple HTTP server with a welcome page.
 See the [HTTP Server Guide](../http-server/index.md) for more information.
 
 ```js
-import WebPage from "embedded:network/http/server/route/webpage";
+import StaticRoute from "embedded:network/http/server/route/static";
 
 const httpServer = new device.network.http.server.io({
 	...device.network.http.server,
@@ -25,13 +25,13 @@ const httpServer = new device.network.http.server.io({
 			onRequest(request) {
 				if ("/" === request.path) {
 					this.route = {
-						...WebPage,
+						...StaticRoute,
 						data: "Welcome!",
 					}
 				}
 				else {
 					this.route = {
-						...WebPage,
+						...StaticRoute,
 						data: "Not found",
 						status: 404
 					}

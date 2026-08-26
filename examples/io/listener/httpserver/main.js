@@ -13,7 +13,7 @@
  */
 
 import ServerSentEvents from "embedded:network/http/server/route/serversentevents";
-import WebPage from "embedded:network/http/server/route/webpage";
+import StaticRoute from "embedded:network/http/server/route/static";
 import WebSocketHandshake from "embedded:network/http/server/route/ws/handshake";
 
 import WebSocket from "WebSocket";
@@ -24,7 +24,7 @@ const router = new Map;
 const server = new device.network.http.server.io({
 	...device.network.http.server,
 	port: 8080,
-	router: request => ("GET" === request.method) && router.get(request.path)
+	onRoute: request => ("GET" === request.method) && router.get(request.path)
 });
 
 const reply = ArrayBuffer.fromString("1 2 3 4 5 6 7 8\n");
@@ -80,7 +80,7 @@ router.set("/sse", {
 	}
 });
 router.set("/sse.html", { 
-	...WebPage,
+	...StaticRoute,
 	data: `
 <script>
 console.log("starting EventSource");
