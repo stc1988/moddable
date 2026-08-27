@@ -343,7 +343,7 @@ void xs_tcp_write(xsMachine *the)
 			tcp->bytesWritable += needed;
 			xsUnknownError("would block");
 		}
-		xsTrace("write failed");
+		xsTrace("write failed\n");
 		tcpTrigger(tcp, kTCPError);
 		return;
 	}
