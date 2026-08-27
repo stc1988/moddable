@@ -268,8 +268,11 @@ class Connection {
 						count = this.#chunk;
 					}
 
-					if (this.#options.onReadable)
-						this.#options.onReadable.call(this, Math.min(this.#readable, count));
+					if (this.#options.onReadable) {
+						count = Math.min(this.#readable, count);
+						if (count)
+							this.#options.onReadable.call(this, count);
+					}
 					else
 						this.read();
 					}
