@@ -484,7 +484,8 @@ void xs_directory_iterator_posix(xsMachine *the)
 		close(scan.fd);
 		xsUnknownError(strerror(errno));
 	}
-	
+	rewinddir(scan.dir);
+
 	xsmcSetHostChunk(xsThis, &scan, sizeof(scan));
 }
 
