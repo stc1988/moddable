@@ -109,6 +109,8 @@ mcpack mcconfig -dl -m -p sim
 
 **A `-d` build launches and waits for the xsbug GUI debugger.** For unattended or headless work use `-dn` to build debug without launching a debugger, or `-dl` to use xsdb.
 
+**On a device target, `-i` shows the serial console directly in the terminal.** `mcconfig -i -m -p esp32/<target>` builds instrumented, flashes, and then prints the device's serial output as it arrives — no debugger, no serial plumbing of your own. This is the way to see a native crash: a panic (core dump, `Guru Meditation`) never reaches xsdb — from the debugger's side it looks like the device silently going away — but it appears in full on the serial console. When a device under `-dl` hangs or disconnects for no visible reason, rerun with `-i` before theorizing.
+
 ### The simulator is not a device
 
 `-p sim` runs your JavaScript on the host computer. It is the fastest way to check application logic, and it is weak evidence for anything that touches hardware. Pins, BLE, Wi-Fi, and displays are absent or stubbed, memory behaves nothing like a microcontroller (see [`static`](#creation--configuring-ram)), and timing is unrepresentative. "It works in the simulator" does not mean it works on the target — build for the real device before concluding a hardware-facing change is correct.
