@@ -176,7 +176,10 @@ void xs_fileposix_write(xsMachine *the)
 	xsUnsignedValue length;
 	xsmcGetBufferWritable(xsArg(0), &buffer, &length);
 
-	throwIf(pwrite(fd, buffer, length, position));
+	ssize_t result = pwrite(fd, buffer, length, position);
+	throwIf(result);
+	if ((xsUnsignedValue)result != length)
+		xsUnknownError("partial write");
 }
 
 void xs_fileposix_status(xsMachine *the)
