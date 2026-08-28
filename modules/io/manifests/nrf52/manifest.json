@@ -15,12 +15,11 @@
 	"modules": {
 		"*": [
 			"$(IO)/common/builtinCommon"
-		]
+		],
 
 		"system": "$(IO)/system/*"
 	},
 	"preload": [
-		"embedded:*",
 		"system"
 	],
 	"platforms": {

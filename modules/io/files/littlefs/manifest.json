@@ -26,6 +26,28 @@
 				}
 			},
 			"preload": "embedded:x-files-implementation"
+		},
+		"esp": {
+			"modules": {
+				"embedded:x-files-implementation": "./files-littlefs",
+				"*": [
+					"./lfs_util",
+					"./lfs"
+				],
+				"embedded:storage/files": "./files"
+			},
+			"preload": "embedded:x-files-implementation"
+		},
+		"pico": {
+			"modules": {
+				"embedded:x-files-implementation": "./files-littlefs",
+				"*": [
+					"./lfs_util",
+					"./lfs"
+				],
+				"embedded:storage/files": "./files"
+			},
+			"preload": "embedded:x-files-implementation"
 		}
 	},
 	"defines": {
