@@ -25,7 +25,11 @@ class Listener extends Native("xs_listener_destructor_") {
 	close() { return native("xs_listener_close_").call(this); }
 	read() {
 		// @ts-expect-error no arguments is internal-only use of TCP constructor
-		return native("xs_listener_read").call(this, new TCP);
+		const tcp = new TCP;
+		const result = native("xs_listener_read").call(this, tcp);
+		if (!result)
+			tcp.close();
+		return result;
 	}
 
 	get port() { return native("xs_listener_get_port").call(this); };
