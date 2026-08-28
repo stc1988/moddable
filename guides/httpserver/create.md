@@ -6,14 +6,14 @@ updated: 2026-08-25
 
 To create an HTTP server, just instantiate it with the port number to listen on. If the `port` property is omitted, it defaults to 80.
 
+This server has no routes, so it replies to all requests with an HTTP 404 (Not Found) error. ["Route Request"](./route.md) explains how to bind requests to handlers.
+
 ```js
 const server = new device.network.http.server.io({
 	...device.network.http.server,
 	port: 8080
 });
 ```
-
-This server has no routes, so it replies to all requests with an HTTP 404 (Not Found) error. ["Route Request"](./route.md) explains how to bind requests to handlers.
 
 ---
 

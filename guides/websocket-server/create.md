@@ -11,7 +11,8 @@ You can have several different WebSocket endpoints on a single HTTP Server.
 This example does not attach the connection to a WebSocket client. See [Accept WebSocket Request](./accept.md) for that.
 
 ```js
-import WebSocketHandshake from "embedded:network/http/server/route/ws/handshake";
+import WebSocketHandshake
+	from "embedded:network/http/server/route/ws/handshake";
 
 const server = new device.network.http.server.io({
 	...device.network.http.server,
@@ -33,10 +34,11 @@ const server = new device.network.http.server.io({
 
 ---
 
-In `onRoute()` you have access to the [complete HTTP request](../httpserver/route.md) which can be used to filter connections.
+In `onRoute()` you have access to the [complete HTTP request](../httpserver/route.md) to filter connections.
 
 ```js
-import WebSocketHandshake from "embedded:network/http/server/route/ws/handshake";
+import WebSocketHandshake
+	from "embedded:network/http/server/route/ws/handshake";
 import StaticRoute from "embedded:network/http/server/route/static";
 
 const server = new device.network.http.server.io({

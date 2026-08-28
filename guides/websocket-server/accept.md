@@ -9,7 +9,8 @@ When the WebSocket Handshake route has successfully completed, it calls `onDone(
 This example shows handing the connection off to the Web platform's `WebSocket()`. The next example shows handing off to ECMA-419's WebSocket Client.
 
 ```js
-import WebSocketHandshake from "embedded:network/http/server/route/ws/handshake";
+import WebSocketHandshake
+	from "embedded:network/http/server/route/ws/handshake";
 import WebSocket from "WebSocket";
 
 const server = new device.network.http.server.io({
@@ -41,12 +42,13 @@ const websocketRoute = {
 
 ---
 
-The preceding example can be modified to use the ECMA-419 WebSocket Client instead by modifying the websocketRoute.
+The preceding example can be changed to use the ECMA-419 WebSocket Client instead by modifying the `websocketRoute`.
 
 See the [WebSocket client Guide](../websocket/index.md) for information on using the ECMA-419 WebSocket Client.
 
 ```js
-import WebSocketClient from "embedded:network/websocket/client";
+import WebSocketClient
+	from "embedded:network/websocket/client";
 const websocketRoute = {
 	...WebSocketHandshake,
 	onDone() {

@@ -11,7 +11,8 @@ This example responds to GET requests for the root path (`"/"`) with the welcome
 If `onRoute()` does not return a value, the HTTP Server responds with HTTP 404 (not found).
 
 ```js
-import StaticRoute from "embedded:network/http/server/route/static";
+import StaticRoute
+	from "embedded:network/http/server/route/static";
 
 const server = new device.network.http.server.io({
 	...device.network.http.server,
@@ -34,7 +35,8 @@ const server = new device.network.http.server.io({
 Your `onRoute()` can use the HTTP request headers to decide how to handle the request. This example checks for an "auth-token" request header. If the header is missing, the request is rejected.
 
 ```js
-import StaticRoute from "embedded:network/http/server/route/static";
+import StaticRoute
+	from "embedded:network/http/server/route/static";
 
 const server = new device.network.http.server.io({
 	...device.network.http.server,
@@ -56,7 +58,8 @@ const server = new device.network.http.server.io({
 Your `onRoute()` can also access the query parameters from the request path. This example checks the query for "auth-token." If it is not provided, the request is rejected.
 
 ```js
-import StaticRoute from "embedded:network/http/server/route/static";
+import StaticRoute
+	from "embedded:network/http/server/route/static";
 import { URLSearchParams } from "url";
 
 const server = new device.network.http.server.io({

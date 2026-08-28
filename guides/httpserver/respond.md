@@ -7,7 +7,8 @@ updated: 2026-08-25
 If your complete response is available from `onRoute()`, you can use the static route module to reply. Your response can include HTTP headers and the HTTP status. If the `status` is omitted, it defaults to 200.
 
 ```js
-import StaticRoute from "embedded:network/http/server/route/static";
+import StaticRoute
+	from "embedded:network/http/server/route/static";
 
 const server = new device.network.http.server.io({
 	...device.network.http.server,
@@ -32,7 +33,8 @@ A static route also accepts binary data as the response body.
 This example uses the `headers` property to set the response headers.
 
 ```js
-import StaticRoute from "embedded:network/http/server/route/static";
+import StaticRoute
+	from "embedded:network/http/server/route/static";
 import Headers from "headers";
 
 const server = new device.network.http.server.io({
@@ -148,7 +150,8 @@ const server = new device.network.http.server.io({
 const fetchRoute = {
 	onResponse(response) {
 		Timer.set(async () => {
-			const fetchResponse = await fetch("http://example.com");
+			const fetchResponse = await fetch(
+			"http://example.com");
 			const data = await fetchResponse.arrayBuffer();
 			response.headers.set(
 				"content-type", "text/plain");
