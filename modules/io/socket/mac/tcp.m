@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025  Moddable Tech, Inc.
+ * Copyright (c) 2022-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -288,6 +288,7 @@ void doClose(xsMachine *the, xsSlot *instance)
 		if (tcp->cfTriggeredTimer) {
 			CFRunLoopTimerInvalidate(tcp->cfTriggeredTimer);
 			tcp->cfTriggeredTimer = NULL;
+			tcpRelease(tcp);
 		}
 
 		xsmcSetHostData(*instance, NULL);
