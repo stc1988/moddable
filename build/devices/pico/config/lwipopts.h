@@ -21,4 +21,6 @@
 #define LWIP_MULTICAST_TX_OPTIONS	1
 #define LWIP_IGMP 1
 
+#define MEMP_NUM_TCP_PCB 8
+
 #endif
