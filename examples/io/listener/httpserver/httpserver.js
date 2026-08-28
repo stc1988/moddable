@@ -237,8 +237,10 @@ class Connection {
 				case "receiveHeader":
 					if ("\r\n" !== this.#line) {
 						const position = this.#line.indexOf(":");
-						const name = this.#line.substring(0, position).trim().toLowerCase();
-						let data = this.#line.substring(position + 1).trim();
+						if (position < 0)
+							return void this.#onError("badly formed");
+						const name = this.#line.slice(0, position).trim().toLowerCase();
+						let data = this.#line.slice(position + 1).trim();
 						this.#current.headers.set(name, data);
 
 						if ("content-length" === name) {
