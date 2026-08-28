@@ -519,22 +519,27 @@ class HTTPServer {
 					const connection = new Connection(from, connection => this.target.#connections?.delete(connection), this.target.#keepAlive);
 					this.target.#connections.add(connection);
 					if (this.target.#onRoute) {
-						connection.accept({
-							onRequest: request => {
-								try {
-									connection.route = this.target.#onRoute.call(this.target, request) || {
-										onResponse(response) {
-											response.status = 404;
-											response.headers.set("content-length", 0);
-											this.respond(response);
-										}
-									};
+						try {
+							connection.accept({
+								onRequest: request => {
+									try {
+										connection.route = this.target.#onRoute.call(this.target, request) || {
+											onResponse(response) {
+												response.status = 404;
+												response.headers.set("content-length", 0);
+												this.respond(response);
+											}
+										};
+									}
+									catch {
+										connection.close();
+									}
 								}
-								catch {
-									connection.close();
-								}
-							}
-						});
+							});
+						}
+						catch {
+							connection.close();		// the connection was reset before it could be accepted
+						}
 					}
 					else {
 						try {
