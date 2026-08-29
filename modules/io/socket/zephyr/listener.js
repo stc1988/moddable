@@ -23,14 +23,7 @@ import TCP from "embedded:io/socket/tcp"
 class Listener extends Native("xs_listener_destructor_") {
 	constructor(options) { super(); native("xs_listener_constructor").call(this, options); };
 	close() { return native("xs_listener_close_").call(this); }
-	read() {
-		// @ts-expect-error no arguments is internal-only use of TCP constructor
-		const tcp = new TCP;
-		const result = native("xs_listener_read").call(this, tcp);
-		if (!result)
-			tcp.close();
-		return result;
-	}
+	read() { return native("xs_listener_read").call(this, TCP); }
 
 	get port() { return native("xs_listener_get_port").call(this); };
 	get format() {
