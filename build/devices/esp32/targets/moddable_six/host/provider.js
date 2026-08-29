@@ -78,7 +78,19 @@ const device = {
 				});
 			}
 		},
-		Button,
+		button: {
+			Default: class {
+				constructor(options) {
+					return new Button({
+						...options,
+						io: device.io.Digital,
+						pin: device.pin.button,
+						mode: Digital.Input,
+						activeLow: true
+					});
+				}
+			}
+		},
 		led: {
 			Default: class {
 				constructor(options) {
