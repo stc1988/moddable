@@ -516,6 +516,7 @@ class WebSocketClient {
 		}
 	}
 	#onWritable(count) {
+		const options = this.#options;
 		this.#writable = count;
 
 		switch (this.#state) {
@@ -524,7 +525,6 @@ class WebSocketClient {
 				for (let i = 0; i < 16; i++)
 					key[i] = Math.irandom(256);
 				
-				const options = this.#options;
 				let message = [
 					`GET ${options.path || "/"} HTTP/1.1`, 
 					`Host: ${options.host}`,
@@ -546,28 +546,38 @@ class WebSocketClient {
 
 				message.push("", "");
 
-				//@@ if headers exceed count, send in pieces
-				message = ArrayBuffer.fromString(message.join("\r\n"));
-				this.#writable = this.#socket.write(message); 
+				options.request = new Uint8Array(ArrayBuffer.fromString(message.join("\r\n")));
+				this.#state = "sendRequest";
+				}
+				// fall through
+			case "sendRequest": {
+				const request = options.request;
+				const use = Math.min(this.#writable, request.byteLength);
+				this.#writable = this.#socket.write(request.subarray(0, use)); 
 
-				this.#state = "receiveStatus"
+				if (use < request.byteLength) {
+					options.request = request.subarray(use);
+					break;
+				}
+				delete options.request;
+				this.#state = "receiveStatus";
 				this.#line = "";
 				options.flags = 0;
 				this.#socket.format = NumberFormat;
 				} break;
 			
 			case "connected":
-				if (this.#options.pendingControl) {
-					if ((this.#options.pendingControl.byteLength + 6) > this.#writable)
+				if (options.pendingControl) {
+					if ((options.pendingControl.byteLength + 6) > this.#writable)
 						return;
 					
-					Timer.clear(this.#options.pending);
-					this.#options.pending = undefined;
+					Timer.clear(options.pending);
+					options.pending = undefined;
 
-					this.#writable = this.write(this.#options.pendingControl, {opcode: this.#options.pendingControl.opcode});
-					delete this.#options.pendingControl;
+					this.#writable = this.write(options.pendingControl, {opcode: options.pendingControl.opcode});
+					delete options.pendingControl;
 				}
-				this.#options.onWritable?.call(this, (this.#writable <= 8) ? 0 : (this.#writable - 8));
+				options.onWritable?.call(this, (this.#writable <= 8) ? 0 : (this.#writable - 8));
 				break;
 
 			default:
@@ -576,11 +586,12 @@ class WebSocketClient {
 		}
 	}
 	#onError() {
+		const {close, onClose, onError} = this.#options;
 		this.close();
-		if (this.#options.close)
-			this.#options.onClose?.call(this);
+		if (close)
+			onClose?.call(this);
 		else
-			this.#options.onError?.call(this);
+			onError?.call(this);
 	}
 	get format() {
 		return this.#format ? NumberFormat : BufferFormat;
