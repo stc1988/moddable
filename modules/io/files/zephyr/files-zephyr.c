@@ -180,7 +180,10 @@ void xs_filezephyr_write(xsMachine *the)
 	xsmcGetBufferWritable(xsArg(0), &buffer, &length);
 
 	throwIf(fs_seek(&xf->fsf, position, FS_SEEK_SET));
-	throwIf(fs_write(&xf->fsf, buffer, length));
+	ssize_t result = fs_write(&xf->fsf, buffer, length);
+	throwIf(result);
+	if ((xsUnsignedValue)result != length)
+		xsUnknownError("partial write");
 }
 
 void xs_filezephyr_status(xsMachine *the)

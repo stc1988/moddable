@@ -17,10 +17,10 @@
 			"$(IO)/common/builtinCommon",
 			"$(MODULES)/pins/digital/nrf52/modGPIO"
 		],
+
 		"system": "$(IO)/system/*"
 	},
 	"preload": [
-		"embedded:*",
 		"system"
 	],
 	"platforms": {

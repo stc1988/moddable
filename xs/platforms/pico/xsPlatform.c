@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2025  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -48,6 +48,8 @@
 
 #if SFE_ALLOC
 	#include "sparkfun_pico/sfe_pico_alloc.h"
+#else
+	#include "malloc.h"
 #endif
 
 #ifdef mxDebug
@@ -760,7 +762,10 @@ uint32_t pico_memory_remaining() {
 	uint32_t cur = sfe_mem_used();
 	return (max - cur);
 #else
-	return (1024);
+	extern char end;
+	extern char __StackLimit;
+
+	return (uint32_t)(&__StackLimit - &end) - mallinfo().uordblks;
 #endif
 }
 

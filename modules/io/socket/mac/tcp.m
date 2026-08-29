@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025  Moddable Tech, Inc.
+ * Copyright (c) 2022-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -288,6 +288,7 @@ void doClose(xsMachine *the, xsSlot *instance)
 		if (tcp->cfTriggeredTimer) {
 			CFRunLoopTimerInvalidate(tcp->cfTriggeredTimer);
 			tcp->cfTriggeredTimer = NULL;
+			tcpRelease(tcp);
 		}
 
 		xsmcSetHostData(*instance, NULL);
@@ -384,7 +385,7 @@ void xs_tcp_write(xsMachine *the)
 			tcp->bytesWritable += needed;
 			xsUnknownError("would block");
 		}
-		xsTrace("write failed");
+		xsTrace("write failed\n");
 		tcpTrigger(tcp, kTCPError);
 		return;
 	}
@@ -733,10 +734,9 @@ void xs_listener_read(xsMachine *the)
 	if (!pending)
 		return;
 
-	listener->pending = pending->next;
-
-	xsResult = xsArg(0);
+	xsResult = xsNewFunction0(xsArg(0));
 	tcp = xsmcGetHostDataValidate(xsResult, (void *)&xsTCPHooks);
+	listener->pending = pending->next;
 
 	tcp->cfSkt = pending->cfSkt;
 	tcp->skt = CFSocketGetNative(tcp->cfSkt);

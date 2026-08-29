@@ -1,0 +1,20 @@
+{
+	"modules": {
+		"*": [
+			"./xml",
+			"./modXML"
+		]
+	},
+	"preload": [
+		"xml"
+	],
+	"platforms": {
+		"esp": {
+			"recipes": {
+				"strings-in-flash-force-l32": [
+					"modXML*"
+				]
+			}
+		}
+	}
+}

@@ -9,6 +9,12 @@
 		"esp32": {
 			"include": "./littlefs/manifest.json"
 		},
+		"esp": {
+			"include": "./littlefs/manifest.json"
+		},
+		"pico": {
+			"include": "./littlefs/manifest.json"
+		},
 		"pebble": {
 			"include": "./pebble/manifest.json"
 		},

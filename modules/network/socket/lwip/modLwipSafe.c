@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2019  Moddable Tech, Inc.
+ * Copyright (c) 2016-2025  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -41,6 +41,12 @@ typedef struct {
 	char	 					*hostname;
 	dns_found_callback 			found;
 	void						*callback_arg;
+	tcp_recv_fn					recv;
+	tcp_sent_fn					sent;
+	tcp_err_fn					errcb;
+	struct tcp_pcb				**fromPCB;
+	struct tcp_pcb				**toPCB;
+	uint8_t						*closed;
 } LwipMsgRecord, *LwipMsg;
 
 static err_t tcp_new_INLWIP(struct tcpip_api_call_data *tcpMsg)
@@ -141,6 +147,85 @@ void tcp_clear_callbacks_safe(struct tcp_pcb *tcpPCB)
 	tcpip_api_call(tcp_clear_callbacks_INLWIP, &msg.call);
 }
 
+static err_t tcp_teardown_INLWIP(struct tcpip_api_call_data *tcpMsg)
+{
+	LwipMsg msg = (LwipMsg)tcpMsg;
+	struct tcp_pcb **pskt = (struct tcp_pcb **)msg->callback_arg;
+	struct tcp_pcb *skt = *pskt;
+	if (skt) {
+		*pskt = NULL;
+		tcp_arg(skt, NULL);
+		tcp_recv(skt, NULL);
+		tcp_sent(skt, NULL);
+		tcp_err(skt, NULL);
+		if (ERR_OK != tcp_close(skt))
+			tcp_abort(skt);
+	}
+	return ERR_OK;
+}
+
+void tcp_teardown_safe(struct tcp_pcb **pskt)
+{
+	LwipMsgRecord msg = {
+		.callback_arg = pskt,
+	};
+	tcpip_api_call(tcp_teardown_INLWIP, &msg.call);
+}
+
+static err_t tcp_handoff_checked_INLWIP(struct tcpip_api_call_data *tcpMsg)
+{
+	LwipMsg msg = (LwipMsg)tcpMsg;
+	struct tcp_pcb *skt = *msg->fromPCB;
+	if (!skt) {
+		msg->err = ERR_CONN;
+		return ERR_OK;
+	}
+	*msg->fromPCB = NULL;
+	*msg->toPCB = skt;
+	tcp_arg(skt, msg->callback_arg);
+	tcp_recv(skt, msg->recv);
+	tcp_sent(skt, msg->sent);
+	tcp_err(skt, msg->errcb);
+	msg->err = ERR_OK;
+	return ERR_OK;
+}
+
+err_t tcp_handoff_checked_safe(struct tcp_pcb **fromPCB, struct tcp_pcb **toPCB, void *callback_arg, tcp_recv_fn recv, tcp_sent_fn sent, tcp_err_fn err)
+{
+	LwipMsgRecord msg = {
+		.fromPCB = fromPCB,
+		.toPCB = toPCB,
+		.callback_arg = callback_arg,
+		.recv = recv,
+		.sent = sent,
+		.errcb = err,
+	};
+	tcpip_api_call(tcp_handoff_checked_INLWIP, &msg.call);
+	return msg.err;
+}
+
+static err_t tcp_handoff_INLWIP(struct tcpip_api_call_data *tcpMsg)
+{
+	LwipMsg msg = (LwipMsg)tcpMsg;
+	tcp_arg(msg->tcpPCB, msg->callback_arg);
+	tcp_recv(msg->tcpPCB, msg->recv);
+	tcp_sent(msg->tcpPCB, msg->sent);
+	tcp_err(msg->tcpPCB, msg->errcb);
+	return ERR_OK;
+}
+
+void tcp_handoff_safe(struct tcp_pcb *tcpPCB, void *callback_arg, tcp_recv_fn recv, tcp_sent_fn sent, tcp_err_fn err)
+{
+	LwipMsgRecord msg = {
+		.tcpPCB = tcpPCB,
+		.callback_arg = callback_arg,
+		.recv = recv,
+		.sent = sent,
+		.errcb = err,
+	};
+	tcpip_api_call(tcp_handoff_INLWIP, &msg.call);
+}
+
 static err_t tcp_output_INLWIP(struct tcpip_api_call_data *tcpMsg)
 {
 	LwipMsg msg = (LwipMsg)tcpMsg;
@@ -189,6 +274,62 @@ void tcp_recved_safe(struct tcp_pcb *tcpPCB, u16_t len)
 	msg->tcpPCB = tcpPCB;
 	msg->len = len;
 	tcpip_callback_with_block(tcp_recved_INLWIP, msg, 1);
+}
+
+static err_t tcp_output_checked_INLWIP(struct tcpip_api_call_data *tcpMsg)
+{
+	LwipMsg msg = (LwipMsg)tcpMsg;
+	struct tcp_pcb *skt = *(struct tcp_pcb **)msg->callback_arg;
+	if (skt)
+		tcp_output(skt);
+	return ERR_OK;
+}
+
+void tcp_output_checked_safe(struct tcp_pcb **pskt)
+{
+	LwipMsgRecord msg = {
+		.callback_arg = pskt,
+	};
+	tcpip_api_call(tcp_output_checked_INLWIP, &msg.call);
+}
+
+static err_t tcp_write_checked_INLWIP(struct tcpip_api_call_data *tcpMsg)
+{
+	LwipMsg msg = (LwipMsg)tcpMsg;
+	struct tcp_pcb *skt = *(struct tcp_pcb **)msg->callback_arg;
+	msg->err = skt ? tcp_write(skt, msg->data, msg->len, msg->flags) : ERR_CONN;
+	return ERR_OK;
+}
+
+err_t tcp_write_checked_safe(struct tcp_pcb **pskt, const void *data, u16_t len, u8_t flags)
+{
+	LwipMsgRecord msg = {
+		.callback_arg = pskt,
+		.data = data,
+		.len = len,
+		.flags = flags
+	};
+	tcpip_api_call(tcp_write_checked_INLWIP, &msg.call);
+	return msg.err;
+}
+
+static err_t tcp_recved_checked_INLWIP(struct tcpip_api_call_data *tcpMsg)
+{
+	LwipMsg msg = (LwipMsg)tcpMsg;
+	struct tcp_pcb *skt = *(struct tcp_pcb **)msg->callback_arg;
+	if (skt && !*msg->closed)
+		tcp_recved(skt, msg->len);
+	return ERR_OK;
+}
+
+void tcp_recved_checked_safe(struct tcp_pcb **pskt, uint8_t *pclosed, u16_t len)
+{
+	LwipMsgRecord msg = {
+		.callback_arg = pskt,
+		.closed = pclosed,
+		.len = len,
+	};
+	tcpip_api_call(tcp_recved_checked_INLWIP, &msg.call);
 }
 
 static err_t tcp_listen_INLWIP(struct tcpip_api_call_data *tcpMsg)

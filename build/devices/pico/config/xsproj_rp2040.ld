@@ -209,7 +209,7 @@ SECTIONS
     {
         __end__ = .;
         end = __end__;
-        *(.heap*)
+        KEEP(*(.heap*))
         __HeapLimit = .;
     } > RAM
 
@@ -224,12 +224,13 @@ SECTIONS
      */
     .stack1_dummy (COPY):
     {
-        *(.stack1*)
+        KEEP(*(.stack1*))
     } > SCRATCH_X
+    /* core 0 stack lives at the top of main RAM - see __StackTop below */
     .stack_dummy (COPY):
     {
-        *(.stack*)
-    } > SCRATCH_Y
+        KEEP(*(.stack*))
+    } > RAM
 
     .flash_end : {
         __flash_binary_end = .;
@@ -254,12 +255,15 @@ SECTIONS
 	PROVIDE(_MODPREF_start  = 0x101F8000);
 	PROVIDE(_MODDABLE_start	= __flash_binary_start);
 
-    /* stack limit is poorly named, but historically is maximum heap ptr */
-    __StackLimit = ORIGIN(RAM) + LENGTH(RAM);
     __StackOneTop = ORIGIN(SCRATCH_X) + LENGTH(SCRATCH_X);
-    __StackTop = ORIGIN(SCRATCH_Y) + LENGTH(SCRATCH_Y);
     __StackOneBottom = __StackOneTop - SIZEOF(.stack1_dummy);
+
+    /* core 0 stack at the top of main RAM - SCRATCH_Y is only 4KB.
+       stack limit is poorly named, but historically is maximum heap ptr;
+       the heap (sbrk) now ends where the stack begins */
+    __StackTop = ORIGIN(RAM) + LENGTH(RAM);
     __StackBottom = __StackTop - SIZEOF(.stack_dummy);
+    __StackLimit = __StackBottom;
     PROVIDE(__stack = __StackTop);
 
     /* Check if data + heap + stack exceeds RAM limit */

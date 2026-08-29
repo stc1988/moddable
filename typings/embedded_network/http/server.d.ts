@@ -26,6 +26,7 @@ declare module "embedded:network/http/server" {
         method: string;
         path: string;
         headers: Map<string, string>;
+        query: string;
     }
 
     export interface HTTPResponse {

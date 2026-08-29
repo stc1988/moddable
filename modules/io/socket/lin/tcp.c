@@ -343,7 +343,7 @@ void xs_tcp_write(xsMachine *the)
 			tcp->bytesWritable += needed;
 			xsUnknownError("would block");
 		}
-		xsTrace("write failed");
+		xsTrace("write failed\n");
 		tcpTrigger(tcp, kTCPError);
 		return;
 	}
@@ -662,10 +662,9 @@ void xs_listener_read(xsMachine *the)
 	if (!pending)
 		return;
 
-	listener->pending = pending->next;
-
-	xsResult = xsArg(0);
+	xsResult = xsNewFunction0(xsArg(0));
 	tcp = xsmcGetHostDataValidate(xsResult, (void *)&xsTCPHooks);
+	listener->pending = pending->next;
 
 	tcp->skt = pending->skt;
 	c_free(pending);

@@ -134,6 +134,10 @@ ifeq ($(MAKEFLAGS_JOBS),)
 	MAKEFLAGS_JOBS = --jobs 8
 endif
 
+# core 0 stack size; the xsproj linker scripts place the stack at the top of main RAM (SCRATCH_Y is only 4KB)
+PICO_STACK_SIZE ?= 0x1800
+ASMFLAGS += -DPICO_STACK_SIZE=$(PICO_STACK_SIZE)
+
 # Assembler flags common to all targets
 ASMFLAGS += -mcpu=cortex-m0
 ASMFLAGS += -mabi=aapcs
@@ -551,8 +555,8 @@ PICO_OBJ = \
 	$(LIB_DIR)/tusb.c.o \
 	$(LIB_DIR)/tusb_fifo.c.o  \
 	$(LIB_DIR)/rp2040_usb_device_enumeration.c.o \
-	$(LIB_DIR)/async_context_threadsafe_background.c.o
-#	$(LIB_DIR)/async_context_poll.c.o
+	$(LIB_DIR)/async_context_poll.c.o
+#	$(LIB_DIR)/async_context_threadsafe_background.c.o
 
 
 ifeq ($(WIFI_GPIO),1)
@@ -612,8 +616,8 @@ PICO_WIFI_OBJ += \
 	$(LIB_DIR)/cyw43_ll.c.o	\
 	$(LIB_DIR)/cyw43_stats.c.o	\
 	$(LIB_DIR)/lwip_nosys.c.o	\
-	$(LIB_DIR)/cyw43_arch_threadsafe_background.c.o
-#	$(LIB_DIR)/cyw43_arch_poll.c.o
+	$(LIB_DIR)/cyw43_arch_poll.c.o
+#	$(LIB_DIR)/cyw43_arch_threadsafe_background.c.o
 endif
 
 PICO_OBJ_RP2040 =\
@@ -860,8 +864,8 @@ ifeq ($(WIFI_GPIO),1)			# pico2_w
 PICO_C_DEFINES += \
 	-DCYW43_LWIP=1				\
 	-DLIB_PICO_CYW43_ARCH=1		\
-	-DPICO_CYW43_ARCH_THREADSAFE_BACKGROUND=1
-#	-DPICO_CYW43_ARCH_POLL=1
+	-DPICO_CYW43_ARCH_POLL=1
+#	-DPICO_CYW43_ARCH_THREADSAFE_BACKGROUND=1
 PICO_OBJ += $(PICO_WIFI_OBJ)
 
 ifeq ("$(PICO_BOARD_FILE)","")
@@ -893,7 +897,7 @@ ifeq ($(WIFI_GPIO),1)			# pico_w
 PICO_C_DEFINES += \
 	-DCYW43_LWIP=1				\
 	-DLIB_PICO_CYW43_ARCH=1		\
-	-DPICO_CYW43_ARCH_THREADSAFE_BACKGROUND=1
+	-DPICO_CYW43_ARCH_POLL=1
 PICO_OBJ += $(PICO_WIFI_OBJ)
 
 ifeq ("$(PICO_BOARD_FILE)","")
@@ -932,6 +936,7 @@ C_FLAGS=\
 
 C_DEFINES = \
 	$(PICO_C_DEFINES) \
+	-DPICO_STACK_SIZE=$(PICO_STACK_SIZE) \
 	-DmxUseDefaultSharedChunks=1 \
 	-DkCommodettoBitmapFormat=$(COMMODETTOBITMAPFORMAT) \
 	-DkPocoRotation=$(POCOROTATION) \

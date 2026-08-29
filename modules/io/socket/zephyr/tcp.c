@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2025  Moddable Tech, Inc.
+ * Copyright (c) 2019-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -770,13 +770,13 @@ void xs_listener_read(xsMachine *the)
 	if (NULL == listener->pending)
 		return;
 
+	xsResult = xsNewFunction0(xsArg(0));
+	tcp = xsmcGetHostDataValidate(xsResult, (void *)&xsTCPHooks);
+
 	builtinCriticalSectionBegin();
 	pending = listener->pending;
 	listener->pending = pending->next;
 	builtinCriticalSectionEnd();
-
-	xsResult = xsArg(0);
-	tcp = xsmcGetHostDataValidate(xsArg(0), (void *)&xsTCPHooks);
 
 	tcp->context = pending->context;
 	c_free(pending);

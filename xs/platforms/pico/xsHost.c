@@ -479,6 +479,12 @@ int modMessageService(xsMachine *the, int maxDelayMS)
 		if (absolute_time_diff_us(until, now) < 1000)
 			break;
 
+#if CYW43_LWIP
+		if (pico_cyw43_inited()) {
+			cyw43_arch_wait_for_work_until(until);
+			break;
+		}
+#endif
 		if (best_effort_wfe_or_timeout(until))
 			break;
 		tight_loop_contents();

@@ -19,13 +19,11 @@ import Timer from "timer";
 import FFI from "mc/ffi";
 const Natives = new FFI;
 
-const port = 80;
 const router = new Map;
 
 const server = new device.network.http.server.io({
 	...device.network.http.server,
-	port,
-	router: request => router.get(request.path)
+	onRoute: request => router.get(request.path)
 });
 
 router.set("/ota", {
