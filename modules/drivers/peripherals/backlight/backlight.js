@@ -19,14 +19,12 @@
  */
 class Backlight {
 	#io;
-	#invert;
 	#brightness = 1.0;
 
 	constructor(options) {
-		if (!options.io)
-			throw new Error("no Backlight io");
 		this.#io = new options.io(options);
-		this.#invert = options.invert ?? false;
+		if (options.invert)
+			this.#io.invert = true;
 	}
 	close() {
 		this.#io?.close();
@@ -39,7 +37,7 @@ class Backlight {
 			value = 1023;
 		else
 			value *= 1023;
-		if (this.#invert)
+		if (this.#io.invert)
 			value = 1023 - value;
 		this.#io.write(value);
 		this.#brightness = value / 1024;
