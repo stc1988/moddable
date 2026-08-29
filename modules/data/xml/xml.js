@@ -67,43 +67,48 @@ export class XML {
 // build into a shared array of parts, joined once by serialize (see the
 // "Build a String" optimization guide)
 function serializeItem(item, parts) {
-	parts.push(`<${item.name}`);
-	if (Array.isArray(item.attributes)) {
-		for (const attribute of item.attributes) {
-			const name = attribute.name;
-			if ("value" in attribute)
-				parts.push(` ${name}="`, escape(attribute.value, 1), `"`);
-			else
-				parts.push(` ${name}`);
+	const items = [item];
+	while (items.length) {
+		item = items.pop();
+		if (typeof item === "string") {		// close tag (or any literal) queued below
+			parts.push(item);
+			continue;
 		}
-	}
-	else if (item.attributes instanceof Object) {
-		for (const name of Object.keys(item.attributes)) {
-			const value = item.attributes[name];
-			if (typeof value === "boolean") {
-				if (value)
+		parts.push(`<${item.name}`);
+		if (Array.isArray(item.attributes)) {
+			for (const attribute of item.attributes) {
+				const name = attribute.name;
+				if ("value" in attribute)
+					parts.push(` ${name}="`, escape(attribute.value, 1), `"`);
+				else
 					parts.push(` ${name}`);
 			}
-			else
-				parts.push(` ${name}="`, escape(value, 1), `"`);
 		}
+		else if (item.attributes instanceof Object) {
+			for (const name of Object.keys(item.attributes)) {
+				const value = item.attributes[name];
+				if (typeof value === "boolean") {
+					if (value)
+						parts.push(` ${name}`);
+				}
+				else
+					parts.push(` ${name}="`, escape(value, 1), `"`);
+			}
+		}
+		const elements = item.elements ?? [];
+		if (elements.length === 0 && item.text === undefined && item.TEXT === undefined) {
+			parts.push(`/>`);
+			continue;
+		}
+		parts.push(`>`);
+		items.push(`</${item.name}>`);
+		if (item.TEXT !== undefined)
+			items.push(`<![CDATA[` + escape(item.TEXT, 2) + `]]>`);
+		if (item.text !== undefined)
+			items.push(escape(item.text));
+		for (let i = elements.length - 1; i >= 0; i--)
+			items.push(elements[i]);
 	}
-	const elements = item.elements ?? [];
-	if (elements.length === 0 && item.text === undefined && item.TEXT === undefined) {
-		parts.push(`/>`);
-		return;
-	}
-	parts.push(`>`);
-	for (const element of elements) {
-		serializeItem(element, parts);
-	}
-	if (item.text !== undefined) {
-		parts.push(escape(item.text));
-	}
-	if (item.TEXT !== undefined) {
-		parts.push(`<![CDATA[`, escape(item.TEXT, 2), `]]>`);
-	}
-	parts.push(`</${item.name}>`);
 }
 
 export default XML;
