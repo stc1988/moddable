@@ -22,7 +22,6 @@ import Timer from "timer";
 
 class Button {
 	#io;
-	#onChanged;
 	#debounce = 25;
 	#debounceTimer;
 
@@ -31,18 +30,21 @@ class Button {
 		if (options.onReadable || options.onWritable || options.onError)
 			throw new Error;
 
-		if (options.target)
-			this.target = options.target;
+		const {target, onPush, io: Digital} = options;
+		if (target)
+			this.target = target;
 
-		const Digital = options.io;
-		if (options.onPush) {
-			this.#onChanged = options.onPush;
-			options.edge = Digital.Rising | Digital.Falling;
-		}
-		options.onReadable = () => this.#onEdge();
+		options.edge = Digital.Rising | Digital.Falling;
+		options.onReadable = () => {
+			this.#debounceTimer ??= Timer.set(() => {
+				this.#debounceTimer = undefined;
+				this.#io.onChanged?.();
+			}, this.#debounce);
+		};
 
 		this.#io = new Digital(options);
-		this.#io.pressed = options.invert ? 0 : 1;
+		if (onPush)
+			this.#io.onChanged = onPush;
 	}
 	close() {
 		Timer.clear(this.#debounceTimer);
@@ -55,20 +57,10 @@ class Button {
 			this.#debounce = options.debounce;
 	}
 	get pressed() {
-		return this.#io.read() == this.#io.pressed;
+		return this.#io.read();
 	}
 	set onChanged(c) {
-		this.#onChanged = c;
-	}
-	#onEdge() {
-		if (undefined !== this.#debounceTimer)
-			Timer.schedule(this.#debounceTimer, this.#debounce);
-		else
-			this.#debounceTimer = Timer.set(() => {
-				this.#debounceTimer = undefined;
-				if (this.#onChanged)
-					this.#onChanged();
-			}, this.#debounce);
+		this.#io.onChanged = c;
 	}
 }
 
