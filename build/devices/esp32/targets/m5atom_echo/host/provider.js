@@ -32,6 +32,18 @@ import Button from "button";
 import LEDneopixel from "led/neopixel";
 import NeoPixel from "neopixel";
 
+class ButtonA {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.buttonA,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
 const device = {
 	I2C: {
 		default: {
@@ -66,19 +78,9 @@ const device = {
 		led: 27
 	},
 	peripheral: {
-		Button,
 		button: {
-			A: class {
-				constructor(options) {
-					return new Button({
-						...options,
-						io: Digital,
-						pin: device.pin.buttonA,
-						mode: Digital.InputPullUp,
-						invert: true
-					});
-				}
-			}
+			Default: ButtonA,
+			A: ButtonA
 		},
 		led: {
 			Default: class {

@@ -30,7 +30,6 @@ import Touch from "embedded:sensor/Touch/CST328";
 import RTC from "embedded:RTC/PCF85063";
 import QMI8658 from "embedded:sensor/Accelerometer-Gyroscope/QMI8658";
 import Backlight from "backlight";
-import Button from "button";
 
 const device = {
 	I2C: {
@@ -68,7 +67,6 @@ const device = {
 				});
 			}
 		},
-		Button,
 		RTC: class {
 			constructor(options) {
 				return new RTC({

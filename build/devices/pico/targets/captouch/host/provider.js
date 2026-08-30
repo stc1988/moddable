@@ -29,7 +29,6 @@ import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 
 import Backlight from "button";
-import Button from "button";
 import LED from "led/pwm";
 import Touch from "embedded:sensor/Touch/FT6x06";
 
@@ -80,7 +79,6 @@ const device = {
 				});
 			}
 		},
-		Button,
 		led: {
 			Default: class {
 				constructor(options) {

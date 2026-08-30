@@ -28,7 +28,6 @@ import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 
-import Button from "button";
 import LEDrgb from "led/rgb";
 
 const device = {
@@ -70,7 +69,6 @@ const device = {
 		led_b: 20
 	},
 	peripheral: {
-		Button,
 		led: {
 			Default: class {
 				constructor(options) {

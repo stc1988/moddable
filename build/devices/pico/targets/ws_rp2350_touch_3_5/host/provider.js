@@ -29,7 +29,6 @@ import SPI from "embedded:io/spi";
 import Touch from "embedded:sensor/Touch/FT6x36";
 import RTC from "embedded:RTC/PCF85063";
 import QMI8658 from "embedded:sensor/Accelerometer-Gyroscope/QMI8658";
-import Button from "button";
 import Backlight from "backlight";
 
 const device = {

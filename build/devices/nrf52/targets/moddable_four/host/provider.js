@@ -31,6 +31,18 @@ import LED from "led/digital";
 import JogDial from "jogdial";
 import LIS3DH from "embedded:sensor/Accelerometer/LIS3DH";
 
+class ButtonA {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonA,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
 const device = {
 	I2C: {
 		default: {
@@ -62,7 +74,10 @@ const device = {
 		imu_int2: 16
 	},
 	peripheral: {
-		Button,
+		button: {
+			Default: ButtonA,
+			A: ButtonA
+		},
 		led: {
 			Default: class {
 				constructor() {
@@ -108,9 +123,9 @@ const device = {
 		}
 	},
 	sensor: {
-		IMU: class {
+		IMU: class extends LIS3DH {
 			constructor(options) {
-				return new LIS3DH({
+				super({
 					...options,
 					sensor: {
 						...device.I2C.default,
@@ -120,12 +135,11 @@ const device = {
 				});
 			}
 			sample() {
-				const result = super.sample();
-				if (180 === screen?.rotation) {
-					result.x = -result.x;
-					result.y = -result.y;
-				}
-				return result;
+				const { x, y, z } = super.sample();
+				const accelerometer = (180 === screen?.rotation)
+					? { x: -x, y: -y, z }
+					: { x, y, z };
+				return { accelerometer };
 			}
 		}
 	}

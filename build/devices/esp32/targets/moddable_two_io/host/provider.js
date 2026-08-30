@@ -34,6 +34,18 @@ import Button from "button";
 import LED from "led/pwm";
 import Touch from "embedded:sensor/Touch/FT6x06";
 
+class ButtonFlash {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.button,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
 const device = {
 	I2C: {
 		default: {
@@ -84,17 +96,8 @@ const device = {
 			}
 		},
 		button: {
-			Default: class {
-				constructor(options) {
-					return new Button({
-						...options,
-						io: device.io.Digital,
-						pin: device.pin.button,
-						mode: Digital.InputPullUp,
-						activeLow: true
-					});
-				}
-			}
+			Default: ButtonFlash,
+			Flash: ButtonFlash
 		},
 		led: {
 			Default: class {

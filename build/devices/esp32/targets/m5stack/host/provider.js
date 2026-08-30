@@ -32,6 +32,42 @@ import PulseWidth from "embedded:io/pulsewidth";
 import Backlight from "backlight";
 import Button from "button";
 
+class ButtonA {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.buttonA,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonB {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.buttonB,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonC {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.buttonC,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
 const device = {
 	I2C: {
 		default: {
@@ -82,42 +118,12 @@ const device = {
 				});
 			}
 		},
-		Button,
 		button: {
-			A: class {
-				constructor(options) {
-					return new Button({
-						...options,
-						io: Digital,
-						pin: device.pin.buttonA,
-						mode: Digital.InputPullUp,
-						invert: true
-					});
-				}
-			},
-			B: class {
-				constructor(options) {
-					return new Button({
-						...options,
-						io: Digital,
-						pin: device.pin.buttonB,
-						mode: Digital.InputPullUp,
-						invert: true
-					});
-				}
-			},
-			C: class {
-				constructor(options) {
-					return new Button({
-						...options,
-						io: Digital,
-						pin: device.pin.buttonC,
-						mode: Digital.InputPullUp,
-						invert: true
-					});
-				}
-			}
-		}
+			Default: ButtonB,
+			A: ButtonA,
+			B: ButtonB,
+			C: ButtonC
+		},
 	}
 };
 

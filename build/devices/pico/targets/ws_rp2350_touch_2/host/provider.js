@@ -29,7 +29,6 @@ import SPI from "embedded:io/spi";
 
 import Touch from "embedded:sensor/Touch/CST816S";
 import Backlight from "backlight";
-import Button from "button";
 import QMI8658 from "embedded:sensor/Accelerometer-Gyroscope/QMI8658";
 
 const device = {
@@ -61,7 +60,6 @@ const device = {
 		imu_int: 14
 	},
 	peripheral: {
-		Button,
 		Backlight: class {
 			constructor() {
 				return new Backlight({

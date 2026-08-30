@@ -95,6 +95,66 @@ class Tone {
 	}
 }
 
+class ButtonB {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: 38,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonUp {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: 37,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonDown {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: 39,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonA {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: 5,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonPower {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: 27,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
 const device = {
 	I2C: {
 		default: {
@@ -129,7 +189,6 @@ const device = {
 	sensor: {
 	},
 	peripheral: {
-		Button,
 		RTC: class {
 			constructor(options) {
 				return new RTC({
@@ -146,61 +205,14 @@ const device = {
 			}
 		},
 		button: {
-			Middle: class {
-				constructor(options) {
-					return new Button({
-						...options,
-						io: Digital,
-						pin: 38,
-						mode: Digital.InputPullUp,
-						invert: true					
-					});
-				}
-			},
-			Up: class {
-				constructor(options) {
-					return new Button({
-						...options,
-						io: Digital,
-						pin: 37,
-						mode: Digital.InputPullUp,
-						invert: true					
-					});
-				}
-			},
-			Down: class {
-				constructor(options) {
-					return new Button({
-						...options,
-						io: Digital,
-						pin: 39,
-						mode: Digital.InputPullUp,
-						invert: true					
-					});
-				}
-			},
-			External: class {
-				constructor(options) {
-					return new Button({
-						...options,
-						io: Digital,
-						pin: 5,
-						mode: Digital.InputPullUp,
-						invert: true					
-					});
-				}
-			},
-			Power: class {
-				constructor(options) {
-					return new Button({
-						...options,
-						io: Digital,
-						pin: 27,
-						mode: Digital.InputPullUp,
-						invert: true					
-					});
-				}
-			}
+			Default: ButtonA,
+			A: ButtonA,
+			B: ButtonB,
+			Up: ButtonUp,
+			Down: ButtonDown,
+			Middle: ButtonB,
+			External: ButtonA,
+			Power: ButtonPower
 		},
 		led: {
 			Default: class {

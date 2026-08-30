@@ -28,7 +28,6 @@ import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 
-import Button from "button";
 import LED from "led/pwm";
 import LEDneopixel from "led/neopixel";
 import NeoPixel from "neopixel";
@@ -85,7 +84,6 @@ const device = {
 		displaySelect: 1
 	},
 	peripheral: {
-		Button,
 		led: {
 			Default: class {
 				constructor() {

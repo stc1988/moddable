@@ -26,6 +26,102 @@ import Backlight from "backlight";
 import Button from "button";
 import LEDrgb from "led/rgb";
 
+class ButtonA {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.button,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonB {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonB,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonX {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonX,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonY {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonY,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonUP {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonUP,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonDOWN {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonDOWN,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonLEFT {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonLEFT,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonRIGHT {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonRIGHT,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
 const device = {
 	io: { Digital, DigitalBank, PWM },
 	pin: {
@@ -53,30 +149,17 @@ const device = {
 				});
 			}
 		},
-		Button,
 		button: {
-			Default: class {
-				constructor(options) {
-					return new Button({
-						...options,
-						io: Digital,
-						pin: device.pin.button,
-						mode: Digital.InputPullUp,
-						invert: true
-					});
-				}
-			},
-			Flash: class {
-				constructor(options) {
-					return new Button({
-						...options,
-						io: Digital,
-						pin: device.pin.button,
-						mode: Digital.InputPullUp,
-						invert: true
-					});
-				}
-			}
+			Default: ButtonA,
+			A: ButtonA,
+			B: ButtonB,
+			Flash: ButtonA,
+			X: ButtonX,
+			Y: ButtonY,
+			UP: ButtonUP,
+			DOWN: ButtonDOWN,
+			LEFT: ButtonLEFT,
+			RIGHT: ButtonRIGHT
 		},
 		led: {
 			Default: class {

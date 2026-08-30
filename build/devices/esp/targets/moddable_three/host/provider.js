@@ -30,6 +30,18 @@ import SPI from "embedded:io/spi";
 import Button from "button";
 import LED from "led/digital";
 
+class ButtonDefault {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.button,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
 const device = {
 	I2C: {
 		default: {
@@ -65,7 +77,9 @@ const device = {
 		displaySelect: 15
 	},
 	peripheral: {
-		Button,
+		button: {
+			Default: ButtonDefault
+		},
 		led: {
 			Default: class {
 				constructor() {

@@ -32,6 +32,18 @@ import PulseWidth from "embedded:io/pulsewidth";
 import Backlight from "backlight";
 import Button from "button";
 
+class ButtonA {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonA,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
 const device = {
 	I2C: {
 		default: {
@@ -67,7 +79,10 @@ const device = {
 		displaySelect: 42
 	},
 	peripheral: {
-		Button,
+		button: {
+			Default: ButtonA,
+			A: ButtonA
+		},
 		Backlight: class {
 			constructor() {
 				return new Backlight({

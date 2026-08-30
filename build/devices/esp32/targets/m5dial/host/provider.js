@@ -92,6 +92,30 @@ class Tone {
   }
 }
 
+class ButtonA {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.buttonA,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonFlash {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.buttonFlash,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
 const device = {
   I2C: {
     default: {
@@ -162,42 +186,11 @@ const device = {
 			});
 		}
 	},
-    Button,
-    button: {
-      A: class {
-        constructor(options) {
-          return new Button({
-            ...options,
-            io: Digital,
-            pin: device.pin.buttonA,
-            mode: Digital.InputPullUp,
-            invert: true,
-          });
-        }
-      },
-      Default: class {
-        constructor(options) {
-          return new Button({
-            ...options,
-            io: Digital,
-            pin: device.pin.buttonFlash,
-            mode: Digital.InputPullUp,
-            invert: true,
-          });
-        }
-      },
-      Flash: class {
-        constructor(options) {
-          return new Button({
-            ...options,
-            io: Digital,
-            pin: device.pin.buttonFlash,
-            mode: Digital.InputPullUp,
-            invert: true,
-          });
-        }
-      }
-    },
+	button: {
+		Default: ButtonFlash,
+		A: ButtonA,
+		Flash: ButtonFlash
+	},
     tone: {
       Default: Tone
     },

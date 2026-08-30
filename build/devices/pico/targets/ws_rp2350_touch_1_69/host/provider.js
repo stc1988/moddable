@@ -33,6 +33,18 @@ import IMU from "embedded:sensor/Accelerometer-Gyroscope/QMI8658";
 import Backlight from "backlight";
 import Button from "button";
 
+class ButtonA {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonA,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
 const device = {
 	I2C: {
 		default: {
@@ -73,12 +85,15 @@ const device = {
 		batteryADC: 29
 	},
 	peripheral: {
+		button: {
+			Default: ButtonA,
+			A: ButtonA
+		},
 		Backlight: class {
 			constructor() {
 				return new Backlight({pin: device.pin.backlight });
 			}
 		},
-		Button,
 		RTC: class {
 			constructor(options) {
 				return new RTC({

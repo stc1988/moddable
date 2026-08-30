@@ -31,6 +31,18 @@ import Button from "button";
 import LED from "led/digital";
 import Touch from "embedded:sensor/Touch/FT6x06";
 
+class ButtonA {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonA,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
 const device = {
 	I2C: {
 		default: {
@@ -67,7 +79,10 @@ const device = {
 		displaySelect: 15
 	},
 	peripheral: {
-		Button,
+		button: {
+			Default: ButtonA,
+			A: ButtonA
+		},
 		led: {
 			Default: class {
 				constructor() {

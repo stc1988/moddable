@@ -27,6 +27,18 @@ import SMBus from "embedded:io/smbus";
 import Button from "button";
 import LED from "led/digital";
 
+class ButtonA {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.button,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
 const device = {
 	I2C: {
 		default: {
@@ -50,19 +62,9 @@ const device = {
 		led: 7
 	},
 	peripheral: {
-		Button,
 		button: {
-			Default: class {
-				constructor(options) {
-					return new Button({
-						...options,
-						io: Digital,
-						pin: device.pin.button,
-						mode: Digital.InputPullUp,
-						invert: true
-					});
-				}
-			}
+			Default: ButtonA,
+			A: ButtonA
 		},
 		led: {
 			Default: class {

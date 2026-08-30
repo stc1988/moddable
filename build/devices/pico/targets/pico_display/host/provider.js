@@ -31,6 +31,54 @@ import Backlight from "backlight";
 import Button from "button";
 import LEDrgb from "led/rgb";
 
+class ButtonA {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonA,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonB {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonB,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonX {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonX,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonY {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonY,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
 const device = {
 	I2C: {
 		default: {
@@ -68,6 +116,13 @@ const device = {
 		backlight: 14
 	},
 	peripheral: {
+		button: {
+			Default: ButtonA,
+			A: ButtonA,
+			B: ButtonB,
+			X: ButtonX,
+			Y: ButtonY
+		},
 		Backlight: class {
 			constructor() {
 				return new Backlight({
@@ -76,7 +131,6 @@ const device = {
 				});
 			}
 		},
-		Button,
 		led: {
 			Default: class {
 				constructor(options) {

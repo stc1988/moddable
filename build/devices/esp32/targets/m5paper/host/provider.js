@@ -30,38 +30,7 @@ import SPI from "embedded:io/spi";
 import Touch from "embedded:sensor/Touch/GT911";
 import HumidityTemperature from "embedded:sensor/Humidity-Temperature/SHT3x"
 import RTC from "embedded:RTC/PCF8563"
-
-//@@ Move Button class to common module
-class Button {
-	#io;
-	#onPush;
-
-	constructor(options) {
-		options = {...options};
-		if (options.onReadable || options.onWritable || options.onError)
-			throw new Error;
-
-		if (options.target)
-			this.target = options.target;
-
-		const Digital = options.io;
-		if (options.onPush) {
-			this.#onPush = options.onPush; 
-			options.onReadable = () => this.#onPush();
-			options.edge = Digital.Rising | Digital.Falling;
-		}
-
-		this.#io = new Digital(options);
-		this.#io.pressed = options.invert ? 0 : 1;
-	}
-	close() {
-		this.#io?.close();
-		this.#io = undefined;
-	}
-	get pressed() {
-		return (this.#io.read() === this.#io.pressed) ? 1 : 0;
-	}
-}
+import Button from "button";
 
 class M5PaperTouch extends Touch {
 	constructor(options) {
@@ -104,6 +73,42 @@ class M5PaperTouch extends Touch {
 			p.y = 540 - t;
 		}
 		return sample;
+	}
+}
+
+class ButtonA {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: 38,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonB {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: 37,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonC {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: 39,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
 	}
 }
 
@@ -159,39 +164,10 @@ const device = {
 			}
 		},
 		button: {
-			A: class {
-				constructor(options) {
-					return new Button({
-						...options,
-						io: Digital,
-						pin: 38,
-						mode: Digital.InputPullUp,
-						invert: true					
-					});
-				}
-			},
-			B: class {
-				constructor(options) {
-					return new Button({
-						...options,
-						io: Digital,
-						pin: 37,
-						mode: Digital.InputPullUp,
-						invert: true					
-					});
-				}
-			},
-			C: class {
-				constructor(options) {
-					return new Button({
-						...options,
-						io: Digital,
-						pin: 39,
-						mode: Digital.InputPullUp,
-						invert: true					
-					});
-				}
-			}
+			Default: ButtonA,
+			A: ButtonA,
+			B: ButtonB,
+			C: ButtonC
 		},
 		battery: {
 			Default: class {

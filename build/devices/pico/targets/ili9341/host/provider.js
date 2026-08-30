@@ -29,7 +29,6 @@ import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 
 import Backlight from "backlight";
-import Button from "button";
 import LED from "led/pwm";
 
 const device = {
@@ -79,7 +78,6 @@ const device = {
 				});
 			}
 		},
-		Button,
 		led: {
 			Default: class {
 				constructor(options) {

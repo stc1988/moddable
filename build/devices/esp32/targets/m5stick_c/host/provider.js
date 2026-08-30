@@ -57,6 +57,30 @@ class Backlight {
 	}
 }
 
+class ButtonA {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.buttonA,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonB {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.buttonB,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
 const device = {
 	I2C: {
 		default: {
@@ -148,30 +172,10 @@ const device = {
 	},
 	peripheral: {
 		Backlight,
-		Button,
 		button: {
-			A: class {
-				constructor(options) {
-					return new Button({
-						...options,
-						io: Digital,
-						pin: device.pin.buttonA,
-						mode: Digital.InputPullUp,
-						invert: true
-					});
-				}
-			},
-			B: class {
-				constructor(options) {
-					return new Button({
-						...options,
-						io: Digital,
-						pin: device.pin.buttonB,
-						mode: Digital.InputPullUp,
-						invert: true
-					});
-				}
-			}
+			Default: ButtonA,
+			A: ButtonA,
+			B: ButtonB
 		},
 		led: {
 			Default: class {

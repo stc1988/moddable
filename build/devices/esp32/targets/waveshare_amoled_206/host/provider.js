@@ -45,6 +45,30 @@ class Backlight {
 	close() {}
 };
 
+class ButtonA {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonA,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonB {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonB,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
 const device = {
   I2C: {
     default: {
@@ -69,8 +93,12 @@ const device = {
 	amplifier: 46
   },
   peripheral: {
+	button: {
+		Default: ButtonA,
+		A: ButtonA,
+		B: ButtonB
+	},
 	Backlight,
-    Button,
     Power: {
       PMIC: class {
         constructor() {

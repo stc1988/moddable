@@ -74,7 +74,6 @@ const device = {
 		led_b: 25
 	},
 	peripheral: {
-		Button,
 		led: {
 			Default: class {
 				constructor(options) {
