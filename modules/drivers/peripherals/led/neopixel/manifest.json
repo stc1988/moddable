@@ -1,0 +1,9 @@
+{
+	"include": [
+		"$(MODULES)/drivers/neopixel/manifest.json"
+	],
+	"modules": {
+		"led/neopixel": "./neopixel"
+	},
+	"preload": "led/neopixel"
+}

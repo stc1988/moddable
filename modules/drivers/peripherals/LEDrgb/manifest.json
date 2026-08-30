@@ -1,6 +1,0 @@
-{
-	"modules": {
-		"LEDrgb": "./LEDrgb"
-	},
-	"preload": "LEDrgb"
-}
