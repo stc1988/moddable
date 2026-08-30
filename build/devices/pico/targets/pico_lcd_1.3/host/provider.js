@@ -29,7 +29,7 @@ import SPI from "embedded:io/spi";
 
 import Backlight from "backlight";
 import Button from "button";
-import LED from "LED";
+import LED from "led/pwm";
 
 const device = {
 	I2C: {

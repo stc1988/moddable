@@ -4,7 +4,7 @@
 		"$(MODULES)/drivers/ili9341/manifest.json",
 		"$(MODULES)/drivers/peripherals/backlight/manifest.json",
 		"$(MODULES)/drivers/peripherals/button/manifest.json",
-		"$(MODULES)/drivers/peripherals/LED/manifest.json",
+		"$(MODULES)/drivers/peripherals/led/pwm/manifest.json",
 		"$(MODULES)/drivers/sensors/ft6206/manifest.json"
 	],
 	"modules": {

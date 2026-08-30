@@ -7,7 +7,7 @@
 		"$(MODULES)/io/manifest.json",
 		"$(MODULES)/drivers/peripherals/backlight/manifest.json",
 		"$(MODULES)/drivers/peripherals/button/manifest.json",
-		"$(MODULES)/drivers/peripherals/LED/manifest.json",
+		"$(MODULES)/drivers/peripherals/led/pwm/manifest.json",
         "$(MODULES)/drivers/ili9341/manifest.json",
         "$(MODULES)/drivers/xpt2046/manifest.json"
     ],

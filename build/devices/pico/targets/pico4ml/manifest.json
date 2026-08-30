@@ -1,7 +1,7 @@
 {
 	"include": [
 		"$(MODULES)/drivers/peripherals/button/manifest.json",
-		"$(MODULES)/drivers/peripherals/LED/manifest.json",
+		"$(MODULES)/drivers/peripherals/led/pwm/manifest.json",
 		"$(MODULES)/io/manifest.json",
 		"$(MODULES)/drivers/st7735/manifest.json",
         "$(MODULES)/io/imagein/arducam_hm01b0/manifest.json"

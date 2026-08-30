@@ -33,7 +33,8 @@ import PulseWidth from "embedded:io/pulsewidth";
 //@@ I2C, Serial, and SPI should be i2c, serial, and spi.
 import Backlight from "backlight";
 import Button from "button";
-import LEDneopixel from "LEDneopixel";
+import LEDneopixel from "led/neopixel";
+import NeoPixel from "neopixel";
 
 const device = {
 	I2C: {
@@ -94,14 +95,16 @@ const device = {
 		led: {
 			Default: class {
 				constructor(options) {
-					const led = new LEDneopixel({
+					return new LEDneopixel({
 						...options,
-						length: 1,
-						pin: device.pin.LED,
-						order: "GRB"
+						neopixels: {
+							io: NeoPixel,
+							length: 1,
+							pin: device.pin.LED,
+							order: "GRB",
+							brightness: 32
+						}
 					});
-					led.brightness = 32;
-					return led;
 				}
 			}
 		}

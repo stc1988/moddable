@@ -31,7 +31,8 @@ import PulseWidth from "embedded:io/pulsewidth";
 import MPU6886 from "embedded:sensor/Accelerometer-Gyroscope/MPU6886";
 
 import Button from "button";
-import LEDneopixel from "LEDneopixel";
+import LEDneopixel from "led/neopixel";
+import NeoPixel from "neopixel";
 
 const device = {
 	I2C: {
@@ -84,14 +85,28 @@ const device = {
 		led: {
 			Default: class {
 				constructor(options) {
-					const led = new LEDneopixel({
+					return new LEDneopixel({
+						...options,
+						neopixels: {
+							io: NeoPixel,
+							length: 25,
+							pin: device.pin.led,
+							order: "GRB",
+							brightness: 32
+						}
+					});
+				}
+			}
+		},
+		neopixel: {
+			Default: class {
+				constructor(options) {
+					return new NeoPixel({
 						...options,
 						length: 25,
 						pin: device.pin.led,
 						order: "GRB"
 					});
-					led.brightness = 32;
-					return led;
 				}
 			}
 		}

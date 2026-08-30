@@ -30,7 +30,7 @@ import SPI from "embedded:io/spi";
 
 import Backlight from "backlight";
 import Button from "button";
-import LED from "LED";
+import LED from "led/pwm";
 import Touch from "embedded:sensor/Touch/FT6x06";
 
 const device = {

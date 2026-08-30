@@ -4,7 +4,7 @@
 		"$(MODULES)/drivers/st7789/manifest.json",
 		"$(MODULES)/drivers/peripherals/button/manifest.json",
 		"$(MODULES)/drivers/peripherals/backlight/manifest.json",
-		"$(MODULES)/drivers/peripherals/LEDneopixel/manifest.json"
+		"$(MODULES)/drivers/peripherals/led/neopixel/manifest.json"
 	],
 	"build": {
 		"ESP32_SUBCLASS": "esp32c6",

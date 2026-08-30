@@ -35,7 +35,7 @@ import SPI from "embedded:io/spi";
 import LoRa from "sx127x";
 
 import Button from "button";
-import LED from "LED";
+import LED from "led/pwm";
 
 const device = {
 	I2C: {

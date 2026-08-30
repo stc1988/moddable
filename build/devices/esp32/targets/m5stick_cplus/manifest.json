@@ -10,7 +10,7 @@
 		"$(MODULES)/drivers/peripherals/axp192/manifest.json",
 		"$(MODULES)/drivers/peripherals/bm8563/manifest.json",
 		"$(MODULES)/drivers/peripherals/button/manifest.json",
-		"$(MODULES)/drivers/peripherals/LED/manifest.json"
+		"$(MODULES)/drivers/peripherals/led/pwm/manifest.json"
 	],
 	"config": {
 		"screen": "st7789",

@@ -32,7 +32,8 @@ import PulseWidth from "embedded:io/pulsewidth";
 
 import Backlight from "backlight";
 import Button from "button";
-import LEDneopixel from "LEDneopixel";
+import LEDneopixel from "led/neopixel";
+import NeoPixel from "neopixel";
 
 const device = {
 	I2C: {

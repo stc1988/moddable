@@ -8,7 +8,7 @@
 		"$(MODDABLE)/modules/io/manifest.json",
 		"$(MODULES)/drivers/peripherals/backlight/manifest.json",
 		"$(MODULES)/drivers/peripherals/button/manifest.json",
-		"$(MODULES)/drivers/peripherals/LEDneopixel/manifest.json",
+		"$(MODULES)/drivers/peripherals/led/neopixel/manifest.json",
 		"$(MODDABLE)/modules/drivers/ili9341_p8/manifest.json",
 		"$(MODULES)/drivers/sensors/gt911/manifest_async_worker.json"
 	],

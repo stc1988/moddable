@@ -28,7 +28,7 @@ import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 
 import Button from "button";
-import LED from "LED";
+import LED from "led/digital";
 import Touch from "embedded:sensor/Touch/FT6x06";
 
 const device = {
@@ -72,9 +72,9 @@ const device = {
 			Default: class {
 				constructor() {
 					return new LED({
-						io: PWM,
+						io: Digital,
 						pin: device.pin.led,
-						imvert: true
+						invert: true
 					});
 				}
 			}

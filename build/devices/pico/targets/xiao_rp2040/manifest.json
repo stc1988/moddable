@@ -2,8 +2,8 @@
 	"include": [
 		"$(MODULES)/io/manifest.json",
 		"$(MODULES)/drivers/peripherals/button/manifest.json",
-		"$(MODULES)/drivers/peripherals/LEDrgb/manifest.json",
-		"$(MODULES)/drivers/peripherals/LEDneopixel/manifest.json"
+		"$(MODULES)/drivers/peripherals/led/rgb/manifest.json",
+		"$(MODULES)/drivers/peripherals/led/neopixel/manifest.json"
 	],
 	"modules": {
 		"setup/target": "./setup-target"

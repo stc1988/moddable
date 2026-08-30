@@ -14,9 +14,9 @@
 
 import Timer from "timer";
 
-if (!device.sensor.IMU || !device.peripheral.button.A || !device.sensor.IMU)
+if (!device.sensor.IMU || !device.peripheral.button.A || !device.peripheral.neopixel?.Default)
 	throw new Error("this M5 example requires lights, accelerometer, and a button");
-let lights = new device.peripheral.led.Default();
+let lights = new device.peripheral.neopixel.Default();
 let accelerometer = new device.sensor.IMU({});
 let random = false;
 

@@ -26,7 +26,8 @@ import PWM from "embedded:io/pwm";
 import SMBus from "embedded:io/smbus";
 
 import Button from "button";
-import LEDneopixel from "LEDneopixel";
+import LEDneopixel from "led/neopixel";
+import NeoPixel from "neopixel";
 
 const device = {
 	I2C: {
@@ -61,14 +62,16 @@ const device = {
 		led: {
 			Default: class {
 				constructor(options) {
-					const led = new LEDneopixel({
+					return new LEDneopixel({
 						...options,
-						length: 1,
-						pin: device.pin.led,
-						order: "GRB"
+						neopixels: {
+							io: NeoPixel,
+							length: 1,
+							pin: device.pin.led,
+							order: "GRB",
+							brightness: 32
+						}
 					});
-					led.brightness = 32;
-					return led;
 				}
 			}
 		}

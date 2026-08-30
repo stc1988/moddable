@@ -9,8 +9,8 @@
 	"include": [
 		"$(MODDABLE)/modules/io/manifest.json",
 		"$(MODULES)/drivers/peripherals/button/manifest.json",
-		"$(MODULES)/drivers/peripherals/LED/manifest.json",
-		"$(MODULES)/drivers/peripherals/LEDneopixel/manifest.json",
+		"$(MODULES)/drivers/peripherals/led/pwm/manifest.json",
+		"$(MODULES)/drivers/peripherals/led/neopixel/manifest.json",
 		"$(MODULES)/drivers/sensors/icm42670p/manifest.json",
 		"$(MODULES)/drivers/sensors/shtc3/manifest.json"
 	],

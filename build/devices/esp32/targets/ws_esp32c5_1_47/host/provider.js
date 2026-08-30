@@ -29,7 +29,8 @@ import SPI from "embedded:io/spi";
 
 import Backlight from "backlight";
 import Button from "button";
-import LEDneopixel from "LEDneopixel";
+import LEDneopixel from "led/neopixel";
+import NeoPixel from "neopixel";
 
 const device = {
 	I2C: {
@@ -86,9 +87,12 @@ const device = {
 				constructor() {
 					return new LEDneopixel({
 						...options,
-						length: 1,
-						pin: device.pin.led,
-						order: "GRB"
+						neopixels: {
+							io: NeoPixel,
+							length: 1,
+							pin: device.pin.led,
+							order: "GRB"
+						}
 					});
 				}
 			}

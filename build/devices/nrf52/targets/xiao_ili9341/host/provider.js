@@ -25,7 +25,7 @@ import PWM from "embedded:io/pwm";
 import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
-import LEDrgb from "LEDrgb";
+import LEDrgb from "led/rgb";
 
 const device = {
 	I2C: {

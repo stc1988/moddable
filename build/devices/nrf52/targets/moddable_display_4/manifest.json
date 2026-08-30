@@ -7,7 +7,7 @@
 		"$(MODDABLE)/modules/io/manifest.json",
 		"$(MODULES)/drivers/ls013b4dn04/manifest.json",
 		"$(MODULES)/drivers/peripherals/button/manifest.json",
-		"$(MODULES)/drivers/peripherals/led/manifest.json",
+		"$(MODULES)/drivers/peripherals/led/digital/manifest.json",
 		"$(MODULES)/drivers/peripherals/jogdial/manifest.json",
 		"$(MODULES)/drivers/sensors/lis3dh/manifest.json",
 		"$(MODULES)/files/preference/manifest.json"

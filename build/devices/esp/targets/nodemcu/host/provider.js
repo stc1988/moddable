@@ -28,7 +28,7 @@ import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 
 import Button from "button";
-import LED from "LED";
+import LED from "led/digital";
 
 const device = {
 	I2C: {
@@ -81,21 +81,11 @@ const device = {
 			}
 		},
 		led: {
-			Default: class {
-				constructor(options) {
-					return new LED({
-						...options,
-						io: PWM,
-						pin: device.pin.ledA,
-						invert: true
-					});
-				}
-			},
 			A: class {
 				constructor(options) {
 					return new LED({
 						...options,
-						io: PWM,
+						io: Digital,
 						pin: device.pin.ledA,
 						invert: true
 					});
@@ -105,7 +95,7 @@ const device = {
 				constructor(options) {
 					return new LED({
 						...options,
-						io: PWM,
+						io: Digital,
 						pin: device.pin.ledB,
 						invert: true
 					});
@@ -114,5 +104,6 @@ const device = {
 		}
 	}
 };
+device.peripheral.led.Default = device.peripheral.led.A;
 
 export default device;

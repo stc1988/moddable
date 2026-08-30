@@ -28,8 +28,9 @@ import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 
 import Button from "button";
-import LEDrgb from "LEDrgb";
-import LEDneopixel from "LEDneopixel";
+import LEDrgb from "led/rgb";
+import LEDneopixel from "led/neopixel";
+import NeoPixel from "neopixel";
 
 const device = {
 	I2C: {
@@ -74,40 +75,32 @@ const device = {
 	},
 	peripheral: {
 		Button,
-		Power: {
-			LED: class {
-				constructor() {
-					return new Digital({
-						io: Digital,
-						pin: device.pin.ledPower,
-						mode: Digital.Output
-					});
-				}
-			}
-		},
 		led: {
 			Default: class {
 				constructor(options) {
-					const led = new LEDneopixel({
+					return new LEDneopixel({
 						...options,
-						length: 1,
-						pin: device.pin.led,
-						order: "GRB",
-						power: new device.peripheral.Power.LED()
+						neopixels: {
+							io: NeoPixel,
+							length: 1,
+							pin: device.pin.led,
+							order: "GRB",
+							brightness: 32
+						},
+						power: {
+							io: Digital,
+							pin: device.pin.ledPower
+						}
 					});
-					led.brightness = 32;
-					return led;
 				}
 			},
 			rgb: class {
 				constructor(options) {
-					const led = new LEDrgb({
+					return new LEDrgb({
 						...options,
 						io: device.io.PWM,
 						pin: { r: device.pin.led_r, g: device.pin.led_g, b: device.pin.led_b }
 					});
-					led.brightness = 32;
-					return led;
 				}
 			}
 		}

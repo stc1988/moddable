@@ -4,7 +4,7 @@
 		"UF2_VOLUME_NAME": "MODDABLEnRF"
 	},
 	"include": [
-		"$(MODULES)/drivers/peripherals/LED/manifest.json",
+		"$(MODULES)/drivers/peripherals/led/digital/manifest.json",
 		"$(MODULES)/drivers/peripherals/button/manifest.json",
 		"$(MODULES)/io/manifest.json"
 	],

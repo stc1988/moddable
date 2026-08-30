@@ -29,8 +29,8 @@ import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 
 import Button from "button";
-import LED from "LED";
-import LEDrgb from "LEDrgb";
+import LED from "led/pwm";
+import LEDrgb from "led/rgb";
 
 const device = {
 	I2C: {
@@ -80,38 +80,32 @@ const device = {
 		led: {
 			Default: class {
 				constructor(options) {
-					const led = new LED({
+					return new LED({
 						...options,
 						io: device.io.PWM,
 						pin: device.pin.led,
 						invert: 1
 					});
-					led.brightness = 32;
-					return led;
 				}
 			},
 			ledB: class {
 				constructor(options) {
-					const led = new LED({
+					return new LED({
 						...options,
 						io: device.io.PWM,
 						pin: device.pin.led_2,
 						invert: 1
 					});
-					led.brightness = 32;
-					return led;
 				}
 			},
 			RGB: class {
 				constructor(options) {
-					const led = new LEDrgb({
+					return new LEDrgb({
 						...options,
 						io: device.io.PWM,
 						pin: { r: device.pin.led_r, g: device.pin.led_g, b: device.pin.led_b },
 						invert: 1
 					});
-					led.brightness = 32;
-					return led;
 				}
 			}
 		}

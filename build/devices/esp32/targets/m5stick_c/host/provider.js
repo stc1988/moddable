@@ -33,7 +33,7 @@ import SH200Q from "embedded:sensor/Accelerometer-Gyroscope/SH200Q";
 import MPU6886 from "embedded:sensor/Accelerometer-Gyroscope/MPU6886";
 import RTC from "embedded:RTC/BM8563";
 import Button from "button";
-import LED from "LED";
+import LED from "led/pwm";
 
 /**
  * LCD backlight via AXP192 LDO2 (Power.brightness 0–100).

@@ -27,7 +27,7 @@ import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
 
 import Button from "button";
-import LED from "LED";
+import LED from "led/digital";
 import JogDial from "jogdial";
 import LIS3DH from "embedded:sensor/Accelerometer/LIS3DH";
 
@@ -67,7 +67,7 @@ const device = {
 			Default: class {
 				constructor() {
 					return new LED({
-						io: PWM,
+						io: Digital,
 						pin: device.pin.led,
 						invert: true
 					});

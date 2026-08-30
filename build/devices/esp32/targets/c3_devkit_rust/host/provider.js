@@ -32,8 +32,9 @@ import SHTC3 from "embedded:sensor/Humidity-Temperature/SHTC3";
 import IMU from "embedded:sensor/Accelerometer-Gyroscope/ICM42670P";
 
 import Button from "button";
-import LED from "LED";
-import LEDneopixel from "LEDneopixel";
+import LED from "led/pwm";
+import LEDneopixel from "led/neopixel";
+import NeoPixel from "neopixel";
 
 const device = {
 	I2C: {
@@ -70,26 +71,26 @@ const device = {
 		led: {
 			Default: class {
 				constructor(options) {
-					const led = new LED({
+					return new LED({
 						...options,
 						io: device.io.PWM,
 						pin: device.pin.led,
 						invert: 1
 					});
-					led.brightness = 32;
-					return led;
 				}
 			},
 			RGB: class {
 				constructor(options) {
-					const led = new LEDneopixel({
+					return new LEDneopixel({
 						...options,
-						length: 1,
-						pin: device.pin.LEDcolor,
-						order: "GRB"
+						neopixels: {
+							io: NeoPixel,
+							length: 1,
+							pin: device.pin.LEDcolor,
+							order: "GRB",
+							brightness: 32
+						}
 					});
-					led.brightness = 32;
-					return led;
 				}
 			}
 		}

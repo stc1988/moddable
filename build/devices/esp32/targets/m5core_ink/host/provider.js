@@ -32,7 +32,7 @@ import RTC from "embedded:RTC/PCF8563"
 import Timer from "timer";
 
 import Button from "button";
-import LED from "LED";
+import LED from "led/pwm";
 
 const notes = new Map;
 notes.set("C", 4186);

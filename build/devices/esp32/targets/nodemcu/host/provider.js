@@ -29,7 +29,7 @@ import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 
 import Button from "button";
-import LED from "LED";
+import LED from "led/pwm";
 
 const device = {
 	I2C: {

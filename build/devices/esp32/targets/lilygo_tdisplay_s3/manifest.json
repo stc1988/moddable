@@ -11,7 +11,7 @@
 		"$(MODULES)/io/manifest.json",
 		"$(MODULES)/drivers/peripherals/backlight/manifest.json",
 		"$(MODULES)/drivers/peripherals/button/manifest.json",
-		"$(MODULES)/drivers/peripherals/LEDneopixel/manifest.json",
+		"$(MODULES)/drivers/peripherals/led/neopixel/manifest.json",
 		"$(MODDABLE)/modules/drivers/st7789_p8/manifest.json",
 		"$(MODULES)/drivers/sensors/cst816/manifest.json"
 	],

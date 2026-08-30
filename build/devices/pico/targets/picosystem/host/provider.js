@@ -24,7 +24,7 @@ import PWM from "embedded:io/pwm";
 
 import Backlight from "backlight";
 import Button from "button";
-import LEDrgb from "LEDrgb";
+import LEDrgb from "led/rgb";
 
 const device = {
 	io: { Digital, DigitalBank, PWM },
@@ -81,14 +81,12 @@ const device = {
 		led: {
 			Default: class {
 				constructor(options) {
-					const led = new LEDrgb({
+					return new LEDrgb({
 						...options,
 						io: device.io.PWM,
 						pin: { r: device.pin.led_r, g: device.pin.led_g, b: device.pin.led_b },
 						invert: true
 					});
-					led.brightness = 32;
-					return led;
 				}
 			}
 		}

@@ -4,7 +4,7 @@
 		"$(MODULES)/drivers/ili9341/manifest.json",
 		"$(MODULES)/drivers/sensors/ft6206/manifest.json",
 		"$(MODULES)/drivers/peripherals/button/manifest.json",
-		"$(MODULES)/drivers/peripherals/LED/manifest.json"
+		"$(MODULES)/drivers/peripherals/led/digital/manifest.json"
 	],
 	"build": {
 		"FLASH_MODE": "qio",

@@ -4,7 +4,7 @@
 		"$(MODDABLE)/modules/drivers/ssd1306/manifest_i2c.json",
 		"$(MODULES)/drivers/sx127x/manifest.json",
 		"$(MODULES)/drivers/peripherals/button/manifest.json",
-		"$(MODULES)/drivers/peripherals/LED/manifest.json"
+		"$(MODULES)/drivers/peripherals/led/pwm/manifest.json"
 	],
 	"config": {
 		"screen": "ssd1306",
