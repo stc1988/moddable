@@ -49,7 +49,6 @@ class LEDrgb {
 	#r;
 	#g;
 	#b;
-	#timer;
 	#invert;
 	#color = {r: 0, g: 0, b: 0};
 
@@ -71,8 +70,7 @@ class LEDrgb {
 		this.on = 0;
 	}
 	close() {
-		Timer.clear(this.#timer);
-		this.#timer = undefined;
+		Timer.clear(this.#r?.timer);
 		this.#r?.close();
 		this.#g?.close();
 		this.#b?.close();
@@ -106,8 +104,9 @@ class LEDrgb {
 		io.write(this.#invert ? range - value : value);
 	}
 	rainbow(value) {
-		Timer.clear(this.#timer);
-		this.#timer = undefined;
+		const r = this.#r;
+		Timer.clear(r.timer);
+		r.timer = undefined;
 
 		if (0 === value) {
 			this.on = 0;
@@ -118,7 +117,7 @@ class LEDrgb {
 		const rgb = [0, 0, 0], color = {r: 0, g: 0, b: 0};
 		let phase = 0;
 
-		this.#timer = Timer.repeat(() => {
+		r.timer = Timer.repeat(() => {
 			let advance;
 			for (let i = 0; i < 3; i++) {
 				const direction = phases[i][phase];

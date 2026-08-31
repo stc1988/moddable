@@ -49,7 +49,6 @@ const phases = Object.freeze([
 class LEDneopixel {
 	#neopixels;
 	#power;
-	#timer;
 	#color = {r: 0, g: 0, b: 0};
 
 	constructor(options) {
@@ -62,9 +61,9 @@ class LEDneopixel {
 				this.#power = new power.io({mode: power.io.Output, ...power});
 
 			this.#neopixels = new neopixels.io(neopixels);
-			this.on = 0;
 			if (undefined !== neopixels.brightness)
 				this.#neopixels.brightness = neopixels.brightness;
+			this.on = 0;
 		}
 		catch (e) {
 			this.close();
@@ -72,8 +71,7 @@ class LEDneopixel {
 		}
 	}
 	close() {
-		Timer.clear(this.#timer);
-		this.#timer = undefined;
+		Timer.clear(this.#neopixels?.timer);
 		this.#neopixels?.close();
 		this.#neopixels = undefined;
 		this.#power?.write(0);
@@ -107,11 +105,14 @@ class LEDneopixel {
 		return this.#neopixels.brightness;
 	}
 	set brightness(value) {
-		this.#neopixels.brightness = value;
+		const neopixels = this.#neopixels;
+		neopixels.brightness = value;
+		neopixels.update();
 	}
 	rainbow(value) {
-		Timer.clear(this.#timer);
-		this.#timer = undefined;
+		const neopixels = this.#neopixels;
+		Timer.clear(neopixels.timer);
+		neopixels.timer = undefined;
 
 		if (0 === value) {
 			this.on = 0;
@@ -122,7 +123,7 @@ class LEDneopixel {
 		const rgb = [0, 0, 0], color = {r: 0, g: 0, b: 0};
 		let phase = 0;
 
-		this.#timer = Timer.repeat(() => {
+		neopixels.timer = Timer.repeat(() => {
 			let advance;
 			for (let i = 0; i < 3; i++) {
 				const direction = phases[i][phase];
