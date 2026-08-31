@@ -22,39 +22,38 @@ import Timer from "timer";
 
 class Button {
 	#io;
-	#debounce = 25;
-	#debounceTimer;
+	#timer;
 
-	constructor(options) {
-		options = {...options};
+	constructor(input) {
+		const {target, onPush, io: Digital, ...options} = input;
 		if (options.onReadable || options.onWritable || options.onError)
 			throw new Error;
 
-		const {target, onPush, io: Digital} = options;
 		if (target)
 			this.target = target;
 
 		options.edge = Digital.Rising | Digital.Falling;
 		options.onReadable = () => {
-			this.#debounceTimer ??= Timer.set(() => {
-				this.#debounceTimer = undefined;
-				this.#io.onChanged?.();
-			}, this.#debounce);
+			this.#timer ??= Timer.set(() => {
+				this.#timer = undefined;
+				this.#io.onChanged?.call(this);
+			}, this.#io.debounce);
 		};
 
 		this.#io = new Digital(options);
+		this.#io.debounce = 25;
 		if (onPush)
 			this.#io.onChanged = onPush;
 	}
 	close() {
-		Timer.clear(this.#debounceTimer);
-		this.#debounceTimer = undefined;
+		Timer.clear(this.#timer);
+		this.#timer = undefined;
 		this.#io?.close();
 		this.#io = undefined;
 	}
 	configure(options) {
 		if (undefined !== options.debounce)
-			this.#debounce = options.debounce;
+			this.#io.debounce = options.debounce;
 	}
 	get pressed() {
 		return this.#io.read();
