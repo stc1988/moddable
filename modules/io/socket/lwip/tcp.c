@@ -595,6 +595,10 @@ uint32_t tcpWritable(TCP tcp)
 		return 0;
 
 	uint32_t available = tcp_sndbuf(skt);
+#if defined(__ets__) && !ESP32
+	if (available > MODDEF_TCP_OUTPUTBUFFER_MAX)
+		available = MODDEF_TCP_OUTPUTBUFFER_MAX;
+#endif
 	return (available > tcp->unwritten) ? available - tcp->unwritten : 0;
 }
 
