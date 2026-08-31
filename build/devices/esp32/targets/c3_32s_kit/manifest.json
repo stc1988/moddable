@@ -4,6 +4,7 @@
 		"UPLOAD_SPEED": "460800"
 	},
 	"include": [
+		"$(MODULES)/io/manifest.json",
 		"$(MODULES)/drivers/peripherals/button/manifest.json",
 		"$(MODULES)/drivers/peripherals/led/rgb/manifest.json",
 		"$(MODULES)/drivers/peripherals/led/pwm/manifest.json"
