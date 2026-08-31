@@ -85,25 +85,23 @@ class LEDneopixel {
 		return (((r << 1) + r + (g << 2) + b) >> 3) / 255;		// integer luma, same as toGray in commodettoConvert.c
 	}
 	set on(value) {
-		value = clamp(value, 1) * 255;
-		this.color = {r: value, g: value, b: value};
+		const color = this.#color;
+		color.r = color.g = color.b = clamp(value, 1) * 255;
+		this.color = color;
 	}
 	get color() {
 		return {...this.#color};
 	}
 	set color(value) {
 		const color = this.#color, neopixels = this.#neopixels;
-		color.r = clamp(value.r, 255);
-		color.g = clamp(value.g, 255);
-		color.b = clamp(value.b, 255);
+		const {r, g, b} = value;
+		color.r = r;
+		color.g = g;
+		color.b = b;
 
-		const lit = (color.r + color.g + color.b) > 0;
-		if (lit)
-			this.#power?.write(1);
-		neopixels.fill(neopixels.makeRGB(color.r, color.g, color.b));
+		this.#power?.write((r + g + b) > 0);		// rail up before data, so the pixels latch it
+		neopixels.fill(neopixels.makeRGB(r, g, b));
 		neopixels.update();
-		if (!lit)
-			this.#power?.write(0);
 	}
 	get brightness() {
 		return this.#neopixels.brightness;
@@ -121,7 +119,7 @@ class LEDneopixel {
 		}
 
 		const step = value?.step ?? 3;
-		const rgb = [0, 0, 0];
+		const rgb = [0, 0, 0], color = {r: 0, g: 0, b: 0};
 		let phase = 0;
 
 		this.#timer = Timer.repeat(() => {
@@ -144,7 +142,8 @@ class LEDneopixel {
 			if (advance)
 				if (++phase >= phases[0].length) phase = 0;
 
-			this.color = {r: rgb[0], g: rgb[1], b: rgb[2]};
+			color.r = rgb[0], color.g = rgb[1], color.b = rgb[2];
+			this.color = color;
 		}, 33);
 	}
 }

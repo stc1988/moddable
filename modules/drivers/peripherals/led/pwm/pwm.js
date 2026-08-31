@@ -64,7 +64,7 @@ class LED {
 		return {r: value, g: value, b: value};
 	}
 	set color(value) {
-		const r = clamp(value.r, 255), g = clamp(value.g, 255), b = clamp(value.b, 255);
+		const {r, g, b} = value;
 		this.on = (((r << 1) + r + (g << 2) + b) >> 3) / 255;		// integer luma, same as toGray in commodettoConvert.c
 	}
 }
