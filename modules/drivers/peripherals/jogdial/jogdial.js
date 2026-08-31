@@ -47,9 +47,9 @@ class JogDial {
 				pulse.previous = value;
 
 				if (target.#button.previous)
-					target.#onTurn(delta);
+					target.#onTurn?.(delta);
 				else
-					target.#onPushAndTurn(delta);
+					target.#onPushAndTurn?.(delta);
 			}
 		});
 		this.#pulse.previous = -this.#pulse.read();
@@ -65,7 +65,7 @@ class JogDial {
 				if (value === target.#button.previous)
 					return;
 				target.#button.previous = value;
-				target.#onPush(value);
+				target.#onPush?.(value);
 			}
 		});
 		this.#button.previous = this.#button.read();
