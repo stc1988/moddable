@@ -25,7 +25,7 @@
 
 // the native parser calls these at run time (see modXML.rl); reference them
 // here so the linker does not dead-strip them
-void [String.fromCodePoint, "".concat, "".trim];
+void [String.fromCodePoint, "".concat, "".trim, Object.keys, { TEXT: 0, value: 0 }];
 
 function escape(string, mode) {
 	return native("xs_xml_escape").call(this, string, mode);
@@ -57,57 +57,8 @@ export class XML {
 	static searchElements(element, name, prefix) {
 		return this.search(element.elements, name, prefix);
 	}
-	static serialize(item, declaration = true) {
-		const parts = declaration ? [`<?xml version="1.0" encoding="utf-8"?>`] : [];
-		serializeItem(item, parts);
-		return parts.join("");
-	}
-}
-
-// build into a shared array of parts, joined once by serialize (see the
-// "Build a String" optimization guide)
-function serializeItem(item, parts) {
-	const items = [item];
-	while (items.length) {
-		item = items.pop();
-		if (typeof item === "string") {		// close tag (or any literal) queued below
-			parts.push(item);
-			continue;
-		}
-		parts.push(`<${item.name}`);
-		if (Array.isArray(item.attributes)) {
-			for (const attribute of item.attributes) {
-				const name = attribute.name;
-				if ("value" in attribute)
-					parts.push(` ${name}="`, escape(attribute.value, 1), `"`);
-				else
-					parts.push(` ${name}`);
-			}
-		}
-		else if (item.attributes instanceof Object) {
-			for (const name of Object.keys(item.attributes)) {
-				const value = item.attributes[name];
-				if (typeof value === "boolean") {
-					if (value)
-						parts.push(` ${name}`);
-				}
-				else
-					parts.push(` ${name}="`, escape(value, 1), `"`);
-			}
-		}
-		const elements = item.elements ?? [];
-		if (elements.length === 0 && item.text === undefined && item.TEXT === undefined) {
-			parts.push(`/>`);
-			continue;
-		}
-		parts.push(`>`);
-		items.push(`</${item.name}>`);
-		if (item.TEXT !== undefined)
-			items.push(`<![CDATA[` + escape(item.TEXT, 2) + `]]>`);
-		if (item.text !== undefined)
-			items.push(escape(item.text));
-		for (let i = elements.length - 1; i >= 0; i--)
-			items.push(elements[i]);
+	static serialize(item, declaration, type) {
+		return native("xs_xml_serialize").call(this, item, declaration, type);	// declaration defaults to true; type is String (default) or ArrayBuffer
 	}
 }
 
