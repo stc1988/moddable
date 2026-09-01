@@ -46,7 +46,7 @@ const kMaxInterval = 60000;
 const kStationMAC = "b8:27:eb:41:9c:07";
 const kStationHost = "200";			// last octet of the simulated station's address
 
-const authentications = Object.freeze(["none", "wpa_psk", "wpa2_psk", "wpa_wpa2_psk", "wpa3_psk", "wpa2_wpa3_psk"]);
+const authentications = Object.freeze(["none", "wpa2_psk", "wpa_wpa2_psk", "wpa3_psk", "wpa2_wpa3_psk"]);
 
 // one radio, so one access point, as on a device
 const state = {
