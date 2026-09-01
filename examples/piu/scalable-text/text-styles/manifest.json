@@ -1,0 +1,24 @@
+{
+	"include": [
+		"$(MODDABLE)/examples/manifest_base.json",
+		"$(MODDABLE)/examples/manifest_piu.json",
+		"$(COMMODETTO)/manifest_cfeft.json"
+	],
+	"modules": {
+		"*": "./main"
+	},
+	"resources": {
+		"*-mask": "./assets/*"
+	},
+	"data": {
+		"*": [
+			"$(MODDABLE)/examples/assets/scalablefonts/OpenSans/OpenSans-Light",
+			"$(MODDABLE)/examples/assets/scalablefonts/OpenSans/OpenSans-Regular",
+			"$(MODDABLE)/examples/assets/scalablefonts/OpenSans/OpenSans-Semibold",
+			"$(MODDABLE)/examples/assets/scalablefonts/OpenSans/OpenSans-Bold"
+		]
+	},
+	"defines": {
+		"cfe": { "kern": true }
+	}
+}

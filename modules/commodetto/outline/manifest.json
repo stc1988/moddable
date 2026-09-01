@@ -1,11 +1,8 @@
 {
+	"include": [
+		"$(COMMODETTO)/freetype/manifest.json"
+	],
 	"modules": {
-		"*": [
-			"./freetype/src/*",
-			"./freetype/include/*",
-			"./freetype/include/freetype/*",
-			"./freetype/include/freetype/internal/*"
-		],
 		"commodetto/outline": "./commodettoOutline",
 		"commodetto/pocoOutline": "./commodettoPocoOutline"
 	},

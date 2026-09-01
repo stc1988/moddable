@@ -1,0 +1,26 @@
+{
+	"include": [
+		"./manifest.json"
+	],
+	"defines": {
+		"freetype": {
+			"font": 1
+		}
+	},
+	"modules": {
+		"*": [
+			"./moddable/ftsystemModdable",
+			"./src/base/ftadvanc",
+			"./src/base/ftfntfmt",
+			"./src/base/ftgloadr",
+			"./src/base/fthash",
+			"./src/base/ftinit",
+			"./src/base/ftlcdfil",
+			"./src/base/ftobjs",
+			"./src/base/ftstream",
+			"./src/sfnt/sfnt",
+			"./src/smooth/ftsmooth",
+			"./src/truetype/truetype"
+		]
+	}
+}

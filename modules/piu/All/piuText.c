@@ -114,6 +114,8 @@ static void PiuTextEnd(PiuText* self);
 static void PiuTextEndNode(PiuText* self, PiuTextKind kind);
 static void PiuTextFitHorizontally(void* it);
 static void PiuTextFormat(PiuText* self);
+static PiuDimension PiuTextMeasureInk(PiuText* self, PiuFont* font, xsSlot* string, xsIntegerValue offset, xsIntegerValue length);
+static void PiuTextInvalidate(void* it, PiuRectangle area);
 static void PiuTextFormatBlock(PiuText* self, PiuTextFormatContext ctx, PiuTextKind kind, PiuTextOffset length, PiuTextOffset textOffset);
 static void PiuTextFormatLine(PiuText* self, PiuTextFormatContext ctx, PiuTextKind kind, PiuTextOffset length);
 static void* PiuTextHit(void* it, PiuCoordinate x, PiuCoordinate y);
@@ -160,7 +162,7 @@ const PiuDispatchRecord ICACHE_FLASH_ATTR PiuTextDispatchRecord = {
 	PiuContentFitVertically,
 	PiuTextHit,
 	PiuContentIdle,
-	PiuContentInvalidate,
+	PiuTextInvalidate,
 	PiuContentMeasureHorizontally,
 	PiuTextMeasureVertically,
 	PiuContentPlace,
@@ -696,12 +698,55 @@ void PiuTextFitHorizontally(void* it)
 		(*self)->bounds.width = (*self)->coordinates.width;
 	(*self)->textWidth = (*self)->bounds.width;
 	(*self)->textHeight = 0;
+	(*self)->inkLeft = 0;
+	(*self)->inkRight = 0;
+	(*self)->inkTop = 0;
+	(*self)->inkBottom = 0;
 	if (((*self)->textWidth) && ((*self)->flags & piuTextStyled))
 		PiuTextFormat(self);
 	(*self)->flags &= ~(piuWidthChanged | piuContentsHorizontallyChanged);
 	if (!((*self)->coordinates.vertical & piuHeight)) {
 		PiuContentReflow(self, piuHeightChanged);
 	}
+}
+
+/*
+	Measures a run as PiuFontGetWidth does, keeping the worst overhang seen while
+	formatting. Where a run sits on its line is not known here and need not be: a
+	run whose ink reaches back only escapes the text when it begins a line, so the
+	widest reach of any run covers every case, over-reporting by a few pixels at
+	most.
+*/
+static PiuDimension PiuTextMeasureInk(PiuText* self, PiuFont* font, xsSlot* string, xsIntegerValue offset, xsIntegerValue length)
+{
+	PiuCoordinate inkLeft, inkRight, inkTop, inkBottom;
+	PiuDimension width = PiuFontMeasure(font, string, offset, length, &inkLeft, &inkRight, &inkTop, &inkBottom);
+
+	if ((*self)->inkLeft < inkLeft)
+		(*self)->inkLeft = inkLeft;
+	if ((*self)->inkRight < inkRight)
+		(*self)->inkRight = inkRight;
+	if ((*self)->inkTop < inkTop)
+		(*self)->inkTop = inkTop;
+	if ((*self)->inkBottom < inkBottom)
+		(*self)->inkBottom = inkBottom;
+
+	return width;
+}
+
+void PiuTextInvalidate(void* it, PiuRectangle area)
+{
+	PiuText* self = it;
+	if (area || (!(*self)->inkLeft && !(*self)->inkRight && !(*self)->inkTop && !(*self)->inkBottom)) {
+		PiuContentInvalidate(it, area);
+		return;
+	}
+
+	PiuRectangleRecord bounds;
+	PiuRectangleSet(&bounds, -(*self)->inkLeft, -(*self)->inkTop,
+			(*self)->bounds.width + (*self)->inkLeft + (*self)->inkRight,
+			(*self)->bounds.height + (*self)->inkTop + (*self)->inkBottom);
+	PiuContentInvalidate(it, &bounds);
 }
 
 void PiuTextFormat(PiuText* self)
@@ -755,7 +800,7 @@ void PiuTextFormat(PiuText* self)
 				if (kind) {
 					PiuTextOffset length = offset - previousOffset;
 					if (length) {
-						ctx->wordWidth += PiuFontGetWidth(spanFont, node->string, previousOffset, length);
+						ctx->wordWidth += PiuTextMeasureInk(self, spanFont, node->string, previousOffset, length);
 						if (ctx->wordAscent < spanAscent)
 							ctx->wordAscent = spanAscent;
 						if (ctx->wordHeight < spanHeight)
@@ -767,7 +812,7 @@ void PiuTextFormat(PiuText* self)
 						PiuTextFormatBlock(self, ctx, kind, length, textOffset + nextOffset);
 						node = NODE(nodeOffset);
 						if (length) {
-							ctx->spaceWidth = PiuFontGetWidth(spanFont, node->string, previousOffset, length);
+							ctx->spaceWidth = PiuTextMeasureInk(self, spanFont, node->string, previousOffset, length);
 							previousOffset = nextOffset;
 						}
 					}
@@ -782,7 +827,7 @@ void PiuTextFormat(PiuText* self)
 						PiuTextFormatBlock(self, ctx, kind, 0, textOffset + previousOffset);
 						node = NODE(nodeOffset);
 						if (length) {
-							ctx->wordWidth = PiuFontGetWidth(spanFont, node->string, previousOffset, length);
+							ctx->wordWidth = PiuTextMeasureInk(self, spanFont, node->string, previousOffset, length);
 							if (ctx->wordAscent < spanAscent)
 								ctx->wordAscent = spanAscent;
 							if (ctx->wordHeight < spanHeight)

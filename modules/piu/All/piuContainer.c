@@ -60,7 +60,7 @@ void PiuContainerAdjustHorizontally(void* it)
 	(*self)->flags &= ~piuContentsHorizontallyChanged;
 	while (content) {
 		if ((*content)->flags & piuWidthChanged) {
-			PiuContentInvalidate(content, NULL);
+			(*(*content)->dispatch->invalidate)(content, NULL);
 			(*(*content)->dispatch->measureHorizontally)(content);
 			coordinates = &((*content)->coordinates);
 			if ((coordinates->horizontal & piuLeftRight) == piuLeftRight)
@@ -86,7 +86,7 @@ void PiuContainerAdjustVertically(void* it)
 	(*self)->flags &= ~piuContentsVerticallyChanged;
 	while (content) {
 		if ((*content)->flags & piuHeightChanged) {
-			PiuContentInvalidate(content, NULL);
+			(*(*content)->dispatch->invalidate)(content, NULL);
 			(*(*content)->dispatch->measureVertically)(content);
 			coordinates = &((*content)->coordinates);
 			if ((coordinates->vertical & piuTopBottom) == piuTopBottom)
@@ -239,7 +239,7 @@ void PiuContainerInvalidate(void* it, PiuRectangle area)
 		}
 	}
 	else {
-		PiuContentInvalidate(it, area);
+		PiuContentInvalidate(it, area);			// the base implementation, not this one again
 	}
 }
 
@@ -554,12 +554,12 @@ void PiuContainer_get_transitioning(xsMachine *the)
 void PiuContainer_set_clip(xsMachine *the)
 {
 	PiuContainer* self = PIU(Container, xsThis);
-	PiuContentInvalidate(self, NULL);
+	(*(*self)->dispatch->invalidate)(self, NULL);
 	if (xsTest(xsArg(0)))
 		(*self)->flags |= piuClip;
 	else
 		(*self)->flags &= ~piuClip;
-	PiuContentInvalidate(self, NULL);
+	(*(*self)->dispatch->invalidate)(self, NULL);
 }
 
 void PiuContainer_add(xsMachine* the)
@@ -655,7 +655,7 @@ void PiuContainer_empty(xsMachine *the)
 		}
 		while (index < stop) {
 			PiuContentReflow(content, piuSizeChanged);
-			PiuContentInvalidate(content, NULL);
+			(*(*content)->dispatch->invalidate)(content, NULL);
 			PiuContainerUnbindContent(self, content);
 			content = (*content)->next;
 			index++;
@@ -760,7 +760,7 @@ void PiuContainer_remove(xsMachine *the)
 	xsAssert(content != NULL);
 	xsAssert((*content)->container == self);
 	PiuContentReflow(content, piuSizeChanged);
-	PiuContentInvalidate(content, NULL);
+	(*(*content)->dispatch->invalidate)(content, NULL);
 	PiuContainerUnbindContent(self, content);
 	previous = (*content)->previous;
 	next = (*content)->next;
@@ -794,7 +794,7 @@ void PiuContainer_replace(xsMachine *the)
 	xsAssert((*by)->previous == NULL);
 	xsAssert((*by)->next == NULL);
 	PiuContentReflow(content, piuSizeChanged);
-	PiuContentInvalidate(content, NULL);
+	(*(*content)->dispatch->invalidate)(content, NULL);
 	PiuContainerUnbindContent(self, content);
 	previous = (*content)->previous;
 	next = (*content)->next;
@@ -856,8 +856,8 @@ void PiuContainer_swap(xsMachine *the)
 	xsAssert((*content0)->container == self);
 	xsAssert(content1 != NULL);
 	xsAssert((*content1)->container == self);
-	PiuContentInvalidate(content0, NULL);
-	PiuContentInvalidate(content1, NULL);
+	(*(*content0)->dispatch->invalidate)(content0, NULL);
+	(*(*content1)->dispatch->invalidate)(content1, NULL);
 	previous0 = (*content0)->previous;
 	next0 = (*content0)->next;
 	previous1 = (*content1)->previous;

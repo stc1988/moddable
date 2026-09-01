@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2023  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -25,11 +25,18 @@
 #include "xs.h"
 #include "mc.xs.h"
 #include "xsHost.h"
-#define STANDALONE_ 1
-#include "freetype.h"
-#include "ftobjs.h"
-#include "ftstroke.h"
+#include "mc.defines.h"
+#include <ft2build.h>
+#include <freetype/freetype.h>
+#include <freetype/ftstroke.h>
+#include <freetype/internal/ftobjs.h>
 #include "commodettoPocoOutline.h"
+
+#if MODDEF_FREETYPE_FONT
+	#include "commodettoFontEngine.h"
+
+	extern CommodettoFontEngine gCFE;
+#endif
 
 #define xsConstruct0(_FUNCTION) \
 	(xsOverflow(-XS_FRAME_COUNT-0), \
@@ -49,7 +56,7 @@ void PocoOutlineCalculateCBox(PocoOutline pOutline)
 		return;
 
 	bufferToFTOutline(pOutline, &outline);
-	FT_Outline_Get_CBox(&outline, &box);
+	PocoOutlineGetCBox(&outline, &box);
 
 	pOutline->xMin = box.xMin >> 6;
 	pOutline->yMin = box.yMin >> 6;
@@ -186,17 +193,31 @@ void xs_outline_clone(xsMachine *the)
 	PocoOutline buffer = (PocoOutline)xsGetHostDataValidate(xsThis, xs_outline_destructor);
 	PocoOutline header = (PocoOutline)buffer;
 	uint16_t n_points = header->n_points, n_contours = header->n_contours;
-	int byteLength = sizeof(PocoOutlineRecord) + (n_points * 8) + (n_contours * 2) + n_points;
-	void *data = c_malloc(byteLength);
-	if (NULL == data) {
-		xsCollectGarbage();
+	int byteLength = PocoOutlineByteLength(n_points, n_contours);
+	void *data;
+	if ((0 == xsToInteger(xsArgc)) || (xsUndefinedType == xsTypeOf(xsArg(0)))) {
 		data = c_malloc(byteLength);
-		if (NULL == data)
-			xsUnknownError("no memory");
+		if (NULL == data) {
+			xsCollectGarbage();
+			data = c_malloc(byteLength);
+			if (NULL == data)
+				xsUnknownError("no memory");
+		}
+		xsResult = xsNew0(xsThis, xsID_constructor);
+		xsDefine(xsResult, xsID_byteLength, xsInteger(byteLength), xsDontDelete | xsDontSet);
+		xsSetHostData(xsResult, data);
+	}
+	else {
+		data = xsGetHostDataValidate(xsArg(0), xs_outline_destructor);
+
+		int dataLength = xsToInteger(xsGet(xsArg(0), xsID_byteLength));
+		if (dataLength < byteLength)
+			xsUnknownError("too small");
+		xsResult = xsArg(0);
+		if (data == buffer)
+			return;
 	}
 	c_memcpy(data, buffer, byteLength);
-	xsResult = xsNew0(xsThis, xsID_constructor);
-	xsSetHostData(xsResult, data);
 }
 
 void xs_outline_rotate(xsMachine *the)
@@ -326,7 +347,7 @@ void xs_outline_fill(xsMachine* the)
 	size_t size;
 	uint8_t* buffer;
 	PocoOutline outline;
-	int32_t* points;
+	FT_Pos* points;
 	uint16_t* contours;
 	uint8_t* tags;
 	xsVars(2);
@@ -353,7 +374,7 @@ void xs_outline_fill(xsMachine* the)
 	if (pointCount == 0)
 		return;
 
-	size = sizeof(PocoOutlineRecord) + (pointCount * 2 * 4) + (contourCount * 2) + (pointCount * 1);
+	size = PocoOutlineByteLength(pointCount, contourCount);
 	buffer = c_malloc(size);
 	if (!buffer) {
 		xsCollectGarbage();
@@ -369,9 +390,9 @@ void xs_outline_fill(xsMachine* the)
 	outline->cboxValid = 0;
 	outline->reserved = 0;
 	
-	points = (int32_t*)(buffer + sizeof(PocoOutlineRecord));
-	contours = (uint16_t*)(buffer + sizeof(PocoOutlineRecord) + (pointCount * 2 * 4));
-	tags = (uint8_t*)(buffer + sizeof(PocoOutlineRecord) + (pointCount * 2 * 4) + (contourCount * 2));
+	points = (FT_Pos*)(buffer + sizeof(PocoOutlineRecord));
+	contours = (uint16_t*)(buffer + sizeof(PocoOutlineRecord) + (pointCount * 2 * sizeof(FT_Pos)));
+	tags = (uint8_t*)(buffer + sizeof(PocoOutlineRecord) + (pointCount * 2 * sizeof(FT_Pos)) + (contourCount * 2));
 	
 	pointCount = 0;
 	for (subpathIndex = 0; subpathIndex < subpathCount; subpathIndex++) {
@@ -418,31 +439,16 @@ void xs_outline_fill(xsMachine* the)
 	}
 
 	xsResult = xsConstruct0(xsThis);
+	xsDefine(xsResult, xsID_byteLength, xsInteger((xsIntegerValue)size), xsDontDelete | xsDontSet);
 	xsSetHostData(xsResult, buffer);
-}
-
-static void *ftAlloc(FT_Memory memory, long size)
-{
-	return c_malloc(size);
-}
-
-static void ftFree(FT_Memory memory, void *block)
-{
-	if (block)
-		c_free(block);
-}
-
-static void *ftRealloc(FT_Memory memory, long cur_size, long new_size, void *block)
-{
-	return c_realloc(block, new_size);
 }
 
 void xs_outline_stroke(xsMachine* the)
 {
 	xsIntegerValue argc = xsToInteger(xsArgc);
 	xsIntegerValue width, cap, join, miterlimit;
-	struct FT_MemoryRec_ memory;
-	FT_LibraryRec library = {0};
+	// FT_Stroker_New uses nothing from the library but its allocator
+	static FT_LibraryRec library;
 	FT_Stroker stroker;
 	xsIntegerValue subpathCount, subpathIndex, open, commandCount, commandIndex, kind;
 	FT_Vector vector, vector1, vector2;
@@ -459,10 +465,7 @@ void xs_outline_stroke(xsMachine* the)
 	
 	miterlimit = miterlimit * 65536;
 
-	memory.alloc = ftAlloc;
-	memory.free = ftFree;
-	memory.realloc = ftRealloc;
-	library.memory = &memory;
+	library.memory = PocoOutlineFTMemory();
 	if (FT_Stroker_New(&library, &stroker)) {
 		xsCollectGarbage();
 		if (FT_Stroker_New(&library, &stroker))
@@ -515,7 +518,7 @@ void xs_outline_stroke(xsMachine* the)
 		FT_Stroker_Done(stroker);
 		return;
 	}
-	size = sizeof(PocoOutlineRecord) + (pointCount * 2 * 4) + (contourCount * 2) + (pointCount * 1);
+	size = PocoOutlineByteLength(pointCount, contourCount);
 	buffer = c_malloc(size);
 	if (!buffer) {
 		xsCollectGarbage();
@@ -538,6 +541,7 @@ void xs_outline_stroke(xsMachine* the)
 	FT_Stroker_Done(stroker);
 
 	xsResult = xsConstruct0(xsThis);
+	xsDefine(xsResult, xsID_byteLength, xsInteger((xsIntegerValue)size), xsDontDelete | xsDontSet);
 	xsSetHostData(xsResult, buffer);
 }
 
@@ -1221,6 +1225,160 @@ static xsBooleanValue xs_outline_SVGPath_test(xsMachine* the, SVGPathParser pars
 		result = 1;
 	return result;
 }
+
+// TEXT PATH
+
+#if MODDEF_FREETYPE_FONT
+
+typedef struct {
+	xsMachine	*the;
+	int32_t		dx;
+} TextPathRecord, *TextPath;
+
+static int xs_outline_TextPath_moveTo(const FT_Vector *to, void *it)
+{
+	TextPath tp = it;
+	xsMachine *the = tp->the;
+	xs_outline_path_newSubpath(the, (xsIntegerValue)(to->x + tp->dx), (xsIntegerValue)-to->y, 0);
+	xsSet(xsThis, xsID_subpath, xsVar(0));
+	return 0;
+}
+
+static int xs_outline_TextPath_lineTo(const FT_Vector *to, void *it)
+{
+	TextPath tp = it;
+	xsMachine *the = tp->the;
+	xs_outline_subpath_push1(the, (xsIntegerValue)(to->x + tp->dx), (xsIntegerValue)-to->y);
+	return 0;
+}
+
+static int xs_outline_TextPath_conicTo(const FT_Vector *control, const FT_Vector *to, void *it)
+{
+	TextPath tp = it;
+	xsMachine *the = tp->the;
+	xs_outline_subpath_push2(the, (xsIntegerValue)(control->x + tp->dx), (xsIntegerValue)-control->y,
+			(xsIntegerValue)(to->x + tp->dx), (xsIntegerValue)-to->y);
+	return 0;
+}
+
+static int xs_outline_TextPath_cubicTo(const FT_Vector *c1, const FT_Vector *c2, const FT_Vector *to, void *it)
+{
+	TextPath tp = it;
+	xsMachine *the = tp->the;
+	xs_outline_subpath_push3(the, (xsIntegerValue)(c1->x + tp->dx), (xsIntegerValue)-c1->y,
+			(xsIntegerValue)(c2->x + tp->dx), (xsIntegerValue)-c2->y,
+			(xsIntegerValue)(to->x + tp->dx), (xsIntegerValue)-to->y);
+	return 0;
+}
+
+static const FT_Outline_Funcs xs_outline_TextPath_funcs = {
+	xs_outline_TextPath_moveTo,
+	xs_outline_TextPath_lineTo,
+	xs_outline_TextPath_conicTo,
+	xs_outline_TextPath_cubicTo,
+	0, 0
+};
+
+void xs_outline_TextPath(xsMachine* the)
+{
+	if (C_NULL == gCFE) {
+		gCFE = CFENew();
+		if (C_NULL == gCFE)
+			xsUnknownError("no font engine");
+	}
+
+	xsVars(3);
+
+	void *fontData = xsGetHostData(xsArg(0));			// a font is a Resource, so its bytes are host data
+	xsUnsignedValue fontDataLength = (xsUnsignedValue)xsGetHostBufferLength(xsArg(0));
+	CFESetFontData(gCFE, fontData, fontDataLength);
+	xsVar(1) = xsGet(xsArg(0), xsID_size);
+	if (xsUndefinedType != xsTypeOf(xsVar(1)))
+		CFESetFontSize(gCFE, xsToInteger(xsVar(1)));
+
+	const unsigned char *text = (const unsigned char *)xsToString(xsArg(1));
+
+	xsResult = xsNewArray(0);
+	xsThis = xsResult;
+
+	TextPathRecord tpr;
+	tpr.the = the;
+	tpr.dx = 0;
+
+	uint32_t previousUnicode = 0;
+	int glyphs = 0, outlines = 0;
+	while (true) {
+		uint32_t unicode = PocoNextFromUTF8((uint8_t **)&text);
+		if (!unicode)
+			break;
+		glyphs++;
+
+		if (previousUnicode)
+			tpr.dx += CFEGetKerningOffset(gCFE, previousUnicode, unicode) * 64;
+		previousUnicode = unicode;
+
+		uint8_t *outline = C_NULL;
+		uint32_t outlineSize;
+		CFEGetOutlineFromUnicode(gCFE, unicode, &outline, &outlineSize);
+		if (outline) {
+			outlines++;
+			CFEOutline co = (CFEOutline)outline;
+			int32_t *points = (int32_t *)(co + 1);
+
+			if (!co->pointCount) {			// a space
+				tpr.dx += co->advance;
+				c_free(outline);
+				continue;
+			}
+
+			FT_Outline ft;
+			ft.n_points = co->pointCount;
+			ft.n_contours = co->contourCount;
+			ft.contours = (unsigned short *)(points + (co->pointCount * 2));
+			ft.tags = ((unsigned char *)ft.contours) + (co->contourCount * sizeof(uint16_t));
+			ft.flags = FT_OUTLINE_NONE;
+
+			// points are pairs of int32_t, while FT_Vector is a pair of FT_Pos
+			ft.points = c_malloc(co->pointCount * sizeof(FT_Vector));
+			if (ft.points) {
+				for (int i = 0; i < co->pointCount; i++) {
+					ft.points[i].x = points[i * 2];
+					ft.points[i].y = points[(i * 2) + 1];
+				}
+				FT_Outline_Decompose(&ft, &xs_outline_TextPath_funcs, &tpr);
+				c_free(ft.points);
+			}
+
+			tpr.dx += co->advance;
+			c_free(outline);
+		}
+	}
+
+
+	if (glyphs && !outlines)
+		xsUnknownError("font has no outlines");
+
+	// the last subpath still needs its length
+	if (xsUndefinedType != xsTypeOf(xsVar(0))) {
+		void *data = xsToArrayBuffer(xsVar(0));
+		xsIntegerValue byteLength = xsGetArrayBufferLength(xsVar(0));
+		byteLength = *(uint32_t *)(byteLength - sizeof(uint32_t) + (uintptr_t)data);
+		xsSetArrayBufferLength(xsVar(0), byteLength + sizeof(uint32_t));
+		data = xsToArrayBuffer(xsVar(0));
+		*(uint32_t *)(byteLength + (uintptr_t)data) = byteLength;
+	}
+
+	xsDelete(xsThis, xsID_subpath);
+}
+
+#else
+
+void xs_outline_TextPath(xsMachine* the)
+{
+	xsUnknownError("no scalable font engine");
+}
+
+#endif
 
 void xs_outline_SVGPath(xsMachine* the)
 {

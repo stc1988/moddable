@@ -1,0 +1,14 @@
+{
+	"include": [
+		"$(COMMODETTO)/freetype/manifest_font.json"
+	],
+	"defines": {
+		"cfe": {
+			"ttf": 1
+		}
+	},
+	"modules": {
+		"~": "$(COMMODETTO)/cfeBMF",
+		"*": "$(COMMODETTO)/cfeFT"
+	}
+}

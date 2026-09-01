@@ -67,5 +67,6 @@ Outline.CanvasPath = class extends Array {
 }
 
 Outline.SVGPath = function(path) { return native("xs_outline_SVGPath").call(this, path); }
+Outline.TextPath = function(font, string) { return native("xs_outline_TextPath").call(this, font, string); }
 
 export { Outline }

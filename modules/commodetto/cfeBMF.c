@@ -196,6 +196,13 @@ CFEGlyph CFEGetGlyphFromGlyphID(CommodettoFontEngine bmf, uint16_t glyphID, uint
 	if (!needPixels) {
 		c_memset(glyph, 0, sizeof(*glyph));
 		glyph->advance = (uint8_t)c_read16(cc + 16);
+
+		// where the ink falls, which a caller measuring a string needs and which costs nothing here
+		glyph->w = c_read16(cc + 8);
+		glyph->h = c_read16(cc + 10);
+		glyph->dx = (int16_t)c_read16(cc + 12);
+		glyph->dy = (int16_t)c_read16(cc + 14);
+
 		return glyph;
 	}
 
@@ -233,6 +240,14 @@ CFEGlyph CFEGetGlyphFromUnicode(CommodettoFontEngine bmf, uint32_t unicode, uint
 
 	return CFEGetGlyphFromGlyphID(bmf, glyphID, needPixels);
 }
+
+void CFEGetOutlineFromUnicode(CommodettoFontEngine bmf, uint32_t unicode, uint8_t **outline, uint32_t *outlineSize)
+{
+	*outline = NULL;			// a bitmap font has no outlines
+	*outlineSize = 0;
+}
+
+void CFERenderOutline(CommodettoFontEngine bmf, uint8_t *outline, uint32_t outlineSize, double scaleX, double scaleY, CFEGlyph glyph) {}
 
 int16_t CFEGetKerningOffset(CommodettoFontEngine bmf, uint32_t unicode1, uint32_t unicode2)
 {

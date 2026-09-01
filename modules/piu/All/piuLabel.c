@@ -25,6 +25,7 @@ static void PiuLabelCascade(void* it);
 static void PiuLabelComputeStyle(PiuLabel* self, PiuApplication* application, PiuView* view);
 static void PiuLabelDictionary(xsMachine* the, void* it);
 static void PiuLabelDraw(void* it, PiuView* view, PiuRectangle area);
+static void PiuLabelInvalidate(void* it, PiuRectangle area);
 static void PiuLabelMark(xsMachine* the, void* it, xsMarkRoot markRoot);
 static void PiuLabelMeasureHorizontally(void* it);
 static void PiuLabelMeasureVertically(void* it);
@@ -40,7 +41,7 @@ const PiuDispatchRecord ICACHE_FLASH_ATTR PiuLabelDispatchRecord = {
 	PiuContentFitVertically,
 	PiuContentHit,
 	PiuContentIdle,
-	PiuContentInvalidate,
+	PiuLabelInvalidate,
 	PiuLabelMeasureHorizontally,
 	PiuLabelMeasureVertically,
 	PiuContentPlace,
@@ -146,12 +147,41 @@ void PiuLabelMeasureHorizontally(void* it)
 {
 	PiuLabel* self = it;
 	PiuAlignment horizontal = (*self)->coordinates.horizontal;
-	if (!(horizontal & piuWidth)) {
-		if ((*self)->string && (*self)->computedStyle)
-			(*self)->coordinates.width = PiuStyleGetWidth((*self)->computedStyle, (*self)->string);
-		else
-			(*self)->coordinates.width = 0;
+	PiuCoordinate inkLeft = 0, inkRight = 0, inkTop = 0, inkBottom = 0;
+	PiuDimension width = 0;
+
+	if ((*self)->string && (*self)->computedStyle) {
+		PiuStyle* style = (*self)->computedStyle;
+		width = (*style)->margins.left + PiuFontMeasure((*style)->font, (*self)->string, 0, -1, &inkLeft, &inkRight, &inkTop, &inkBottom) + (*style)->margins.right;
 	}
+
+	/*
+		Ink is not bound by the advances the width comes from, and a label is
+		drawn without a clip, so what falls outside has to be remembered: moving
+		the label has to repaint it, or it stays behind.
+	*/
+	(*self)->inkLeft = inkLeft;
+	(*self)->inkRight = inkRight;
+	(*self)->inkTop = inkTop;
+	(*self)->inkBottom = inkBottom;
+
+	if (!(horizontal & piuWidth))
+		(*self)->coordinates.width = width;
+}
+
+void PiuLabelInvalidate(void* it, PiuRectangle area)
+{
+	PiuLabel* self = it;
+	if (area || (!(*self)->inkLeft && !(*self)->inkRight && !(*self)->inkTop && !(*self)->inkBottom)) {
+		PiuContentInvalidate(it, area);
+		return;
+	}
+
+	PiuRectangleRecord bounds;
+	PiuRectangleSet(&bounds, -(*self)->inkLeft, -(*self)->inkTop,
+			(*self)->bounds.width + (*self)->inkLeft + (*self)->inkRight,
+			(*self)->bounds.height + (*self)->inkTop + (*self)->inkBottom);
+	PiuContentInvalidate(it, &bounds);
 }
 
 void PiuLabelMeasureVertically(void* it) 

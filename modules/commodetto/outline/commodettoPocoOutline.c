@@ -7,13 +7,19 @@
 #include "commodettoPoco.h"
 #include "commodettoPocoOutline.h"
 
-#define STANDALONE_ 1
-#define FT_BEGIN_HEADER
-#define FT_END_HEADER
-#include "ftraster.h"
-#include "ftgrays.h"
+#include <ft2build.h>
+#include FT_CONFIG_CONFIG_H
+#include <freetype/ftimage.h>
+#include <freetype/ftsystem.h>
 
-extern void FT_Outline_Get_CBox( const FT_Outline*  outline, FT_BBox *acbox);
+// FreeType 2.14 changed FT_Span.x from short to unsigned short: rendering into a
+// bitmap never sees a negative x. Poco renders outlines in outline space, so a
+// translated outline does put spans at negative x. Read the field back as signed.
+#define PocoSpanX(spans) ((int16_t)(spans)->x)
+
+// ftgrays.h lives in the FreeType source tree rather than its include tree, so the
+// rasterizer is declared here instead of putting that directory on the include path.
+extern const FT_Raster_Funcs ft_grays_raster;
 
 typedef struct {
 	uint8_t		*bits;
@@ -24,7 +30,6 @@ typedef struct {
 	FT_Raster raster;
 	FT_Raster_Params params;
 	int pitch;
-	uint8_t renderPool[1];
 } xsOutlineRendererRecord, *xsOutlineRenderer;
 
 static void doOutline(Poco poco, uint8_t *refcon, PocoPixel *dst, PocoDimension w, PocoDimension h, uint8_t xphase);
@@ -34,13 +39,83 @@ static void doOutlineBlendSpan(int y, int count, const FT_Span *spans, void *use
 
 static xsOutlineRenderer gxOutlineRenderer = NULL;
 
+static void *ftAlloc(FT_Memory memory, long size)
+{
+	return c_malloc(size);
+}
+
+static void ftFree(FT_Memory memory, void *block)
+{
+	if (block)
+		c_free(block);
+}
+
+static void *ftRealloc(FT_Memory memory, long cur_size, long new_size, void *block)
+{
+	return c_realloc(block, new_size);
+}
+
+/*
+	The control box is the bounding box of the outline's points. FreeType provides
+	FT_Outline_Get_CBox, but it lives in ftoutln.c alongside the functions that pull
+	in the object layer. This is the same calculation, kept here so that projects
+	which draw outlines but use no font engine link only the rasterizer.
+*/
+void PocoOutlineGetCBox(const FT_Outline *outline, FT_BBox *box)
+{
+	FT_Pos xMin, yMin, xMax, yMax;
+	const FT_Vector *point = outline->points;
+	const FT_Vector *end = point + outline->n_points;
+
+	if (outline->n_points <= 0) {
+		box->xMin = box->yMin = box->xMax = box->yMax = 0;
+		return;
+	}
+
+	xMin = xMax = point->x;
+	yMin = yMax = point->y;
+
+	for (point += 1; point < end; point++) {
+		FT_Pos x = point->x, y = point->y;
+
+		if (x < xMin) xMin = x;
+		else if (x > xMax) xMax = x;
+
+		if (y < yMin) yMin = y;
+		else if (y > yMax) yMax = y;
+	}
+
+	box->xMin = xMin;
+	box->yMin = yMin;
+	box->xMax = xMax;
+	box->yMax = yMax;
+}
+
+struct FT_MemoryRec_ *PocoOutlineFTMemory(void)
+{
+	static struct FT_MemoryRec_ memory;
+
+	if (NULL == memory.alloc) {
+		memory.alloc = ftAlloc;
+		memory.free = ftFree;
+		memory.realloc = ftRealloc;
+	}
+
+	return &memory;
+}
+
 xsOutlineRenderer PocoOutlineRenderer()
 {
 	if (gxOutlineRenderer == NULL) {
 		xsOutlineRenderer or = c_calloc(1, sizeof(xsOutlineRendererRecord));
+		if (NULL == or)
+			return NULL;
 		or->params.flags = FT_RASTER_FLAG_AA | FT_RASTER_FLAG_DIRECT | FT_RASTER_FLAG_CLIP;
-		ft_grays_raster.raster_new(NULL, &or->raster);
-		ft_grays_raster.raster_reset(or->raster, or->renderPool, sizeof(or->renderPool));
+		// the cell pool is statically allocated inside ftgrays, so raster_reset is a no-op
+		if (ft_grays_raster.raster_new(PocoOutlineFTMemory(), &or->raster)) {
+			c_free(or);
+			return NULL;
+		}
 		gxOutlineRenderer = or;
 	}
 	return gxOutlineRenderer;
@@ -62,8 +137,8 @@ void bufferToFTOutline(void *buffer, struct FT_Outline_ *outline)
 	outline->n_points = header->n_points;
 	outline->n_contours = header->n_contours;
 	outline->points = (struct FT_Vector_ *)(((unsigned char *)buffer) + sizeof(PocoOutlineRecord));
-	outline->contours = (short *)(((unsigned char *)outline->points) + ((outline->n_points << 1) * 4));
-	outline->tags = ((char *)outline->contours) + (outline->n_contours * 2);
+	outline->contours = (unsigned short *)(((unsigned char *)outline->points) + (outline->n_points * 2 * sizeof(FT_Pos)));
+	outline->tags = ((unsigned char *)outline->contours) + (outline->n_contours * 2);
 	outline->flags = header->flags;
 
 //	int i;
@@ -79,6 +154,9 @@ void xs_outlinerenderer_blendOutline(xsMachine *the)
 	PocoOutline buffer = (PocoOutline)xsmcGetHostData(xsArg(2));
 	xsOutlineRenderRecord orr;
 	PocoCoordinate xMax, yMax, dx, dy;
+
+	if (NULL == or)
+		xsUnknownError("no memory");
 
 	orr.or = or;
 	orr.color = (PocoPixel)xsmcToInteger(xsArg(0));
@@ -212,6 +290,9 @@ void xs_outlinerenderer_blendPolygon(xsMachine *the)
 	int i;
 	int argc = xsmcArgc;
 
+	if (NULL == or)
+		xsUnknownError("no memory");
+
 	prr.or = or;
 	prr.color = (PocoPixel)xsmcToInteger(xsArg(0));
 	prr.blend = (uint8_t)xsmcToInteger(xsArg(1));
@@ -241,11 +322,11 @@ void xs_outlinerenderer_blendPolygon(xsMachine *the)
     	.n_contours = 1,
     	.n_points = prr.n_points + 1,
     	.points = (FT_Vector *)prr.points,
-    	.tags = (char *)gPolygonFlags,
-    	.contours = &prr.n_points,
+    	.tags = (unsigned char *)gPolygonFlags,
+    	.contours = (unsigned short *)&prr.n_points,
     	.flags = FT_OUTLINE_NONE
 	};
-	FT_Outline_Get_CBox(&outline, &box);
+	PocoOutlineGetCBox(&outline, &box);
 
 	int x = box.xMin >> 6;
 	int y = box.yMin >> 6;
@@ -291,8 +372,8 @@ void doPolygon(Poco poco, uint8_t *refcon, PocoPixel *dst, PocoDimension w, Poco
     	.n_contours = 1,
     	.n_points = prr->n_points + 1,
     	.points = (FT_Vector *)prr->points,
-    	.tags = (char *)gPolygonFlags,
-    	.contours = &prr->n_points,
+    	.tags = (unsigned char *)gPolygonFlags,
+    	.contours = (unsigned short *)&prr->n_points,
     	.flags = FT_OUTLINE_NONE,		// FT_OUTLINE_EVEN_ODD_FILL
 	};
 
@@ -328,7 +409,7 @@ void doOutlineOpaqueSpan(int y, int count, const FT_Span *spans, void *user)
 
 	do {
 		uint16_t len = spans->len;
-		PocoPixel *p = pixels + (spans->x - os->x);
+		PocoPixel *p = pixels + (PocoSpanX(spans) - os->x);
 		uint16_t c = spans->coverage >> 3;
 		uint16_t pixel = (c << 11) | (c << 6) | c;
 
@@ -352,7 +433,7 @@ void doOutlineOpaqueSpan(int y, int count, const FT_Span *spans, void *user)
 	pixels -= os->x;
 	do {
 		uint16_t len = spans->len;
-		PocoPixel *p = pixels + spans->x;
+		PocoPixel *p = pixels + PocoSpanX(spans);
 		uint8_t blend = spans->coverage;
 
 		if (255 == blend) {
@@ -397,7 +478,7 @@ void doOutlineOpaqueSpan(int y, int count, const FT_Span *spans, void *user)
 	pixels -= os->x;
 	do {
 		uint16_t len = spans->len;
-		PocoPixel *p = pixels + spans->x;
+		PocoPixel *p = pixels + PocoSpanX(spans);
 		uint8_t blend = spans->coverage;
 
 		if (255 == blend) {
@@ -439,7 +520,7 @@ void doOutlineOpaqueSpan(int y, int count, const FT_Span *spans, void *user)
 
 	do {
 		uint16_t len = spans->len;
-		int dx = spans->x - os->x;
+		int dx = PocoSpanX(spans) - os->x;
 		PocoPixel *p = pixels + (dx >> 1);
 		uint8_t xphase = os->xphase + (dx & 1);
 		if (2 == xphase) {
@@ -497,7 +578,7 @@ void doOutlineOpaqueSpan(int y, int count, const FT_Span *spans, void *user)
 	pixels -= os->x;
 	do {
 		uint16_t len = spans->len;
-		PocoPixel *p = pixels + spans->x;
+		PocoPixel *p = pixels + PocoSpanX(spans);
 		uint8_t blend = spans->coverage >> 3;
 
 		if (31 == blend) {
@@ -535,7 +616,7 @@ void doOutlineBlendSpan(int y, int count, const FT_Span *spans, void *user)
 	pixels -= os->x;
 	do {
 		uint16_t len = spans->len;
-		PocoPixel *p = pixels + spans->x;
+		PocoPixel *p = pixels + PocoSpanX(spans);
 		uint8_t blend = (spans->coverage * os->blend) >> 11;
 
 		while (len--) {
@@ -571,7 +652,7 @@ void doOutlineBlendSpan(int y, int count, const FT_Span *spans, void *user)
 	pixels -= os->x;
 	do {
 		uint16_t len = spans->len;
-		PocoPixel *p = pixels + spans->x;
+		PocoPixel *p = pixels + PocoSpanX(spans);
 		uint8_t blend = (spans->coverage * os->blend) >> 11;
 
 		while (len--) {
@@ -604,7 +685,7 @@ void doOutlineBlendSpan(int y, int count, const FT_Span *spans, void *user)
 
 	do {
 		uint16_t len = spans->len;
-		int dx = spans->x - os->x;
+		int dx = PocoSpanX(spans) - os->x;
 		PocoPixel *p = pixels + (dx >> 1);
 		uint8_t xphase = os->xphase + (dx & 1);
 		if (2 == xphase) {
@@ -648,7 +729,7 @@ void doOutlineBlendSpan(int y, int count, const FT_Span *spans, void *user)
 	pixels -= os->x;
 	do {
 		uint16_t len = spans->len;
-		PocoPixel *p = pixels + spans->x;
+		PocoPixel *p = pixels + PocoSpanX(spans);
 		uint8_t blend = spans->coverage >> 3;
 		uint16_t pixel = color * blend;
 
@@ -672,6 +753,8 @@ void PocoOutlineFill(Poco poco, PocoColor color, uint8_t blend, PocoOutline pOut
 	xsOutlineRenderRecord orr;
 	PocoCoordinate xMax, yMax;
 	orr.or = PocoOutlineRenderer();
+	if (NULL == orr.or)
+		return;
 	orr.color = color;
 	orr.blend = blend;
 	bufferToFTOutline(pOutline, &orr.outline);
