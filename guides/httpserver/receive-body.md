@@ -1,10 +1,12 @@
 ---
 name: Receive Request Body
 SPDX-FileCopyrightText: Copyright (c) 2026 Moddable Tech, Inc.
-updated: 2026-08-25
+updated: 2026-08-31
 ---
 
-To receive the request body, you must implement a route handler. The request body is delivered in fragments so the handler is responsible for reassembling it when necessary. This example receives the body into a resizable `ArrayBuffer` which is converted to text and parsed as JSON. Naturally, reassembling fragments fails if there is not enough memory.
+To receive the request body, you must implement a route handler with an `onReadable` callback. The request body is delivered in fragments so the handler must reassemble it, if needed. This example receives the body into a resizable `ArrayBuffer` which is converted to text and parsed as JSON. Naturally, reassembling fragments fails if there is not enough memory.
+
+If you do not provide `onReadable`, the request body, if any, is ignored.
 
 This example sets the `"content-length"` header to `0` to indicate an empty response body. This header must be set for an empty response because the absence of both `"content-length"` and `"transfer-encoding"` headers indicates an HTTP response that ends when the connection closes.
 
