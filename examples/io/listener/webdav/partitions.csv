@@ -1,0 +1,20 @@
+#
+# Copyright (c) 2026  Moddable Tech, Inc.
+#
+#   This file is part of the Moddable SDK.
+#
+#   This work is licensed under the
+#       Creative Commons Attribution 4.0 International License.
+#   To view a copy of this license, visit
+#       <http://creativecommons.org/licenses/by/4.0>.
+#   or send a letter to Creative Commons, PO Box 1866,
+#   Mountain View, CA 94042, USA.
+#
+# Moddable Six (8 MB flash): a 1 MB storage partition for the littlefs
+# file system, in place of the 64 KB partition mcconfig creates by default
+
+# Name,   Type, SubType, Offset,   Size, Flags
+nvs,      data, nvs,     0x9000,   0x006000,
+phy_init, data, phy,     0xf000,   0x001000,
+factory,  app,  factory, 0x10000,  0x6F0000,
+storage,  data, spiffs,  0x700000, 0x100000,
