@@ -25,16 +25,20 @@
 
 // the native parser calls these at run time (see modXML.rl); reference them
 // here so the linker does not dead-strip them
-void [String.fromCodePoint, "".concat, "".trim, Object.keys, { TEXT: 0, value: 0 }];
-
-function escape(string, mode) {
-	return native("xs_xml_escape").call(this, string, mode);
-}
+void [String.fromCodePoint, "".concat, "".trim, Object.keys, { TEXT: 0, value: 0, format: 0, declaration: 0 }];
 
 export class XML {
-	static escape = escape;
 	static parse(string, compact) {
 		return native("xs_xml_parse").call(this, string, compact);
+	}
+	static serialize(item, options) {
+		return native("xs_xml_serialize").call(this, item, options);	// options: { format: "string" (default) | "buffer", declaration: true (default) }
+	}
+	static escape(string, kind) {
+		return native("xs_xml_escape").call(this, string, kind);	// kind: "text" (default), "attribute", "cdata"
+	}
+	static unescape(string) {
+		return native("xs_xml_unescape").call(this, string);
 	}
 	// with a prefix, match "prefix:name" or bare "name" (as before); without one,
 	// also match any "anyprefix:name" so lookups do not depend on the namespace
@@ -56,9 +60,6 @@ export class XML {
 	}
 	static searchElements(element, name, prefix) {
 		return this.search(element.elements, name, prefix);
-	}
-	static serialize(item, declaration, type) {
-		return native("xs_xml_serialize").call(this, item, declaration, type);	// declaration defaults to true; type is String (default) or ArrayBuffer
 	}
 }
 

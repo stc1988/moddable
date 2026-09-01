@@ -58,6 +58,8 @@
 	references (U+FFFD on invalid, fixes signed overflow); prepush stack-overflow
 	guard; DOCTYPE skipped; non-ASCII bytes accepted in names; XML.search (xml.js)
 	matches local names without prefix.
+
+	Contributed by Mark Wharton.
 */
 
 #include "xsmc.h"
@@ -89,11 +91,6 @@ static const char gHexa[] ICACHE_XS6RO2_ATTR = "0123456789ABCDEF";
 	#define XML_WRITER_CHUNK MODDEF_XML_WRITER_CHUNK
 #else
 	#define XML_WRITER_CHUNK 512
-#endif
-
-// comparing a slot against a global constructor (the file module idiom); the test shim overrides
-#ifndef xsmcSameReference
-	#define xsmcSameReference(A, B) ((A)->data[2] == (B)->data[2])
 #endif
 
 // The input: xsArg(0) as bytes. A string is always relocatable (chunk heap). A buffer is
@@ -302,11 +299,6 @@ static void xml_array_push_property(xsMachine* the, xsSlot* container, xsUnsigne
 
 // xml parser
 
-static xsStringValue xml_parser_base(xsMachine* the, XMLParser parser)
-{
-	return xml_input_base(the, &parser->input);
-}
-
 static void xml_parser_rebase(xsMachine* the, XMLParser parser)
 {
 	xsStringValue base;
@@ -461,11 +453,11 @@ static void xml_parser_cdata_section(xsMachine* the, XMLParser parser)
 // xml parser specification
 
 
-#line 562 "modXML.rl"
+#line 552 "modXML.rl"
 
 
 
-#line 469 "modXML.c"
+#line 459 "modXML.c"
 static const char _parser_actions[] ICACHE_XS6RO_ATTR = {
 	0, 1, 8, 1, 9, 1, 10, 2, 
 	5, 14, 2, 6, 16, 2, 10, 1, 
@@ -479,13 +471,14 @@ static const char _parser_actions[] ICACHE_XS6RO_ATTR = {
 static const unsigned char _parser_key_offsets[] ICACHE_XS6RO_ATTR = {
 	0, 0, 5, 9, 18, 20, 21, 22, 
 	23, 24, 26, 27, 28, 29, 30, 31, 
-	32, 34, 35, 39, 40, 41, 43, 59, 
-	73, 74, 91, 93, 96, 101, 102, 105, 
-	106, 107, 108, 109, 110, 120, 122, 123, 
-	124, 125, 126, 128, 129, 130, 131, 132, 
-	133, 134, 135, 136, 137, 139, 146, 162, 
-	166, 167, 168, 170, 186, 200, 201, 218, 
-	220, 223, 228, 229, 232, 233, 236
+	32, 34, 37, 38, 39, 43, 44, 45, 
+	47, 63, 77, 78, 95, 97, 100, 105, 
+	106, 109, 110, 111, 112, 113, 114, 124, 
+	126, 127, 128, 129, 130, 132, 133, 134, 
+	135, 136, 137, 138, 139, 140, 141, 143, 
+	150, 166, 170, 171, 172, 174, 190, 204, 
+	205, 222, 224, 227, 232, 233, 236, 237, 
+	240
 };
 
 static const unsigned char _parser_trans_keys[] ICACHE_XS6RO_ATTR = {
@@ -493,68 +486,72 @@ static const unsigned char _parser_trans_keys[] ICACHE_XS6RO_ATTR = {
 	13u, 33u, 63u, 96u, 0u, 64u, 91u, 94u, 
 	123u, 127u, 45u, 68u, 45u, 45u, 45u, 45u, 
 	45u, 62u, 79u, 67u, 84u, 89u, 80u, 69u, 
-	62u, 91u, 93u, 32u, 62u, 9u, 13u, 63u, 
-	63u, 62u, 63u, 32u, 47u, 62u, 96u, 0u, 
-	8u, 9u, 13u, 14u, 44u, 59u, 64u, 91u, 
-	94u, 123u, 127u, 32u, 47u, 62u, 96u, 0u, 
-	8u, 9u, 13u, 14u, 64u, 91u, 94u, 123u, 
-	127u, 62u, 32u, 47u, 61u, 62u, 96u, 0u, 
-	8u, 9u, 13u, 14u, 44u, 59u, 64u, 91u, 
-	94u, 123u, 127u, 34u, 39u, 34u, 38u, 60u, 
-	32u, 47u, 62u, 9u, 13u, 59u, 38u, 39u, 
-	60u, 59u, 187u, 191u, 60u, 60u, 33u, 47u, 
-	63u, 96u, 0u, 64u, 91u, 94u, 123u, 127u, 
-	45u, 91u, 45u, 45u, 45u, 45u, 45u, 62u, 
-	67u, 68u, 65u, 84u, 65u, 91u, 93u, 93u, 
-	93u, 62u, 93u, 96u, 0u, 64u, 91u, 94u, 
-	123u, 127u, 32u, 47u, 62u, 96u, 0u, 8u, 
-	9u, 13u, 14u, 44u, 59u, 64u, 91u, 94u, 
-	123u, 127u, 32u, 62u, 9u, 13u, 63u, 63u, 
-	62u, 63u, 32u, 47u, 62u, 96u, 0u, 8u, 
-	9u, 13u, 14u, 44u, 59u, 64u, 91u, 94u, 
-	123u, 127u, 32u, 47u, 62u, 96u, 0u, 8u, 
-	9u, 13u, 14u, 64u, 91u, 94u, 123u, 127u, 
-	62u, 32u, 47u, 61u, 62u, 96u, 0u, 8u, 
-	9u, 13u, 14u, 44u, 59u, 64u, 91u, 94u, 
-	123u, 127u, 34u, 39u, 34u, 38u, 60u, 32u, 
-	47u, 62u, 9u, 13u, 59u, 38u, 39u, 60u, 
-	59u, 32u, 9u, 13u, 0
+	62u, 91u, 34u, 39u, 93u, 34u, 39u, 32u, 
+	62u, 9u, 13u, 63u, 63u, 62u, 63u, 32u, 
+	47u, 62u, 96u, 0u, 8u, 9u, 13u, 14u, 
+	44u, 59u, 64u, 91u, 94u, 123u, 127u, 32u, 
+	47u, 62u, 96u, 0u, 8u, 9u, 13u, 14u, 
+	64u, 91u, 94u, 123u, 127u, 62u, 32u, 47u, 
+	61u, 62u, 96u, 0u, 8u, 9u, 13u, 14u, 
+	44u, 59u, 64u, 91u, 94u, 123u, 127u, 34u, 
+	39u, 34u, 38u, 60u, 32u, 47u, 62u, 9u, 
+	13u, 59u, 38u, 39u, 60u, 59u, 187u, 191u, 
+	60u, 60u, 33u, 47u, 63u, 96u, 0u, 64u, 
+	91u, 94u, 123u, 127u, 45u, 91u, 45u, 45u, 
+	45u, 45u, 45u, 62u, 67u, 68u, 65u, 84u, 
+	65u, 91u, 93u, 93u, 93u, 62u, 93u, 96u, 
+	0u, 64u, 91u, 94u, 123u, 127u, 32u, 47u, 
+	62u, 96u, 0u, 8u, 9u, 13u, 14u, 44u, 
+	59u, 64u, 91u, 94u, 123u, 127u, 32u, 62u, 
+	9u, 13u, 63u, 63u, 62u, 63u, 32u, 47u, 
+	62u, 96u, 0u, 8u, 9u, 13u, 14u, 44u, 
+	59u, 64u, 91u, 94u, 123u, 127u, 32u, 47u, 
+	62u, 96u, 0u, 8u, 9u, 13u, 14u, 64u, 
+	91u, 94u, 123u, 127u, 62u, 32u, 47u, 61u, 
+	62u, 96u, 0u, 8u, 9u, 13u, 14u, 44u, 
+	59u, 64u, 91u, 94u, 123u, 127u, 34u, 39u, 
+	34u, 38u, 60u, 32u, 47u, 62u, 9u, 13u, 
+	59u, 38u, 39u, 60u, 59u, 32u, 9u, 13u, 
+	0
 };
 
 static const char _parser_single_lengths[] ICACHE_XS6RO_ATTR = {
 	0, 3, 2, 3, 2, 1, 1, 1, 
 	1, 2, 1, 1, 1, 1, 1, 1, 
-	2, 1, 2, 1, 1, 2, 4, 4, 
-	1, 5, 2, 3, 3, 1, 3, 1, 
-	1, 1, 1, 1, 4, 2, 1, 1, 
-	1, 1, 2, 1, 1, 1, 1, 1, 
-	1, 1, 1, 1, 2, 1, 4, 2, 
-	1, 1, 2, 4, 4, 1, 5, 2, 
-	3, 3, 1, 3, 1, 1, 0
+	2, 3, 1, 1, 2, 1, 1, 2, 
+	4, 4, 1, 5, 2, 3, 3, 1, 
+	3, 1, 1, 1, 1, 1, 4, 2, 
+	1, 1, 1, 1, 2, 1, 1, 1, 
+	1, 1, 1, 1, 1, 1, 2, 1, 
+	4, 2, 1, 1, 2, 4, 4, 1, 
+	5, 2, 3, 3, 1, 3, 1, 1, 
+	0
 };
 
 static const char _parser_range_lengths[] ICACHE_XS6RO_ATTR = {
 	0, 1, 1, 3, 0, 0, 0, 0, 
 	0, 0, 0, 0, 0, 0, 0, 0, 
-	0, 0, 1, 0, 0, 0, 6, 5, 
-	0, 6, 0, 0, 1, 0, 0, 0, 
-	0, 0, 0, 0, 3, 0, 0, 0, 
+	0, 0, 0, 0, 1, 0, 0, 0, 
+	6, 5, 0, 6, 0, 0, 1, 0, 
+	0, 0, 0, 0, 0, 0, 3, 0, 
 	0, 0, 0, 0, 0, 0, 0, 0, 
-	0, 0, 0, 0, 0, 3, 6, 1, 
-	0, 0, 0, 6, 5, 0, 6, 0, 
-	0, 1, 0, 0, 0, 1, 0
+	0, 0, 0, 0, 0, 0, 0, 3, 
+	6, 1, 0, 0, 0, 6, 5, 0, 
+	6, 0, 0, 1, 0, 0, 0, 1, 
+	0
 };
 
 static const short _parser_index_offsets[] ICACHE_XS6RO_ATTR = {
 	0, 0, 5, 9, 16, 19, 21, 23, 
 	25, 27, 30, 32, 34, 36, 38, 40, 
-	42, 45, 47, 51, 53, 55, 58, 69, 
-	79, 81, 93, 96, 100, 105, 107, 111, 
-	113, 115, 117, 119, 121, 129, 132, 134, 
-	136, 138, 140, 143, 145, 147, 149, 151, 
-	153, 155, 157, 159, 161, 164, 169, 180, 
-	184, 186, 188, 191, 202, 212, 214, 226, 
-	229, 233, 238, 240, 244, 246, 249
+	42, 45, 49, 51, 53, 57, 59, 61, 
+	64, 75, 85, 87, 99, 102, 106, 111, 
+	113, 117, 119, 121, 123, 125, 127, 135, 
+	138, 140, 142, 144, 146, 149, 151, 153, 
+	155, 157, 159, 161, 163, 165, 167, 170, 
+	175, 186, 190, 192, 194, 197, 208, 218, 
+	220, 232, 235, 239, 244, 246, 250, 252, 
+	255
 };
 
 static const char _parser_indicies[] ICACHE_XS6RO_ATTR = {
@@ -563,80 +560,81 @@ static const char _parser_indicies[] ICACHE_XS6RO_ATTR = {
 	7, 8, 1, 9, 1, 11, 10, 13, 
 	12, 14, 12, 14, 15, 12, 16, 1, 
 	17, 1, 18, 1, 19, 1, 20, 1, 
-	21, 1, 0, 22, 21, 23, 22, 23, 
-	0, 23, 1, 25, 24, 27, 26, 28, 
-	27, 26, 29, 31, 32, 1, 1, 29, 
-	1, 1, 1, 1, 30, 33, 34, 35, 
-	1, 1, 33, 1, 1, 1, 36, 37, 
-	1, 38, 40, 41, 42, 1, 1, 38, 
-	1, 1, 1, 1, 39, 43, 44, 1, 
-	46, 47, 1, 45, 48, 49, 50, 48, 
-	1, 45, 47, 52, 46, 1, 51, 51, 
-	52, 53, 1, 0, 1, 55, 54, 57, 
-	56, 58, 59, 60, 1, 1, 1, 1, 
-	61, 62, 63, 1, 64, 1, 66, 65, 
-	68, 67, 69, 67, 69, 70, 67, 71, 
-	1, 72, 1, 73, 1, 74, 1, 75, 
-	1, 76, 1, 78, 77, 80, 79, 81, 
-	79, 82, 81, 79, 1, 1, 1, 1, 
-	83, 84, 1, 86, 1, 1, 84, 1, 
-	1, 1, 1, 85, 87, 88, 87, 1, 
-	90, 89, 92, 91, 93, 92, 91, 94, 
-	96, 97, 1, 1, 94, 1, 1, 1, 
-	1, 95, 98, 99, 100, 1, 1, 98, 
-	1, 1, 1, 101, 102, 1, 103, 105, 
-	106, 107, 1, 1, 103, 1, 1, 1, 
-	1, 104, 108, 109, 1, 111, 112, 1, 
-	110, 113, 114, 115, 113, 1, 110, 112, 
-	117, 111, 1, 116, 116, 117, 37, 37, 
-	1, 1, 0
+	21, 1, 0, 22, 21, 23, 24, 25, 
+	22, 22, 23, 22, 24, 25, 0, 25, 
+	1, 27, 26, 29, 28, 30, 29, 28, 
+	31, 33, 34, 1, 1, 31, 1, 1, 
+	1, 1, 32, 35, 36, 37, 1, 1, 
+	35, 1, 1, 1, 38, 39, 1, 40, 
+	42, 43, 44, 1, 1, 40, 1, 1, 
+	1, 1, 41, 45, 46, 1, 48, 49, 
+	1, 47, 50, 51, 52, 50, 1, 47, 
+	49, 54, 48, 1, 53, 53, 54, 55, 
+	1, 0, 1, 57, 56, 59, 58, 60, 
+	61, 62, 1, 1, 1, 1, 63, 64, 
+	65, 1, 66, 1, 68, 67, 70, 69, 
+	71, 69, 71, 72, 69, 73, 1, 74, 
+	1, 75, 1, 76, 1, 77, 1, 78, 
+	1, 80, 79, 82, 81, 83, 81, 84, 
+	83, 81, 1, 1, 1, 1, 85, 86, 
+	1, 88, 1, 1, 86, 1, 1, 1, 
+	1, 87, 89, 90, 89, 1, 92, 91, 
+	94, 93, 95, 94, 93, 96, 98, 99, 
+	1, 1, 96, 1, 1, 1, 1, 97, 
+	100, 101, 102, 1, 1, 100, 1, 1, 
+	1, 103, 104, 1, 105, 107, 108, 109, 
+	1, 1, 105, 1, 1, 1, 1, 106, 
+	110, 111, 1, 113, 114, 1, 112, 115, 
+	116, 117, 115, 1, 112, 114, 119, 113, 
+	1, 118, 118, 119, 39, 39, 1, 1, 
+	0
 };
 
 static const char _parser_trans_targs[] ICACHE_XS6RO_ATTR = {
-	2, 0, 3, 32, 4, 19, 22, 5, 
+	2, 0, 3, 34, 4, 21, 24, 5, 
 	10, 6, 7, 8, 7, 8, 9, 2, 
 	11, 12, 13, 14, 15, 16, 17, 18, 
-	20, 21, 20, 21, 2, 23, 22, 24, 
-	69, 23, 24, 69, 25, 69, 23, 25, 
-	24, 26, 69, 27, 30, 27, 28, 29, 
-	23, 24, 69, 30, 31, 33, 35, 36, 
-	35, 34, 37, 53, 56, 59, 38, 43, 
-	39, 40, 41, 40, 41, 42, 34, 44, 
-	45, 46, 47, 48, 49, 50, 51, 50, 
-	51, 52, 34, 54, 55, 54, 70, 55, 
-	70, 57, 58, 57, 58, 34, 60, 59, 
-	61, 34, 60, 61, 34, 62, 34, 60, 
-	62, 61, 63, 34, 64, 67, 64, 65, 
-	66, 60, 61, 34, 67, 68
+	19, 20, 22, 23, 22, 23, 2, 25, 
+	24, 26, 71, 25, 26, 71, 27, 71, 
+	25, 27, 26, 28, 71, 29, 32, 29, 
+	30, 31, 25, 26, 71, 32, 33, 35, 
+	37, 38, 37, 36, 39, 55, 58, 61, 
+	40, 45, 41, 42, 43, 42, 43, 44, 
+	36, 46, 47, 48, 49, 50, 51, 52, 
+	53, 52, 53, 54, 36, 56, 57, 56, 
+	72, 57, 72, 59, 60, 59, 60, 36, 
+	62, 61, 63, 36, 62, 63, 36, 64, 
+	36, 62, 64, 63, 65, 36, 66, 69, 
+	66, 67, 68, 62, 63, 36, 69, 70
 };
 
 static const char _parser_trans_actions[] ICACHE_XS6RO_ATTR = {
 	0, 0, 0, 0, 0, 0, 1, 0, 
 	0, 0, 1, 1, 0, 0, 0, 28, 
 	0, 0, 0, 0, 0, 0, 0, 0, 
-	1, 1, 0, 0, 22, 16, 0, 16, 
-	44, 0, 0, 7, 1, 0, 13, 0, 
-	13, 13, 39, 3, 3, 0, 0, 0, 
-	19, 19, 49, 0, 0, 0, 1, 0, 
-	0, 35, 0, 0, 0, 1, 0, 0, 
-	0, 1, 1, 0, 0, 0, 28, 0, 
-	0, 0, 0, 0, 0, 1, 1, 0, 
-	0, 0, 25, 1, 5, 0, 31, 0, 
-	10, 1, 1, 0, 0, 22, 16, 0, 
-	16, 44, 0, 0, 7, 1, 0, 13, 
-	0, 13, 13, 39, 3, 3, 0, 0, 
-	0, 19, 19, 49, 0, 0
+	0, 0, 1, 1, 0, 0, 22, 16, 
+	0, 16, 44, 0, 0, 7, 1, 0, 
+	13, 0, 13, 13, 39, 3, 3, 0, 
+	0, 0, 19, 19, 49, 0, 0, 0, 
+	1, 0, 0, 35, 0, 0, 0, 1, 
+	0, 0, 0, 1, 1, 0, 0, 0, 
+	28, 0, 0, 0, 0, 0, 0, 1, 
+	1, 0, 0, 0, 25, 1, 5, 0, 
+	31, 0, 10, 1, 1, 0, 0, 22, 
+	16, 0, 16, 44, 0, 0, 7, 1, 
+	0, 13, 0, 13, 13, 39, 3, 3, 
+	0, 0, 0, 19, 19, 49, 0, 0
 };
 
 static const int parser_start = 1;
-static const int parser_first_final = 69;
+static const int parser_first_final = 71;
 static const int parser_error = 0;
 
-static const int parser_en_inner = 34;
+static const int parser_en_inner = 36;
 static const int parser_en_main = 1;
 
 
-#line 565 "modXML.rl"
+#line 555 "modXML.rl"
 
 #pragma unused (parser_en_inner)
 #pragma unused (parser_en_main)
@@ -681,15 +679,15 @@ void xs_xml_parse(xsMachine* the)
 	parser->fsm.pe = parser->fsm.p + length;
 	parser->fsm.eof = parser->fsm.pe;
 	
-#line 685 "modXML.c"
+#line 681 "modXML.c"
 	{
 	 parser->fsm.cs = parser_start;
 	 parser->fsm.top = 0;
 	}
 
-#line 609 "modXML.rl"
+#line 599 "modXML.rl"
 	
-#line 693 "modXML.c"
+#line 689 "modXML.c"
 	{
 	int _klen;
 	unsigned int _trans;
@@ -764,105 +762,105 @@ _match:
 		switch ( *_acts++ )
 		{
 	case 0:
-#line 475 "modXML.rl"
+#line 465 "modXML.rl"
 	{
 		xml_parser_assign_value(the, parser);
 	}
 	break;
 	case 1:
-#line 479 "modXML.rl"
+#line 469 "modXML.rl"
 	{
 		xml_parser_attribute(the, parser);
 	}
 	break;
 	case 2:
-#line 483 "modXML.rl"
+#line 473 "modXML.rl"
 	{
 		xml_parser_cdata_section(the, parser);
 	}
 	break;
 	case 3:
-#line 487 "modXML.rl"
+#line 477 "modXML.rl"
 	{
 		xml_parser_comment(the, parser);
 	}
 	break;
 	case 4:
-#line 491 "modXML.rl"
+#line 481 "modXML.rl"
 	{
 		xml_parser_element(the, parser);
 	}
 	break;
 	case 5:
-#line 495 "modXML.rl"
+#line 485 "modXML.rl"
 	{
 		xml_parser_enter_element(the, parser);
 	}
 	break;
 	case 6:
-#line 499 "modXML.rl"
+#line 489 "modXML.rl"
 	{
 		xml_parser_exit_element(the, parser);
 	}
 	break;
 	case 7:
-#line 503 "modXML.rl"
+#line 493 "modXML.rl"
 	{
 		xml_parser_processing_instruction(the, parser);
 	}
 	break;
 	case 8:
-#line 507 "modXML.rl"
+#line 497 "modXML.rl"
 	{
 		xml_parser_start_text(the, parser, 0);
 	}
 	break;
 	case 9:
-#line 511 "modXML.rl"
+#line 501 "modXML.rl"
 	{
 		xml_parser_start_text(the, parser, 1);
 	}
 	break;
 	case 10:
-#line 515 "modXML.rl"
+#line 505 "modXML.rl"
 	{
 		xml_parser_stop_text(the, parser, 0);
 	}
 	break;
 	case 11:
-#line 519 "modXML.rl"
+#line 509 "modXML.rl"
 	{
 		xml_parser_stop_text(the, parser, -1);
 	}
 	break;
 	case 12:
-#line 523 "modXML.rl"
+#line 513 "modXML.rl"
 	{
 		xml_parser_stop_text(the, parser, -2);
 	}
 	break;
 	case 13:
-#line 527 "modXML.rl"
+#line 517 "modXML.rl"
 	{
 		xml_parser_text(the, parser, 1);
 	}
 	break;
 	case 14:
-#line 547 "modXML.rl"
+#line 537 "modXML.rl"
 	{ {
 		if (parser->fsm.top == XML_STACK_SIZE)
 			xsUnknownError("xml_parser: stack overflow");
-	{ parser->fsm.stack[ parser->fsm.top++] =  parser->fsm.cs;  parser->fsm.cs = 34;goto _again;}} }
+	{ parser->fsm.stack[ parser->fsm.top++] =  parser->fsm.cs;  parser->fsm.cs = 36;goto _again;}} }
 	break;
 	case 15:
-#line 553 "modXML.rl"
+#line 543 "modXML.rl"
 	{ ( parser->fsm.p)--; }
 	break;
 	case 16:
-#line 557 "modXML.rl"
+#line 547 "modXML.rl"
 	{ { parser->fsm.cs =  parser->fsm.stack[-- parser->fsm.top]; goto _again;} }
 	break;
-#line 866 "modXML.c"
+#line 862 "modXML.c"
 		}
 	}
 
@@ -875,7 +873,7 @@ _again:
 	_out: {}
 	}
 
-#line 610 "modXML.rl"
+#line 600 "modXML.rl"
 	if (parser->fsm.cs < parser_first_final)
 		xsUnknownError("xml_parser: error");
 }
@@ -914,12 +912,6 @@ static void xml_text_scanner_append(xsMachine* the, XMLTextScanner scanner, xsSl
 	else
 		xsResult = *slot;
 	xml_text_scanner_rebase(the, scanner);
-}
-
-static void xml_text_scanner_append_static(xsMachine* the, XMLTextScanner scanner, const char* text)
-{
-	xsmcSetString(xsVar(4), (xsStringValue)text);
-	xml_text_scanner_append(the, scanner, &xsVar(4));
 }
 
 static void xml_text_scanner_append_slice(xsMachine* the, XMLTextScanner scanner, xsStringValue ts, xsStringValue te)
@@ -970,11 +962,11 @@ static void xml_text_scanner_append_codepoint_reference(xsMachine* the, XMLTextS
 // xml text scanner specification
 
 
-#line 754 "modXML.rl"
+#line 738 "modXML.rl"
 
 
 
-#line 978 "modXML.c"
+#line 968 "modXML.c"
 static const char _scanner_actions[] ICACHE_XS6RO_ATTR = {
 	0, 1, 0, 1, 1, 1, 2, 1, 
 	3, 1, 4, 1, 5, 1, 6, 1, 
@@ -1066,7 +1058,7 @@ static const int scanner_error = -1;
 static const int scanner_en_unescape = 18;
 
 
-#line 757 "modXML.rl"
+#line 741 "modXML.rl"
 
 #pragma unused (scanner_error)
 #pragma unused (scanner_start)
@@ -1084,16 +1076,16 @@ static void xml_text_scanner(xsMachine* the, xsIntegerValue offset, xsIntegerVal
 	scanner->fsm.pe = scanner->fsm.p + length;
 	scanner->fsm.eof = scanner->fsm.pe;
 	
-#line 1088 "modXML.c"
+#line 1078 "modXML.c"
 	{
 	( scanner->fsm.ts) = 0;
 	( scanner->fsm.te) = 0;
 	 scanner->fsm.act = 0;
 	}
 
-#line 774 "modXML.rl"
+#line 758 "modXML.rl"
 	
-#line 1097 "modXML.c"
+#line 1087 "modXML.c"
 	{
 	int _klen;
 	unsigned int _trans;
@@ -1112,7 +1104,7 @@ _resume:
 #line 1 "NONE"
 	{( scanner->fsm.ts) = ( scanner->fsm.p);}
 	break;
-#line 1116 "modXML.c"
+#line 1106 "modXML.c"
 		}
 	}
 
@@ -1182,60 +1174,60 @@ _eof_trans:
 	{( scanner->fsm.te) = ( scanner->fsm.p)+1;}
 	break;
 	case 3:
-#line 714 "modXML.rl"
+#line 698 "modXML.rl"
 	{( scanner->fsm.te) = ( scanner->fsm.p)+1;{
 		xml_text_scanner_append_codepoint_reference(the, scanner, scanner->fsm.ts, scanner->fsm.te);
 	}}
 	break;
 	case 4:
-#line 726 "modXML.rl"
+#line 710 "modXML.rl"
 	{( scanner->fsm.te) = ( scanner->fsm.p)+1;{
 		xml_text_scanner_append_codepoint(the, scanner, 0x00027); // '
 	}}
 	break;
 	case 5:
-#line 718 "modXML.rl"
+#line 702 "modXML.rl"
 	{( scanner->fsm.te) = ( scanner->fsm.p)+1;{
 		xml_text_scanner_append_codepoint(the, scanner, 0x00022); // "
 	}}
 	break;
 	case 6:
-#line 722 "modXML.rl"
+#line 706 "modXML.rl"
 	{( scanner->fsm.te) = ( scanner->fsm.p)+1;{
 		xml_text_scanner_append_codepoint(the, scanner, 0x00026); // &
 	}}
 	break;
 	case 7:
-#line 730 "modXML.rl"
+#line 714 "modXML.rl"
 	{( scanner->fsm.te) = ( scanner->fsm.p)+1;{
 		xml_text_scanner_append_codepoint(the, scanner, 0x0003C); // <
 	}}
 	break;
 	case 8:
-#line 734 "modXML.rl"
+#line 718 "modXML.rl"
 	{( scanner->fsm.te) = ( scanner->fsm.p)+1;{
 		xml_text_scanner_append_codepoint(the, scanner, 0x0003E); // >
 	}}
 	break;
 	case 9:
-#line 738 "modXML.rl"
+#line 722 "modXML.rl"
 	{( scanner->fsm.te) = ( scanner->fsm.p);( scanner->fsm.p)--;{
 		xml_text_scanner_append_slice(the, scanner, scanner->fsm.ts, scanner->fsm.te);
 	}}
 	break;
 	case 10:
-#line 738 "modXML.rl"
+#line 722 "modXML.rl"
 	{( scanner->fsm.te) = ( scanner->fsm.p);( scanner->fsm.p)--;{
 		xml_text_scanner_append_slice(the, scanner, scanner->fsm.ts, scanner->fsm.te);
 	}}
 	break;
 	case 11:
-#line 738 "modXML.rl"
+#line 722 "modXML.rl"
 	{{( scanner->fsm.p) = ((( scanner->fsm.te)))-1;}{
 		xml_text_scanner_append_slice(the, scanner, scanner->fsm.ts, scanner->fsm.te);
 	}}
 	break;
-#line 1239 "modXML.c"
+#line 1229 "modXML.c"
 		}
 	}
 
@@ -1248,7 +1240,7 @@ _again:
 #line 1 "NONE"
 	{( scanner->fsm.ts) = 0;}
 	break;
-#line 1252 "modXML.c"
+#line 1242 "modXML.c"
 		}
 	}
 
@@ -1265,7 +1257,7 @@ _again:
 
 	}
 
-#line 775 "modXML.rl"
+#line 759 "modXML.rl"
 	if (scanner->fsm.cs < scanner_first_final)
 		xsUnknownError("xml_text_scanner: error");
 }
@@ -1360,16 +1352,23 @@ static void xml_writer_escape(xsMachine* the, XMLWriter writer, xsStringValue te
 	for (i = 0; i < length; i++) {
 		unsigned char c = (unsigned char)c_read8(text + i);
 		const char* replacement = NULL;
-		char reference[7]; c_memcpy(reference, "&#x??;", 7); // not a bracketed initializer: gcc emits that as ROM memcpy, whose byte reads of the flash-resident literal fault on ESP8266
+		char reference[7];
 		switch (c) {
 			case '&': replacement = "&amp;"; break;
 			case '<': replacement = "&lt;"; break;
 			case '>': replacement = "&gt;"; break;
 			case '"': replacement = mode ? "&quot;" : NULL; break;
 			case '\'': replacement = mode ? "&apos;" : NULL; break;
-			case '\t': case '\n': case '\v': case '\f': case '\r': break;
+			// XML 1.0 §2.11: readers turn literal CR into LF before parsing, so CR must be a
+			// reference to survive; §3.3.3: in attribute values readers turn literal TAB and LF
+			// into spaces, so those too. Canonical XML (C14N 1.0) writes the same references.
+			case '\r': replacement = "&#x0D;"; break;
+			case '\t': replacement = mode ? "&#x09;" : NULL; break;
+			case '\n': replacement = mode ? "&#x0A;" : NULL; break;
+			case '\v': case '\f': break;
 			default:
 				if ((c > 0) && (c < 32)) {	// bytes above 0x7F pass through: c is unsigned
+					c_memcpy(reference, "&#x??;", 7); // not an initializer: GCC would memcpy from ROM, which faults on ESP8266; here in the rare branch, not once per byte
 					reference[3] = escapeHexa(c >> 4);
 					reference[4] = escapeHexa(c);
 					replacement = reference;
@@ -1385,20 +1384,23 @@ static void xml_writer_escape(xsMachine* the, XMLWriter writer, xsStringValue te
 	xml_writer_append(the, writer, text + start, length - start);
 }
 
-// XML.escape: modes 0 (text), 1 (attribute value), 2 (CDATA section) run the writer's escaper,
-// the single implementation of the escaping rules; mode 3 (unescape) runs the scanner
+// XML.escape: kind "text" (default), "attribute", or "cdata" runs the writer's escaper,
+// the single implementation of the escaping rules
 void xs_xml_escape(xsMachine* the)
 {
-	xsIntegerValue mode = (xsmcArgc > 1) ? xsmcToInteger(xsArg(1)) : 0;
-	xsIntegerValue length;
+	xsIntegerValue mode = 0;
 
 	xsmcVars(6);
-	length = (xsIntegerValue)c_strlen(xsmcToString(xsArg(0)));
-	if (mode == 3) {
-		XMLInputRecord input = { 0, 1, 0 };	// a string: relocatable, no transcoding
-		xml_text_scanner(the, 0, length, &input);
+	if ((xsmcArgc > 1) && (xsmcTypeOf(xsArg(1)) != xsUndefinedType)) {
+		xsStringValue kind = xsmcToString(xsArg(1));
+		if (!c_strcmp(kind, "attribute"))
+			mode = 1;
+		else if (!c_strcmp(kind, "cdata"))
+			mode = 2;
+		else if (c_strcmp(kind, "text"))
+			xsUnknownError("xml_escape: kind must be \"text\", \"attribute\", or \"cdata\"");
 	}
-	else {
+	{
 		XMLWriterRecord writerRecord = {NULL, NULL, 0};
 		XMLWriter writer = &writerRecord;
 		XMLWriterChunk chunk;
@@ -1412,6 +1414,18 @@ void xs_xml_escape(xsMachine* the)
 		}
 		xml_writer_free(writer);
 	}
+}
+
+// XML.unescape: entity and character references become characters, through the scanner the
+// parser itself uses, so the semantics are identical to parsing
+void xs_xml_unescape(xsMachine* the)
+{
+	XMLInputRecord input = { 0, 1, 0 };	// a string: relocatable, no transcoding
+	xsIntegerValue length;
+
+	xsmcVars(6);
+	length = (xsIntegerValue)c_strlen(xsmcToString(xsArg(0)));
+	xml_text_scanner(the, 0, length, &input);
 }
 
 // ` name="value"` or ` name`; the value is escaped as an attribute value
@@ -1555,21 +1569,26 @@ void xs_xml_serialize(xsMachine* the)
 {
 	XMLWriterRecord writerRecord = {NULL, NULL, 0};
 	XMLWriter writer = &writerRecord;
-	xsBooleanValue declaration = ((xsmcArgc > 1) && (xsmcTypeOf(xsArg(1)) != xsUndefinedType)) ? xsmcToBoolean(xsArg(1)) : 1;
+	xsBooleanValue declaration = 1;
 	xsIntegerValue toBuffer = 0;
 	XMLWriterChunk chunk;
 	xsStringValue dst;
 
 	xsmcVars(6);
-	// output type by constructor, the file module idiom: String (default) or ArrayBuffer
-	if ((xsmcArgc > 2) && (xsmcTypeOf(xsArg(2)) != xsUndefinedType)) {
-		xsmcGet(xsVar(0), xsGlobal, xsID_ArrayBuffer);
-		if (xsmcSameReference(&xsArg(2), &xsVar(0)))
-			toBuffer = 1;
-		else {
-			xsmcGet(xsVar(0), xsGlobal, xsID_String);
-			if (!xsmcSameReference(&xsArg(2), &xsVar(0)))
-				xsUnknownError("xml_serializer: type must be String or ArrayBuffer");
+	// options, ECMA-419 style: { format: "string" (default) | "buffer", declaration: true (default) }
+	if ((xsmcArgc > 1) && (xsmcTypeOf(xsArg(1)) != xsUndefinedType)) {
+		if (xsmcHas(xsArg(1), xsID_declaration)) {
+			xsmcGet(xsVar(0), xsArg(1), xsID_declaration);
+			declaration = xsmcToBoolean(xsVar(0));
+		}
+		if (xsmcHas(xsArg(1), xsID_format)) {
+			xsStringValue format;
+			xsmcGet(xsVar(0), xsArg(1), xsID_format);
+			format = xsmcToString(xsVar(0));
+			if (!c_strcmp(format, "buffer"))
+				toBuffer = 1;
+			else if (c_strcmp(format, "string"))
+				xsUnknownError("xml_serializer: format must be \"string\" or \"buffer\"");
 		}
 	}
 	xsTry {

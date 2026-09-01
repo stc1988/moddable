@@ -56,6 +56,8 @@
 	references (U+FFFD on invalid, fixes signed overflow); prepush stack-overflow
 	guard; DOCTYPE skipped; non-ASCII bytes accepted in names; XML.search (xml.js)
 	matches local names without prefix.
+
+	Contributed by Mark Wharton.
 */
 
 #include "xsmc.h"
@@ -87,11 +89,6 @@ static const char gHexa[] ICACHE_XS6RO2_ATTR = "0123456789ABCDEF";
 	#define XML_WRITER_CHUNK MODDEF_XML_WRITER_CHUNK
 #else
 	#define XML_WRITER_CHUNK 512
-#endif
-
-// comparing a slot against a global constructor (the file module idiom); the test shim overrides
-#ifndef xsmcSameReference
-	#define xsmcSameReference(A, B) ((A)->data[2] == (B)->data[2])
 #endif
 
 // The input: xsArg(0) as bytes. A string is always relocatable (chunk heap). A buffer is
@@ -299,11 +296,6 @@ static void xml_array_push_property(xsMachine* the, xsSlot* container, xsUnsigne
 }
 
 // xml parser
-
-static xsStringValue xml_parser_base(xsMachine* the, XMLParser parser)
-{
-	return xml_input_base(the, &parser->input);
-}
 
 static void xml_parser_rebase(xsMachine* the, XMLParser parser)
 {
@@ -548,7 +540,7 @@ static void xml_parser_cdata_section(xsMachine* the, XMLParser parser)
 
 	processing_instruction = ( '<?' ( any* ) >start_text :>> '?>' @stop_text_1 @processing_instruction );
 
-	doctype = ( '<!DOCTYPE' [^\[>]* ( '[' [^\]]* ']' space* )? '>' ); # skipped, not processed
+	doctype = ( '<!DOCTYPE' [^\[>]* ( '[' ( [^\]"'] | '"' [^"]* '"' | "'" [^']* "'" )* ']' space* )? '>' ); # skipped, not processed; ']' inside a quoted literal does not end the subset (2.8)
 
 	text = ( [^<]+ >start_text %stop_text %text '<' @{ fhold; } );
 
@@ -645,12 +637,6 @@ static void xml_text_scanner_append(xsMachine* the, XMLTextScanner scanner, xsSl
 	else
 		xsResult = *slot;
 	xml_text_scanner_rebase(the, scanner);
-}
-
-static void xml_text_scanner_append_static(xsMachine* the, XMLTextScanner scanner, const char* text)
-{
-	xsmcSetString(xsVar(4), (xsStringValue)text);
-	xml_text_scanner_append(the, scanner, &xsVar(4));
 }
 
 static void xml_text_scanner_append_slice(xsMachine* the, XMLTextScanner scanner, xsStringValue ts, xsStringValue te)
@@ -866,16 +852,23 @@ static void xml_writer_escape(xsMachine* the, XMLWriter writer, xsStringValue te
 	for (i = 0; i < length; i++) {
 		unsigned char c = (unsigned char)c_read8(text + i);
 		const char* replacement = NULL;
-		char reference[7]; c_memcpy(reference, "&#x??;", 7); // not a bracketed initializer: gcc emits that as ROM memcpy, whose byte reads of the flash-resident literal fault on ESP8266
+		char reference[7];
 		switch (c) {
 			case '&': replacement = "&amp;"; break;
 			case '<': replacement = "&lt;"; break;
 			case '>': replacement = "&gt;"; break;
 			case '"': replacement = mode ? "&quot;" : NULL; break;
 			case '\'': replacement = mode ? "&apos;" : NULL; break;
-			case '\t': case '\n': case '\v': case '\f': case '\r': break;
+			// XML 1.0 §2.11: readers turn literal CR into LF before parsing, so CR must be a
+			// reference to survive; §3.3.3: in attribute values readers turn literal TAB and LF
+			// into spaces, so those too. Canonical XML (C14N 1.0) writes the same references.
+			case '\r': replacement = "&#x0D;"; break;
+			case '\t': replacement = mode ? "&#x09;" : NULL; break;
+			case '\n': replacement = mode ? "&#x0A;" : NULL; break;
+			case '\v': case '\f': break;
 			default:
 				if ((c > 0) && (c < 32)) {	// bytes above 0x7F pass through: c is unsigned
+					c_memcpy(reference, "&#x??;", 7); // not an initializer: GCC would memcpy from ROM, which faults on ESP8266; here in the rare branch, not once per byte
 					reference[3] = escapeHexa(c >> 4);
 					reference[4] = escapeHexa(c);
 					replacement = reference;
@@ -891,20 +884,23 @@ static void xml_writer_escape(xsMachine* the, XMLWriter writer, xsStringValue te
 	xml_writer_append(the, writer, text + start, length - start);
 }
 
-// XML.escape: modes 0 (text), 1 (attribute value), 2 (CDATA section) run the writer's escaper,
-// the single implementation of the escaping rules; mode 3 (unescape) runs the scanner
+// XML.escape: kind "text" (default), "attribute", or "cdata" runs the writer's escaper,
+// the single implementation of the escaping rules
 void xs_xml_escape(xsMachine* the)
 {
-	xsIntegerValue mode = (xsmcArgc > 1) ? xsmcToInteger(xsArg(1)) : 0;
-	xsIntegerValue length;
+	xsIntegerValue mode = 0;
 
 	xsmcVars(6);
-	length = (xsIntegerValue)c_strlen(xsmcToString(xsArg(0)));
-	if (mode == 3) {
-		XMLInputRecord input = { 0, 1, 0 };	// a string: relocatable, no transcoding
-		xml_text_scanner(the, 0, length, &input);
+	if ((xsmcArgc > 1) && (xsmcTypeOf(xsArg(1)) != xsUndefinedType)) {
+		xsStringValue kind = xsmcToString(xsArg(1));
+		if (!c_strcmp(kind, "attribute"))
+			mode = 1;
+		else if (!c_strcmp(kind, "cdata"))
+			mode = 2;
+		else if (c_strcmp(kind, "text"))
+			xsUnknownError("xml_escape: kind must be \"text\", \"attribute\", or \"cdata\"");
 	}
-	else {
+	{
 		XMLWriterRecord writerRecord = {NULL, NULL, 0};
 		XMLWriter writer = &writerRecord;
 		XMLWriterChunk chunk;
@@ -918,6 +914,18 @@ void xs_xml_escape(xsMachine* the)
 		}
 		xml_writer_free(writer);
 	}
+}
+
+// XML.unescape: entity and character references become characters, through the scanner the
+// parser itself uses, so the semantics are identical to parsing
+void xs_xml_unescape(xsMachine* the)
+{
+	XMLInputRecord input = { 0, 1, 0 };	// a string: relocatable, no transcoding
+	xsIntegerValue length;
+
+	xsmcVars(6);
+	length = (xsIntegerValue)c_strlen(xsmcToString(xsArg(0)));
+	xml_text_scanner(the, 0, length, &input);
 }
 
 // ` name="value"` or ` name`; the value is escaped as an attribute value
@@ -1061,21 +1069,26 @@ void xs_xml_serialize(xsMachine* the)
 {
 	XMLWriterRecord writerRecord = {NULL, NULL, 0};
 	XMLWriter writer = &writerRecord;
-	xsBooleanValue declaration = ((xsmcArgc > 1) && (xsmcTypeOf(xsArg(1)) != xsUndefinedType)) ? xsmcToBoolean(xsArg(1)) : 1;
+	xsBooleanValue declaration = 1;
 	xsIntegerValue toBuffer = 0;
 	XMLWriterChunk chunk;
 	xsStringValue dst;
 
 	xsmcVars(6);
-	// output type by constructor, the file module idiom: String (default) or ArrayBuffer
-	if ((xsmcArgc > 2) && (xsmcTypeOf(xsArg(2)) != xsUndefinedType)) {
-		xsmcGet(xsVar(0), xsGlobal, xsID_ArrayBuffer);
-		if (xsmcSameReference(&xsArg(2), &xsVar(0)))
-			toBuffer = 1;
-		else {
-			xsmcGet(xsVar(0), xsGlobal, xsID_String);
-			if (!xsmcSameReference(&xsArg(2), &xsVar(0)))
-				xsUnknownError("xml_serializer: type must be String or ArrayBuffer");
+	// options, ECMA-419 style: { format: "string" (default) | "buffer", declaration: true (default) }
+	if ((xsmcArgc > 1) && (xsmcTypeOf(xsArg(1)) != xsUndefinedType)) {
+		if (xsmcHas(xsArg(1), xsID_declaration)) {
+			xsmcGet(xsVar(0), xsArg(1), xsID_declaration);
+			declaration = xsmcToBoolean(xsVar(0));
+		}
+		if (xsmcHas(xsArg(1), xsID_format)) {
+			xsStringValue format;
+			xsmcGet(xsVar(0), xsArg(1), xsID_format);
+			format = xsmcToString(xsVar(0));
+			if (!c_strcmp(format, "buffer"))
+				toBuffer = 1;
+			else if (c_strcmp(format, "string"))
+				xsUnknownError("xml_serializer: format must be \"string\" or \"buffer\"");
 		}
 	}
 	xsTry {
