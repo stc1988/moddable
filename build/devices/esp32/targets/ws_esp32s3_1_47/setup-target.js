@@ -18,18 +18,7 @@
  *
  */
 
-const Digital = device.io.Digital;
-
 export default function (done) {
-	globalThis.button = {
-		a: new device.peripheral.Button(
-				{ io: Digital,
-				  pin: device.pin.buttonA,
-				  mode: Digital.InputPullUp,
-				  edge: Digital.Rising | Digital.Falling } )
-	};
-	globalThis.backlight = device.peripheral.Backlight;
 
-	done();
+	done?.();
 }
-

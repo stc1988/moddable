@@ -23,7 +23,7 @@
 #include "mc.xs.h"
 #include "builtinCommon.h"
 
-#if ! kCPUESP32P4
+#if (! kCPUESP32P4) && (! kCPUESP32H2)
 
 #include "esp_wifi.h"
 #include "esp_netif.h"

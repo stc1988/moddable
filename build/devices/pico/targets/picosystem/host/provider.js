@@ -22,6 +22,106 @@ import Digital from "embedded:io/digital";
 import DigitalBank from "embedded:io/digitalbank";
 import PWM from "embedded:io/pwm";
 
+import Backlight from "backlight";
+import Button from "button";
+import LEDrgb from "led/rgb";
+
+class ButtonA {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.button,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonB {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonB,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonX {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonX,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonY {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonY,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonUP {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonUP,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonDOWN {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonDOWN,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonLEFT {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonLEFT,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonRIGHT {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonRIGHT,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
 const device = {
 	io: { Digital, DigitalBank, PWM },
 	pin: {
@@ -37,7 +137,41 @@ const device = {
 		led: 14,
 		led_r: 14,
 		led_g: 13,
-		led_b: 15
+		led_b: 15,
+		backlight: 12
+	},
+	peripheral: {
+		Backlight: class {
+			constructor() {
+				return new Backlight({
+					io: device.io.PWM,
+					pin: device.pin.backlight
+				});
+			}
+		},
+		button: {
+			Default: ButtonA,
+			A: ButtonA,
+			B: ButtonB,
+			X: ButtonX,
+			Y: ButtonY,
+			UP: ButtonUP,
+			DOWN: ButtonDOWN,
+			LEFT: ButtonLEFT,
+			RIGHT: ButtonRIGHT
+		},
+		led: {
+			Default: class {
+				constructor(options) {
+					return new LEDrgb({
+						...options,
+						io: device.io.PWM,
+						pin: { r: device.pin.led_r, g: device.pin.led_g, b: device.pin.led_b },
+						invert: true
+					});
+				}
+			}
+		}
 	}
 };
 

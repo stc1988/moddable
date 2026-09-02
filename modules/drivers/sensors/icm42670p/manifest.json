@@ -1,0 +1,9 @@
+{
+	"modules": {
+		"embedded:sensor/Accelerometer-Gyroscope/ICM42670P": "$(MODDABLE)/modules/drivers/sensors/icm42670p/icm42670p"
+	},
+	"preload": [
+		"embedded:sensor/Accelerometer-Gyroscope/ICM42670P"
+	]
+}
+

@@ -18,32 +18,11 @@
  *
  */
 
-import AXP2101 from 'embedded:peripheral/Power/axp2101'
-import Digital from 'embedded:io/digital'
 import Timer from 'timer'
 
-globalThis.Host = {
-  Backlight: class {
-    constructor(brightness = 100) {
-      this.write(brightness)
-    }
-    write(value) {
-      if (globalThis.screen) globalThis.screen.brightness = value
-    }
-    close() {}
-  }
-}
-
 export default function (done) {
-  globalThis.power = new AXP2101({
-    sensor: {
-      ...device.I2C.default,
-      io: device.io.SMBus
-    },
-    address: 0x34
-  })
-
-  globalThis.power.writeByte(0x30, 0x0f)
+  globalThis.power = new device.peripheral.Power.PMIC();
+  globalThis.power.writeUint8(0x30, 0x0f)
 
   // ES8311 codec (speaker DAC) initialization
   const es8311 = new device.io.SMBus({
@@ -120,12 +99,11 @@ export default function (done) {
   for (const [reg, value] of micInit) es7210.writeUint8(reg, value)
   es7210.close()
 
-  // Enable speaker power amplifier
-  const paEnable = new Digital({
-    pin: 46,
-    mode: Digital.Output,
-    initialValue: 1
-  })
+  if (device.peripheral.Power.Amplifier) {
+	const paEnable = new device.peripheral.Power.Amplifier();
+  }
+
+  globalThis.backlight = device.peripheral.Backlight;
 
   done?.()
 }

@@ -28,6 +28,9 @@ import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 
+import Backlight from "backlight";
+import LED from "led/pwm";
+
 const device = {
 	I2C: {
 		default: {
@@ -61,9 +64,31 @@ const device = {
 	},
 	io: { Analog, Digital, DigitalBank, I2C, PulseCount, PWM, Serial, SMBus, SPI },
 	pin: {
-		led: 25,
 		displayDC: 7,
-		displaySelect: 9
+		displaySelect: 9,
+		led: 25,
+		backlight: 14
+	},
+	peripheral: {
+		Backlight: class {
+			constructor() {
+				return new Backlight({
+					io: device.io.PWM,
+					pin: device.pin.backlight
+				});
+			}
+		},
+		led: {
+			Default: class {
+				constructor(options) {
+					return new LED({
+						...options,
+						io: PWM,
+						pin: device.pin.led
+					});
+				}
+			}
+		}
 	}
 };
 

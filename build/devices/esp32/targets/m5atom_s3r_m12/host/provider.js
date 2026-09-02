@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024  Moddable Tech, Inc.
+ * Copyright (c) 2021-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -28,18 +28,33 @@ import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 import PulseWidth from "embedded:io/pulsewidth";
+import IMU from "embedded:sensor/Accelerometer-Gyroscope-Magnetometer/BMI270";
+
+import Button from "button";
+
+class ButtonFlash {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.button,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
 
 const device = {
 	I2C: {
 		default: {
 			io: I2C,
 			data: 45,
-			clock: 0,
+			clock: 0
 		},
 		internal: {
 			io: I2C,
 			data: 45,
-			clock: 0,
+			clock: 0
 		}
 	},
 	Serial: {
@@ -61,8 +76,41 @@ const device = {
 	},
 	io: {Analog, Digital, DigitalBank, I2C, PulseCount, PulseWidth, PWM, Serial, SMBus, SPI},
 	pin: {
-		//@@ button
-		button: 0
+		button: 0,
+		buttonA: 0,
+		power: 18,
+		IRTX: 47
+	},
+	peripheral: {
+		button: {
+			Default: ButtonFlash,
+			Flash: ButtonFlash
+		},
+		Power: {
+			Camera: class {
+				constructor() {
+					return new Digital({
+						io: Digital,
+						pin: device.pin.power,
+						mode: Digital.Output
+					});
+				}
+			}
+		}
+	},
+	sensor: {
+		IMU: class {
+			constructor(options) {
+				return new IMU({
+					...options,
+					sensor: {
+						...device.I2C.internal,
+						address: 0x69,
+						io: device.io.SMBus
+					}
+				});
+			}
+		}
 	}
 };
 

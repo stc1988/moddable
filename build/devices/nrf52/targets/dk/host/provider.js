@@ -24,6 +24,56 @@ import I2C from "embedded:io/i2c";
 import PWM from "embedded:io/pwm";
 import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
+import Button from "button";
+import LED from "led/digital";
+
+class ButtonA {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.button,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonB {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonB,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonC {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonC,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonD {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonD,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
 
 const device = {
 	I2C: {
@@ -44,7 +94,36 @@ const device = {
 	io: {Analog, Digital, DigitalBank, I2C, PWM, Serial, SMBus},
 	pin: {
 		button: 11,
-		led: 13
+		buttonA: 11,
+		buttonB: 12,
+		buttonC: 24,
+		buttonD: 25,
+		led: 13,
+		ledA: 13,
+		ledB: 14,
+		ledC: 15,
+		ledD: 16
+	},
+	peripheral: {
+		button: {
+			Default: ButtonA,
+			A: ButtonA,
+			B: ButtonB,
+			C: ButtonC,
+			D: ButtonD
+		},
+		led: {
+			Default: class {
+				constructor(options) {
+					return new LED({
+						...options,
+						io: Digital,
+						pin: device.pin.led,
+						invert: false
+					});
+				}
+			}
+		}
 	}
 };
 

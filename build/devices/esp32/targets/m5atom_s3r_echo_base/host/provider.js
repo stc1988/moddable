@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025  Moddable Tech, Inc.
+ * Copyright (c) 2025-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -29,6 +29,8 @@ import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 import Timer from "timer";
 
+import Button from "button";
+
 class Backlight {
 	#io;
 
@@ -36,23 +38,50 @@ class Backlight {
 		const io = this.#io = new SMBus({
 			...device.I2C.internal,
 			hz: 400_000,
-      		address:48,
+			address: 48,
 		});
 
-		io.writeUint8(0x00, 0b01000000)
-		Timer.delay(1)
-		io.writeUint8(0x08, 0b00000001)
-		io.writeUint8(0x70, 0b00000000)
+		io.writeUint8(0x00, 0b01000000);
+		Timer.delay(1);
+		io.writeUint8(0x08, 0b00000001);
+		io.writeUint8(0x70, 0b00000000);
 	}
 	close() {
 		this.#io?.close();
 		this.#io = undefined;
 	}
 	set brightness(value) {
-		if (value <= 0) value = 0;
-		else if (value >= 1) value = 255;
-		else value *= 255;
-		this.#io.writeUint8(0x0e, value)
+		if (value <= 0)
+			value = 0;
+		else if (value >= 1)
+			value = 255;
+		else
+			value *= 255;
+		this.#io.writeUint8(0x0e, value);
+	}
+}
+
+class ButtonA {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.buttonA,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonFlash {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.buttonFlash,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
 	}
 }
 
@@ -68,10 +97,16 @@ const device = {
 			data: 45,
 			clock: 0,
 		},
+		// Echo Base bus
+		echo: {
+			io: I2C,
+			data: 38,
+			clock: 39,
+		},
 	},
 	SPI: {
 		default: {
-     		io: SPI,
+			io: SPI,
 			port: 3,
 			clock: 15,
 			out: 21,
@@ -96,9 +131,16 @@ const device = {
 	},
 	pin: {
 		button: 41,
+		buttonA: 41,
+		buttonFlash: 0,
 		displaySelect: 14,
 	},
 	peripheral: {
+		button: {
+			Default: ButtonFlash,
+			A: ButtonA,
+			Flash: ButtonFlash
+		},
 		Backlight: class {
 			constructor() {
 				return new Backlight();

@@ -27,32 +27,35 @@ import PWM from "embedded:io/pwm";
 import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
-import Touch from "embedded:sensor/Touch/CST816S";
+import Touch from "embedded:sensor/Touch/CST816";
 import PulseWidth from "embedded:io/pulsewidth";
 import PCF85063 from "embedded:RTC/PCF85063";
 import IMU from "embedded:sensor/Accelerometer-Gyroscope/QMI8658";
 
-class Backlight {
-	#io;
+import Button from "button";
+import Backlight from "backlight";
 
+class ButtonA {
 	constructor(options) {
-		this.#io = new PWM(options);
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonA,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
 	}
-	close() {
-		this.#io?.close();
-		this.#io = undefined;
-	}
-	set brightness(value) {
-		if (value <= 0)
-			value = 0;
-		else if (value >= 1)
-			value = 1023;
-		else
-			value *= 1023;
-		this.#io.write(value);
-	}
-	write(value) {
-		this.brightness = value / 100;
+}
+
+class ButtonB {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonB,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
 	}
 }
 
@@ -85,12 +88,29 @@ const device = {
 	pin: {
 		//@@ button
 		button: 0,
-		backlight: 15
+		buttonA: 0,
+		buttonB: 40,
+		batteryADC: 1,
+		touchReset: 13,
+		touchInterrupt: 14,
+		backlight: 15,
+		imuInterrupt: 38,
+		rtcInterrupt: 39,
+		buzzer: 42
 	},
 	peripheral: {
+		button: {
+			Default: ButtonA,
+			A: ButtonA,
+			B: ButtonB,
+			Flash: ButtonA
+		},
 		Backlight: class {
 			constructor() {
-				return new Backlight({pin: device.pin.backlight});
+				return new Backlight({
+					io: device.io.PWM,
+					pin: device.pin.backlight
+				});
 			}
 		},
 		RTC: class {
@@ -99,6 +119,11 @@ const device = {
 					clock: {
 						...device.I2C.default,
 						io: device.io.SMBus
+					},
+					interrupt: {
+						io: Digital,
+						mode: Digital.Input,
+						pin: device.pin.rtcInterrupt
 					}
 				});
 			}
@@ -116,12 +141,12 @@ const device = {
 					reset: {
 						io: Digital,
 						mode: Digital.Output,
-						pin: 13
+						pin: device.pin.touchReset
 					},
 					interrupt: {
 						io: Digital,
 						mode: Digital.Input,
-						pin: 14
+						pin: device.pin.touchInterrupt
 					}
 				});
 				result.configure({});
@@ -136,6 +161,11 @@ const device = {
 						...device.I2C.default,
 						address: 0x6b,
 						io: device.io.SMBus
+					},
+					interrupt: {
+						io: Digital,
+						mode: Digital.Input,
+						pin: device.pin.imuInterrupt
 					}
 				});
 			}

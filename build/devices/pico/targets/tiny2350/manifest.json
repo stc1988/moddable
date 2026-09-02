@@ -4,8 +4,9 @@
         "PICO_BOARD_FILE":"$(PICO_SDK_DIR)/src/boards/include/boards/pimoroni_tiny2350.h"
 	},
 	"include": [
-		"$(MODULES)/drivers/led/manifest.json",
-		"$(MODULES)/drivers/button/manifest.json"
+		"$(MODULES)/io/manifest.json",
+		"$(MODULES)/drivers/peripherals/led/rgb/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json"
 	],
 	"modules": {
 		"setup/target": "./setup-target"
@@ -16,7 +17,11 @@
 		"touch": "",
 		"rgb_r": 18,
 		"rgb_g": 19,
-		"rgb_b": 20
+		"rgb_b": 20,
+		"led": {
+			"pin": 18,
+			"rainbow": 0
+		}
 	},
 	"defines": {
 		"buttons": {

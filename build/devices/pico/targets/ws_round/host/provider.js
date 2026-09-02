@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025  Moddable Tech, Inc.
+ * Copyright (c) 2022-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -28,27 +28,7 @@ import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 import QMI8658 from "embedded:sensor/Accelerometer-Gyroscope/QMI8658";
 
-class Backlight {
-	#io;
-
-	constructor(options) {
-		this.#io = new PWM(options);
-	}
-	close() {
-		this.#io?.close();
-		this.#io = undefined;
-	}
-	set brightness(value) {
-		value = 1 - value;		// PWM is inverted
-		if (value <= 0)
-			value = 0;
-		else if (value >= 1)
-			value = 1023;
-		else
-			value *= 1023;
-		this.#io.write(value);
-	}
-}
+import Backlight from "backlight";
 
 const device = {
 	I2C: {
@@ -89,8 +69,10 @@ const device = {
 	peripheral: {
 		Backlight: class {
 			constructor() {
-				if (device.pin.backlight)
-					return new Backlight({pin: device.pin.backlight });
+				return new Backlight({
+					io: device.io.PWM,
+					pin: device.pin.backlight
+				});
 			}
 		}
 	},
@@ -107,9 +89,10 @@ const device = {
 			}
 			sample() {
 				const sample = super.sample();
-				[sample.accelerometer.x, sample.accelerometer.y] = [sample.accelerometer.y, sample.accelerometer.x];
+				[sample.accelerometer.x, sample.accelerometer.y] = [sample.accelerometer.y * -1, sample.accelerometer.x * -1];
 				sample.accelerometer.z *= -1;
-				[sample.gyroscope.x, sample.gyroscope.y] = [sample.gyroscope.y, sample.gyroscope.x];
+
+				[sample.gyroscope.x, sample.gyroscope.y] = [sample.gyroscope.y * -1, sample.gyroscope.x * -1];
 				sample.gyroscope.z *= -1;
 				return sample;
 			}

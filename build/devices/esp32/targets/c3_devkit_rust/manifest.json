@@ -7,15 +7,18 @@
         "BEFORE_DEBUGGING_MESSAGE": "Press and release the RST button."
 	},
 	"include": [
-		"$(MODULES)/drivers/button/manifest.json",
-		"$(MODULES)/drivers/neopixel/manifest.json"
+		"$(MODDABLE)/modules/io/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/led/pwm/manifest.json",
+		"$(MODULES)/drivers/peripherals/led/neopixel/manifest.json",
+		"$(MODULES)/drivers/sensors/icm42670p/manifest.json",
+		"$(MODULES)/drivers/sensors/shtc3/manifest.json"
 	],
 	"modules": {
 		"setup/target": "./setup-target"
 	},
 	"preload": [
-		"setup/target",
-		"neopixel"
+		"setup/target"
 	],
 	"config": {
 		"screen": "",

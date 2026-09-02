@@ -1,0 +1,6 @@
+{
+	"modules": {
+		"led/rgb": "./rgb"
+	},
+	"preload": "led/rgb"
+}

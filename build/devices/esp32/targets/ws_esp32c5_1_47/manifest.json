@@ -1,8 +1,9 @@
 {
 	"include": [
 		"$(MODULES)/io/manifest.json",
-		"$(MODULES)/drivers/button/manifest.json",
-		"$(MODULES)/drivers/neopixel/manifest.json",
+		"$(MODULES)/drivers/peripherals/backlight/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/led/neopixel/manifest.json",
 		"$(MODULES)/drivers/st7789/manifest.json"
 	],
 	"build":{
@@ -60,8 +61,6 @@
 			"spi_port": "SPI2_HOST",
 			"row_offset": 0,
 			"column_offset": 34,
-			"backlight": 10,
-			"backlight_on": 1,
 			"spi_mode": "0"
 		}
 	}

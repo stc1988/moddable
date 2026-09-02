@@ -1,27 +1,24 @@
-import Digital from "pins/digital";
-import Monitor from "monitor";
-
-import config from "mc/config";
+/*
+ * Copyright (c) 2018-2026  Moddable Tech, Inc.
+ *
+ *   This file is part of the Moddable SDK Runtime.
+ *
+ *   The Moddable SDK Runtime is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU Lesser General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   The Moddable SDK Runtime is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public License
+ *   along with the Moddable SDK Runtime.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 
 export default function (done) {
-	Digital.write(config.backlight, 0);
-
-	global.button = {
-		a: new Monitor({
-			pin: 0,
-			mode: Digital.InputPullUp,
-			edge: Monitor.Rising | Monitor.Falling
-		}),
-		b: new Monitor({
-			pin: 35,
-			mode: Digital.InputPullUp,
-			edge: Monitor.Rising | Monitor.Falling
-		}),
-	};
-	button.a.onChanged = button.b.onChanged = nop;
-
-	done();
+	done?.();
 }
-
-function nop() {}
 

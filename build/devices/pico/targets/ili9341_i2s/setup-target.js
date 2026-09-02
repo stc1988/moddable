@@ -1,44 +1,23 @@
-import Digital from "pins/digital";
-import config from "mc/config";
-// import LED from "led";
-
 /*
-class Backlight extends PWM {
-	constructor(brightness = 100) {
-		super({pin: config.backlight});
-		this.write(brightness);
-	}
-	write(value) {
-		value = 100 - value;		// PWM is inverted
-		if (value <= 0)
-			value = 0;
-		else if (value >= 100)
-			value = 1023;
-		else
-			value = (value / 100) * 1023;
-		super.write(value);
-	}
-}
-*/
-
-/*
-globalThis.Host = Object.freeze({
-	LED: {
-		Default: class {
-			constructor(options) {
-				return new LED({
-					...options,
-					pin: 25
-				});
-			}
-		}
-	},
-}, true);
-*/
+ * Copyright (c) 2018-2026  Moddable Tech, Inc.
+ *
+ *   This file is part of the Moddable SDK Runtime.
+ *
+ *   The Moddable SDK Runtime is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU Lesser General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   The Moddable SDK Runtime is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public License
+ *   along with the Moddable SDK Runtime.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 
 export default function (done) {
-	if (config.backlight)
-		Digital.write(config.backlight, 1);
-
-	done();
+	done?.();
 }

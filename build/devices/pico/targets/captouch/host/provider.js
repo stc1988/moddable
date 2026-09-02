@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025  Moddable Tech, Inc.
+ * Copyright (c) 2022-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -27,6 +27,10 @@ import PWM from "embedded:io/pwm";
 import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
+
+import Backlight from "button";
+import LED from "led/pwm";
+import Touch from "embedded:sensor/Touch/FT6x06";
 
 const device = {
 	I2C: {
@@ -62,7 +66,46 @@ const device = {
 	io: { Analog, Digital, DigitalBank, I2C, PulseCount, PWM, Serial, SMBus, SPI },
 	pin: {
 		displayDC: 7,
-		displaySelect: 9
+		displaySelect: 9,
+		led: 25,
+		backlight: 15
+	},
+	peripheral: {
+		Backlight: class {
+			constructor() {
+				return new Backlight({
+					io: device.io.PWM,
+					pin: device.pin.backlight
+				});
+			}
+		},
+		led: {
+			Default: class {
+				constructor(options) {
+					return new LED({
+						...options,
+						io: PWM,
+						pin: device.pin.led,
+						invert: true
+					});
+				}
+			}
+		}
+	},
+    sensor: {
+		Touch: class {
+			constructor(options) { 
+				const result = new Touch({
+					sensor: {
+						...device.I2C.default,
+						io: device.io.SMBus
+					},
+					...options
+				});
+				result.configure({threshold: 20});
+				return result;
+			}
+		}
 	}
 };
 

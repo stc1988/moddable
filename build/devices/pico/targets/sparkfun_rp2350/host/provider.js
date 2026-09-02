@@ -28,6 +28,9 @@ import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 
+import LEDneopixel from "led/neopixel";
+import NeoPixel from "neopixel";
+
 const device = {
 	I2C: {
 		default: {
@@ -77,10 +80,26 @@ const device = {
 	},
 	io: { Analog, Digital, DigitalBank, I2C, PulseCount, PWM, Serial, SMBus },
 	pin: {
-		led: 29,
-		button: 9
+		led: 25
+	},
+	peripheral: {
+		led: {
+			Default: class {
+				constructor(options) {
+					return new LEDneopixel({
+						...options,
+						neopixels: {
+							io: NeoPixel,
+							length: 1,
+							pin: device.pin.led,
+							order: "GRB",
+							brightness: 32
+						}
+					});
+				}
+			}
+		}
 	}
 };
 
 export default device;
-

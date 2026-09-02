@@ -1,8 +1,9 @@
 {
 	"include": [
+		"$(MODDABLE)/modules/io/manifest.json",
 		"$(MODDABLE)/modules/drivers/ili9341/manifest.json",
-		"$(MODDABLE)/modules/pins/digital/monitor/manifest.json",
-		"$(MODDABLE)/modules/pins/i2s/manifest.json"
+		"$(MODULES)/drivers/peripherals/backlight/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json"
 	],
 	"config": {
 		"screen": "m5stack/screen",
@@ -69,15 +70,10 @@
 		}
 	},
 	"modules": {
-		"*": [
-			"../m5stack_fire/m5button"
-		],
 		"setup/target": "./setup-target",
 		"m5stack/screen": "./screen"
 	},
 	"preload": [
-		"m5button",
-		"pins/audioout",
 		"setup/target",
 		"m5stack/screen"
 	],

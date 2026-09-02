@@ -1,0 +1,9 @@
+{
+	"include": [
+		"$(MODULES)/io/digital/manifest.json"
+	],
+	"modules": {
+		"button": "$(MODULES)/drivers/peripherals/button/*"
+	},
+	"preload": "button"
+}

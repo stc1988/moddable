@@ -7,7 +7,8 @@
 	},
 	"include": [
 		"$(MODDABLE)/modules/io/manifest.json",
-		"$(MODULES)/drivers/button/manifest.json"
+        "$(MODULES)/drivers/sensors/bmi270/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json"
 	],
 	"modules": {
 		"setup/target": "./setup-target"
@@ -59,4 +60,3 @@
 		}
 	}
 }
-

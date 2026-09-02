@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2023  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Tools.
  *
@@ -23,6 +23,9 @@
 #include "mc.defines.h"
 
 #include "neopixel.h"
+#if MODDEF_ECMA419_ENABLED
+	#include "builtinCommon.h"
+#endif
 
 typedef struct {
 	pixel_settings_t	px;
@@ -47,6 +50,9 @@ void xs_neopixel_destructor(void *data)
 		np_clear(&np->px);
 		np_show(&np->px);
 		neopixel_deinit(&np->px);
+#if MODDEF_ECMA419_ENABLED
+		builtinFreePin(np->px.pin);
+#endif
 	}
 }
 
@@ -80,6 +86,10 @@ void xs_neopixel(xsMachine *the)
 #endif
 	if (pin < 0)
 		xsRangeError("no pin");
+#if MODDEF_ECMA419_ENABLED
+	if (!builtinIsPinFree(pin))
+		xsUnknownError("in use");
+#endif
 
 	if (xsmcHas(xsArg(0), xsID_order)) {
 		xsmcGet(xsVar(0), xsArg(0), xsID_order);
@@ -136,6 +146,9 @@ void xs_neopixel(xsMachine *the)
 	px->nbits = (1 == wstype) ? 32 : 24;
 
 	px->pin = pin;
+#if MODDEF_ECMA419_ENABLED
+	builtinUsePin(pin);
+#endif
 	if (-1 == neopixel_init(px)) {
 		xs_neopixel_close(the);
 		xsUnknownError("no rmt");

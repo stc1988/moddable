@@ -3,12 +3,14 @@
 		"PICO_SUBCLASS": "rp2350"
 	},
 	"include": [
+		"$(MODULES)/io/manifest.json",
 		"$(MODULES)/drivers/st7796/manifest.json",
 		"$(MODULES)/drivers/sensors/qmi8658/manifest.json",
 		"$(MODULES)/drivers/sensors/ft6336/manifest.json",
+		"$(MODULES)/drivers/peripherals/backlight/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
 		"$(MODULES)/drivers/peripherals/pcf85063/manifest.json",
-		"$(MODULES)/drivers/peripherals/axp2101/manifest.json",
-		"$(MODULES)/pins/pwm/manifest.json"
+		"$(MODULES)/drivers/peripherals/axp2101/manifest.json"
 	],
 	"modules": {
 		"setup/target": "./setup-target"

@@ -1,63 +1,23 @@
-import Digital from "pins/digital";
-import config from "mc/config";
-import LED from "led";
-import Button from "button";
-
-class A {
-	constructor(options) {
-		return new Button({...options, invert: true, pin: config.btn_a});
-	}
-}
-
-globalThis.Host = Object.freeze({
-	LED: {
-		Default: class {
-			#pin = {
-				red: new Digital(config.led_r, Digital.Output),
-				green: new Digital(config.led_g, Digital.Output),
-				blue: new Digital(config.led_b, Digital.Output)
-			}
-			constructor() {
-				this.write({red: 1, green: 1, blue: 1});
-			}
-			close() {
-				this.write({red: 1, green: 1, blue: 1});
-				this.#pin.red.close();
-				this.#pin.green.close();
-				this.#pin.blue.close();
-			}
-			write(color) {
-				color ??= {red: 0, green: 0, blue: 0};
-				this.#pin.red.write((color.red >= 128) ? 0 : 1);
-				this.#pin.green.write((color.green >= 128) ? 0 : 1);
-				this.#pin.blue.write((color.blue >= 128) ? 0 : 1);
-			}
-		}
-	},
-	Button: {
-		Default: A,
-		A,
-		B: class {
-			constructor(options) {
-				return new Button({...options, invert: false, pin: config.btn_b});
-			}
-		},
-		X: class {
-			constructor(options) {
-				return new Button({...options, invert: false, pin: config.btn_x});
-			}
-		},
-		Y: class {
-			constructor(options) {
-				return new Button({...options, invert: false, pin: config.btn_y});
-			}
-		},
-	}
-}, true);
+/*
+ * Copyright (c) 2018-2026  Moddable Tech, Inc.
+ *
+ *   This file is part of the Moddable SDK Runtime.
+ *
+ *   The Moddable SDK Runtime is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU Lesser General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   The Moddable SDK Runtime is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public License
+ *   along with the Moddable SDK Runtime.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 
 export default function (done) {
-	if (undefined !== config.backlight)
-		Digital.write(config.backlight, 1);
-
-	done();
+	done?.();
 }
