@@ -2887,7 +2887,7 @@ export class Tool extends TOOL {
 		manifests.forEach(manifest => {
 			manifest.dependencies?.forEach(dep => {
 				var found = false;
-				for (const cmp in this.manifest.dependency) {
+				for (const cmp of this.manifest.dependency) {
 					if (cmp.namespace != dep.namespace) continue;
 					if (cmp.name != dep.name) continue;
 					if (cmp.idf != dep.idf) continue;
