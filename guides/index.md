@@ -1,7 +1,7 @@
 ---
 name: About
 SPDX-FileCopyrightText: Copyright (c) 2026 Moddable Tech, Inc.
-updated: 2026-08-04
+updated: 2026-09-02
 ---
 
 # GUIDES
@@ -22,6 +22,7 @@ A collection of code samples and walkthroughs for performing common tasks with t
 
 ## Network
 
+- [Captive Portal](./captive-portal/index.md)
 - [DNS](./dns/index.md)
 - [DNS Service Discovery](./dns-sd/index.md)
 - [EventSource](./eventsource/index.md)
