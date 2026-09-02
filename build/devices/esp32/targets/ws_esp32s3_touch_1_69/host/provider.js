@@ -102,7 +102,8 @@ const device = {
 		button: {
 			Default: ButtonA,
 			A: ButtonA,
-			B: ButtonB
+			B: ButtonB,
+			Flash: ButtonA
 		},
 		Backlight: class {
 			constructor() {

@@ -32,7 +32,7 @@ import Button from "button";
 import LEDneopixel from "led/neopixel";
 import NeoPixel from "neopixel";
 
-class ButtonA {
+class ButtonFlash {
 	constructor(options) {
 		return new Button({
 			...options,
@@ -94,9 +94,8 @@ const device = {
 			}
 		},
 		button: {
-			Default: ButtonA,
-			A: ButtonA,
-			Flash: ButtonA
+			Default: ButtonFlash,
+			Flash: ButtonFlash
 		},
 		led: {
 			Default: class {

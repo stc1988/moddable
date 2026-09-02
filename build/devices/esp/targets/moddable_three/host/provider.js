@@ -30,7 +30,7 @@ import SPI from "embedded:io/spi";
 import Button from "button";
 import LED from "led/digital";
 
-class ButtonDefault {
+class ButtonFlash {
 	constructor(options) {
 		return new Button({
 			...options,
@@ -78,7 +78,8 @@ const device = {
 	},
 	peripheral: {
 		button: {
-			Default: ButtonDefault
+			Default: ButtonFlash,
+			Flash: ButtonFlash
 		},
 		led: {
 			Default: class {

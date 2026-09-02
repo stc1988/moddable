@@ -32,12 +32,12 @@ import Button from "button";
 import LED from "led/pwm";
 import Backlight from "backlight";
 
-class ButtonFlash {
+class ButtonA {
 	constructor(options) {
 		return new Button({
 			...options,
 			io: Digital,
-			pin: device.pin.button,
+			pin: device.pin.buttonA,
 			mode: Digital.InputPullUp,
 			activeLow: true
 		});
@@ -78,6 +78,7 @@ const device = {
 	io: {Analog, Digital, DigitalBank, I2C, PulseCount, PWM, Serial, SMBus, SPI},
 	pin: {
 		button: 0,
+		buttonA: 0,
 		led: 2,
 		backlight: 5,
 		displayDC: 21,
@@ -85,8 +86,8 @@ const device = {
 	},
 	peripheral: {
 		button: {
-			Default: ButtonFlash,
-			Flash: ButtonFlash
+			Default: ButtonA,
+			A: ButtonA
 		},
 		led: {
 			Default: class {

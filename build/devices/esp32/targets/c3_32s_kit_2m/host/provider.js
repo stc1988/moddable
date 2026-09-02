@@ -32,7 +32,7 @@ import Button from "button";
 import LED from "led/pwm";
 import LEDrgb from "led/rgb";
 
-class ButtonA {
+class ButtonFlash {
 	constructor(options) {
 		return new Button({
 			...options,
@@ -89,8 +89,8 @@ const device = {
 	},
 	peripheral: {
 		button: {
-			Default: ButtonA,
-			A: ButtonA
+			Default: ButtonFlash,
+			Flash: ButtonFlash
 		},
 		led: {
 			Default: class {

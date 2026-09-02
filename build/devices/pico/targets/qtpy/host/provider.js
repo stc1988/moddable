@@ -84,8 +84,7 @@ const device = {
 	peripheral: {
 		button: {
 			Default: ButtonA,
-			A: ButtonA,
-			Flash: ButtonA
+			A: ButtonA
 		},
 		led: {
 			Default: class {

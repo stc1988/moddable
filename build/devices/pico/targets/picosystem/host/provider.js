@@ -153,7 +153,6 @@ const device = {
 			Default: ButtonA,
 			A: ButtonA,
 			B: ButtonB,
-			Flash: ButtonA,
 			X: ButtonX,
 			Y: ButtonY,
 			UP: ButtonUP,

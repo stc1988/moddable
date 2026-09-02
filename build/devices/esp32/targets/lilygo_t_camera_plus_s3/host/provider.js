@@ -33,7 +33,7 @@ import PulseWidth from "embedded:io/pulsewidth";
 import Button from "button";
 import Backlight from "backlight";
 
-class ButtonA {
+class ButtonFlash {
 	constructor(options) {
 		return new Button({
 			...options,
@@ -79,8 +79,8 @@ const device = {
 	},
 	peripheral: {
 		button: {
-			Default: ButtonA,
-			A: ButtonA
+			Default: ButtonFlash,
+			Flash: ButtonFlash
 		},
 		Backlight: class {
 			constructor() {

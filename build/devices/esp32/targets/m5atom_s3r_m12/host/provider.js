@@ -32,7 +32,7 @@ import IMU from "embedded:sensor/Accelerometer-Gyroscope-Magnetometer/BMI270";
 
 import Button from "button";
 
-class ButtonA {
+class ButtonFlash {
 	constructor(options) {
 		return new Button({
 			...options,
@@ -83,9 +83,8 @@ const device = {
 	},
 	peripheral: {
 		button: {
-			Default: ButtonA,
-			A: ButtonA,
-			Flash: ButtonA
+			Default: ButtonFlash,
+			Flash: ButtonFlash
 		},
 		Power: {
 			Camera: class {

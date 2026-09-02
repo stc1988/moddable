@@ -108,8 +108,7 @@ const device = {
 		button: {
 			Default: ButtonA,
 			A: ButtonA,
-			B: ButtonB,
-			Flash: ButtonA
+			B: ButtonB
 		},
 		led: {
 			Default: class {
