@@ -16,6 +16,14 @@
 		"pins/audioout": "./audioout",
 		"pins/smbus": "$(MODULES)/pins/smbus/smbus"
 	},
+	"platforms": {
+		"esp32": {
+			"dependency": [
+				{ "idf": "esp_driver_dac" },
+				{ "idf": "esp_driver_i2s" }
+			]
+		}
+	},
 	"preload": [
 		"setup/target"
 	],

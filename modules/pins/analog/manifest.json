@@ -13,7 +13,10 @@
 		"esp32": {
 			"modules": {
 				"*": "$(MODULES)/pins/analog/esp32/*"
-			}
+			},
+			"dependency": [
+				{ "idf": "esp_adc" }
+			]
 		},
 		"nrf52": {
 			"modules": {
