@@ -30,6 +30,7 @@ class Connection {
 	#writePosition;
 	#pendingWrite;
 	#line = "";
+	#lineBuffer = new Uint8Array(new ArrayBuffer(64, {maxByteLength: 8192}));
 	#state = "receiveRequest";
 	#remaining;
 	#chunk;
@@ -47,6 +48,7 @@ class Connection {
 		this.#from = from;
 		this.#notify = done;
 		this.#timeout = keepAlive ?? 0;
+		this.#lineBuffer.position = 0;
 	}
 	close() {
 		this.#notify?.(this);
@@ -117,7 +119,7 @@ class Connection {
 		const result = this.#socket.read(count);
 
 		if (0 === this.#chunk) {
-			this.#line = "";
+			this.#resetLine();
 			if (this.#readable) {
 				this.#timer = Timer.set(() => {
 					this.#timer = undefined;
@@ -195,18 +197,23 @@ class Connection {
 		while (this.#readable) {
 			if (undefined !== this.#line) {
 				this.#socket.format = "number";
+				let lineBuffer = this.#lineBuffer, position = lineBuffer.position, length = lineBuffer.length;
 				while (this.#readable--) {
 					const c = this.#socket.read();
-					this.#line += String.fromCharCode(c);
+					if (position === length)
+						lineBuffer.buffer.resize(length << 1);
+					lineBuffer[position++] = c;
 					if (10 === c)
 						break;
 				}
+				lineBuffer.position = position;
 				this.#socket.format = "buffer";
 
-				if (!this.#line.endsWith("\r\n")) {
+				if ((13 !== lineBuffer[position - 2]) || (10 !== lineBuffer[position - 1])) {
 					this.#readable = 0;
 					return;
 				}
+				this.#line = String.fromArrayBuffer(lineBuffer.buffer, 0, position);
 			}
 
 			switch (this.#state) {
@@ -230,7 +237,7 @@ class Connection {
 						this.#current.path = status[1].slice(0, query);
 						this.#current.query = status[1].slice(query + 1);
 					}
-					this.#line = "";
+					this.#resetLine();
 					this.#state = "receiveHeader";
 					} break;
 
@@ -254,7 +261,7 @@ class Connection {
 								this.#chunk = 0;
 						}
 
-						this.#line = "";
+						this.#resetLine();
 					}
 					else {
 						if (undefined !== this.#chunk)
@@ -268,13 +275,16 @@ class Connection {
 						this.#current = undefined;
 
 						if (!this.#remaining && (undefined == this.#chunk)) {
-							this.#line = "";
+							this.#resetLine();
 							this.#reply();
 							return;
 						}
 
 						this.#state = "receiveBody";
-						this.#line = (undefined == this.#chunk) ? undefined : "";
+						if (undefined == this.#chunk)
+							this.#line = undefined;
+						else
+							this.#resetLine();
 					}
 					break;
 
@@ -291,7 +301,7 @@ class Connection {
 
 							if (0 === this.#chunk) {
 								this.#state = "receiveChunkTrailer";
-								this.#line = "";
+								this.#resetLine();
 								continue;
 							}
 						}
@@ -417,7 +427,7 @@ class Connection {
 		this.#callbacks = this.#registered;
 		this.#current = undefined;
 		this.#state = "receiveRequest";
-		this.#line = "";
+		this.#resetLine();
 		this.#remaining = this.#chunk = undefined;
 		this.#pendingWrite = this.#writePosition = undefined;
 		Timer.clear(this.#timer);
@@ -488,6 +498,11 @@ class Connection {
 
 		this.#callbacks.onRequest?.call(this, this.#current);
 		this.#current = undefined;
+	}
+	#resetLine() {
+		this.#line = "";
+		this.#lineBuffer.buffer.resize(64);
+		this.#lineBuffer.position = 0;
 	}
 
 	static {

@@ -80,6 +80,7 @@ static wifi_auth_mode_t stringToAuthMode(const char *str)
 {
 	if (0 == c_strcmp(str, "none")) return WIFI_AUTH_OPEN;
 	if (0 == c_strcmp(str, "wpa2_psk")) return WIFI_AUTH_WPA2_PSK;
+	if (0 == c_strcmp(str, "wpa_wpa2_psk")) return WIFI_AUTH_WPA_WPA2_PSK;
 	if (0 == c_strcmp(str, "wpa3_psk")) return WIFI_AUTH_WPA3_PSK;
 	if (0 == c_strcmp(str, "wpa2_wpa3_psk")) return WIFI_AUTH_WPA2_WPA3_PSK;
 	return WIFI_AUTH_MAX;

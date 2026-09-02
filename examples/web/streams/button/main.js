@@ -13,7 +13,6 @@
  */
 
 const Digital = device.io.Digital;
-import config from "mc/config";
 import { TransformStream } from "web/streams";
 import { IOReadableStreamMixin, IOWritableStreamMixin } from "iostreams";
 

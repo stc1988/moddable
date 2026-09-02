@@ -950,6 +950,8 @@ void xs_poco_getTextWidth(xsMachine *the)
 
 	xsmcGetBufferReadable(xsArg(1), &fontData, &fontDataLength);
 	CFESetFontData(gCFE, fontData, fontDataLength);
+	if (xsmcGet(xsResult, xsArg(1), xsID_size))
+		CFESetFontSize(gCFE, xsmcToInteger(xsResult));
 
 	const char *substitute = C_NULL;
 	while (true) {
@@ -1019,6 +1021,8 @@ void xs_poco_drawText(xsMachine *the)
 
 	xsmcGetBufferReadable(xsArg(1), &fontData, &fontDataLength);
 	CFESetFontData(gCFE, fontData, fontDataLength);
+	if (xsmcGet(xsVar(0), xsArg(1), xsID_size))
+		CFESetFontSize(gCFE, xsmcToInteger(xsVar(0)));
 
 	if (argc > 5) {
 		CFEGlyph glyph = CFEGetGlyphFromUnicode(gCFE, 0x2026, false);

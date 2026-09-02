@@ -66,12 +66,6 @@
 #include "xsHost.h"
 #include "mc.xs.h" // for xsID_ values
 
-#if defined(__ets__) && !ESP32
-	#define mxXMLCopyInput 1
-#else
-	#define mxXMLCopyInput 0
-#endif
-
 static const char gHexa[] ICACHE_XS6RO2_ATTR = "0123456789ABCDEF";
 #define escapeHexa(X) (char)c_read8(gHexa + ((X) & 15))
 #define unescapeHexa(X) \
@@ -91,6 +85,24 @@ static const char gHexa[] ICACHE_XS6RO2_ATTR = "0123456789ABCDEF";
 #define XML_MAX_CODEPOINT 0x10FFFF
 #define XML_REPLACEMENT_CHARACTER 0xFFFD
 
+// Serializer output chunk. Override from a manifest with
+// "defines": { "xml": { "writer_chunk": 1024 } }.
+#ifdef MODDEF_XML_WRITER_CHUNK
+	#define XML_WRITER_CHUNK MODDEF_XML_WRITER_CHUNK
+#else
+	#define XML_WRITER_CHUNK 512
+#endif
+
+// The input: xsArg(0) as bytes. A string is always relocatable (chunk heap). A buffer is
+// relocatable unless it is a host buffer; parsing works in place either way. transcode is set by
+// the pre-scan when slices need repair (invalid UTF-8 becomes U+FFFD) or, on mxCESU8 builds,
+// supplementary-plane re-encoding; clean BMP-only input copies raw.
+typedef struct {
+	xsIntegerValue buffer;
+	xsIntegerValue relocatable;
+	xsIntegerValue transcode;
+} XMLInputRecord, *XMLInput;
+
 typedef struct {
 	struct FSMParserStruct {
 		xsStringValue p;
@@ -101,7 +113,7 @@ typedef struct {
 		xsIntegerValue top;
 	} fsm;
 	xsStringValue base;
-	xsStringValue copy;
+	XMLInputRecord input;
 	xsIntegerValue compact;
 	xsIntegerValue textOffset;
 	xsIntegerValue textLength;
@@ -118,28 +130,151 @@ typedef struct {
 		xsIntegerValue cs;
 	} fsm;
 	xsStringValue base;
-	xsStringValue copy;
-	xsIntegerValue mode;
+	XMLInputRecord input;
 } XMLTextScannerRecord, *XMLTextScanner;
 
-static void xml_text_scanner(xsMachine* the, xsIntegerValue offset, xsIntegerValue length, xsIntegerValue mode, xsStringValue copy);
+static void xml_text_scanner(xsMachine* the, xsIntegerValue offset, xsIntegerValue length, XMLInput input);
 
 // shared
 
+static xsStringValue xml_input_base(xsMachine* the, XMLInput input)
+{
+	if (input->buffer) {
+		void* data;
+		xsUnsignedValue count;
+		xsmcGetBufferReadable(xsArg(0), &data, &count);
+		return (xsStringValue)data;
+	}
+	return xsmcToString(xsArg(0));
+}
+
+static unsigned char xml_normalize(xsStringValue src, xsIntegerValue* i, xsIntegerValue length, xsIntegerValue normalize);
+
+// One routine, three uses: scan the whole input (dst NULL, flags out), measure a slice
+// (dst NULL), write a slice. Invalid sequences follow the maximal-subpart rule (one U+FFFD
+// per maximal invalid subpart, as TextDecoder): strict UTF-8 — overlongs, surrogates,
+// F5..FF, lone or missing continuations, and NUL (not a legal XML character) all repair.
+// Valid supplementary-plane sequences pass through, re-encoded as surrogate pairs on
+// mxCESU8 builds. Slices never split a sequence: slice boundaries are ASCII delimiters and
+// every byte of a multi-byte sequence is above 0x7F.
+static xsIntegerValue xml_transcode(xsStringValue dst, xsStringValue src, xsIntegerValue length, xsIntegerValue normalize, xsIntegerValue* anyInvalid, xsIntegerValue* anySupplementary)
+{
+	xsStringValue start = dst;
+	xsIntegerValue i = 0, out = 0;
+	while (i < length) {
+		unsigned char c = (unsigned char)c_read8(src + i);
+		xsIntegerValue remain = length - i;
+		xsIntegerValue take = 1, valid = 0, supplementary = 0;
+		if (c < 0x80) {
+			if (c == 0)
+				take = 1; // NUL: repair
+			else {
+				c = xml_normalize(src, &i, length, normalize);
+				if (dst)
+					*dst++ = (char)c;
+				out++;
+				continue;
+			}
+		}
+		else if ((c >= 0xC2) && (c <= 0xDF)) {
+			if ((remain >= 2) && ((c_read8(src + i + 1) & 0xC0) == 0x80)) { take = 2; valid = 1; }
+			else if (remain >= 1) take = 1;
+		}
+		else if ((c >= 0xE0) && (c <= 0xEF)) {
+			unsigned char lo = 0x80, hi = 0xBF, b1;
+			if (c == 0xE0) lo = 0xA0;			// overlong
+			else if (c == 0xED) hi = 0x9F;		// surrogates
+			b1 = (remain >= 2) ? (unsigned char)c_read8(src + i + 1) : 0;
+			if ((remain >= 2) && (b1 >= lo) && (b1 <= hi)) {
+				if ((remain >= 3) && ((c_read8(src + i + 2) & 0xC0) == 0x80)) { take = 3; valid = 1; }
+				else take = 2;
+			}
+		}
+		else if ((c >= 0xF0) && (c <= 0xF4)) {
+			unsigned char lo = 0x80, hi = 0xBF, b1;
+			if (c == 0xF0) lo = 0x90;			// overlong
+			else if (c == 0xF4) hi = 0x8F;		// above U+10FFFF
+			b1 = (remain >= 2) ? (unsigned char)c_read8(src + i + 1) : 0;
+			if ((remain >= 2) && (b1 >= lo) && (b1 <= hi)) {
+				if ((remain >= 3) && ((c_read8(src + i + 2) & 0xC0) == 0x80)) {
+					if ((remain >= 4) && ((c_read8(src + i + 3) & 0xC0) == 0x80)) { take = 4; valid = 1; supplementary = 1; }
+					else take = 3;
+				}
+				else take = 2;
+			}
+		}
+		// else: 0x80..0xC1 continuation or overlong lead, 0xF5..0xFF: take = 1, invalid
+		if (valid) {
+#if mxCESU8
+			if (supplementary) {
+				// re-encode as a surrogate pair, the engine's internal form
+				xsIntegerValue codepoint = ((c & 0x07) << 18)
+					| ((c_read8(src + i + 1) & 0x3F) << 12)
+					| ((c_read8(src + i + 2) & 0x3F) << 6)
+					| (c_read8(src + i + 3) & 0x3F);
+				xsIntegerValue high = 0xD800 | ((codepoint - 0x10000) >> 10);
+				xsIntegerValue low = 0xDC00 | ((codepoint - 0x10000) & 0x3FF);
+				if (dst) {
+					*dst++ = (char)(0xE0 | (high >> 12));
+					*dst++ = (char)(0x80 | ((high >> 6) & 0x3F));
+					*dst++ = (char)(0x80 | (high & 0x3F));
+					*dst++ = (char)(0xE0 | (low >> 12));
+					*dst++ = (char)(0x80 | ((low >> 6) & 0x3F));
+					*dst++ = (char)(0x80 | (low & 0x3F));
+				}
+				out += 6;
+				i += take;
+				continue;
+			}
+#endif
+			if (supplementary && anySupplementary)
+				*anySupplementary = 1;
+			if (dst) {
+				xsIntegerValue j;
+				for (j = 0; j < take; j++)
+					*dst++ = c_read8(src + i + j);
+			}
+			out += take;
+			i += take;
+			continue;
+		}
+		if (anyInvalid)
+			*anyInvalid = 1;
+		if (dst) {	// U+FFFD
+			*dst++ = (char)0xEF;
+			*dst++ = (char)0xBF;
+			*dst++ = (char)0xBD;
+		}
+		out += 3;
+		i += take;
+	}
+	if (dst)
+		*dst = 0;
+	return dst ? (xsIntegerValue)(dst - start) : out;
+}
+
+// CR and CR LF become LF; advances *i past the sequence and returns the byte to emit
+static unsigned char xml_normalize(xsStringValue src, xsIntegerValue* i, xsIntegerValue length, xsIntegerValue normalize)
+{
+	unsigned char c = (unsigned char)c_read8(src + *i);
+	(*i)++;
+	if (normalize && (c == '\r')) {
+		if ((*i < length) && (c_read8(src + *i) == '\n'))
+			(*i)++;
+		c = '\n';
+	}
+	return c;
+}
+
+// the raw copy for clean input. String input always takes this path: XS strings may hold the
+// engine's internal encodings (CESU-8 surrogate pairs, C0 80 for NUL), which the strict
+// transcoder would "repair"; only scanned buffer input routes through xml_transcode.
 static xsIntegerValue xml_copy(xsStringValue dst, xsStringValue src, xsIntegerValue length, xsIntegerValue normalize)
 {
 	xsStringValue start = dst;
 	xsIntegerValue i = 0;
-	while (i < length) {
-		char c = c_read8(src + i);
-		i++;
-		if (normalize && (c == '\r')) {
-			if ((i < length) && (c_read8(src + i) == '\n'))
-				i++;
-			c = '\n';
-		}
-		*dst++ = c;
-	}
+	while (i < length)
+		*dst++ = (char)xml_normalize(src, &i, length, normalize);
 	*dst = 0;
 	return (xsIntegerValue)(dst - start);
 }
@@ -164,18 +299,13 @@ static void xml_array_push_property(xsMachine* the, xsSlot* container, xsUnsigne
 
 // xml parser
 
-static xsStringValue xml_parser_base(xsMachine* the, XMLParser parser)
-{
-	return parser->copy ? parser->copy : xsmcToString(xsArg(0));
-}
-
 static void xml_parser_rebase(xsMachine* the, XMLParser parser)
 {
 	xsStringValue base;
 	ptrdiff_t delta;
-	if (parser->copy)
+	if (!parser->input.relocatable)
 		return;
-	base = xsmcToString(xsArg(0));
+	base = xml_input_base(the, &parser->input);
 	delta = base - parser->base;
 	if (delta) {
 		parser->fsm.p += delta;
@@ -183,6 +313,22 @@ static void xml_parser_rebase(xsMachine* the, XMLParser parser)
 		parser->fsm.eof += delta;
 		parser->base = base;
 	}
+}
+
+// measure (when transcoding), allocate, re-fetch the base, copy: the one slice copy-out
+static void xml_slice_to_slot(xsMachine* the, XMLInput input, xsSlot* slot, xsIntegerValue offset, xsIntegerValue length, xsIntegerValue normalize)
+{
+	xsStringValue src, dst;
+	xsIntegerValue need = length;
+	if (input->transcode)
+		need = xml_transcode(NULL, xml_input_base(the, input) + offset, length, normalize, NULL, NULL);
+	xsmcSetStringBuffer(*slot, NULL, need);
+	src = xml_input_base(the, input) + offset;
+	dst = xsmcToString(*slot);
+	if (input->transcode)
+		xml_transcode(dst, src, length, normalize, NULL, NULL);
+	else
+		xml_copy(dst, src, length, normalize);
 }
 
 static void xml_parser_start_text(xsMachine* the, XMLParser parser, xsIntegerValue offset)
@@ -199,17 +345,12 @@ static void xml_parser_xsVar2_text_helper(xsMachine* the, XMLParser parser, xsIn
 {
 	if (mode) {
 		xsVar(3) = xsResult;
-		xml_text_scanner(the, parser->textOffset, parser->textLength, mode, parser->copy);
+		xml_text_scanner(the, parser->textOffset, parser->textLength, &parser->input);
 		xsVar(2) = xsResult;
 		xsResult = xsVar(3);
 	}
-	else {
-		xsStringValue src, dst;
-		xsmcSetStringBuffer(xsVar(2), NULL, parser->textLength);
-		src = xml_parser_base(the, parser) + parser->textOffset;
-		dst = xsmcToString(xsVar(2));
-		xml_copy(dst, src, parser->textLength, 1);
-	}
+	else
+		xml_slice_to_slot(the, &parser->input, &xsVar(2), parser->textOffset, parser->textLength, 1);
 	xml_parser_rebase(the, parser);
 }
 
@@ -312,11 +453,11 @@ static void xml_parser_cdata_section(xsMachine* the, XMLParser parser)
 // xml parser specification
 
 
-#line 409 "modXML.rl"
+#line 552 "modXML.rl"
 
 
 
-#line 318 "modXML.c"
+#line 459 "modXML.c"
 static const char _parser_actions[] ICACHE_XS6RO_ATTR = {
 	0, 1, 8, 1, 9, 1, 10, 2, 
 	5, 14, 2, 6, 16, 2, 10, 1, 
@@ -328,166 +469,172 @@ static const char _parser_actions[] ICACHE_XS6RO_ATTR = {
 };
 
 static const unsigned char _parser_key_offsets[] ICACHE_XS6RO_ATTR = {
-	0, 0, 5, 6, 7, 11, 20, 36, 
-	50, 67, 68, 70, 73, 78, 79, 82, 
-	83, 85, 86, 87, 88, 89, 91, 92, 
-	93, 94, 95, 96, 97, 99, 100, 104, 
-	105, 106, 108, 109, 110, 120, 136, 150, 
-	167, 168, 170, 173, 178, 179, 182, 183, 
-	185, 186, 187, 188, 189, 191, 192, 193, 
-	194, 195, 196, 197, 198, 199, 200, 202, 
-	209, 225, 229, 230, 231, 233, 236
+	0, 0, 5, 9, 18, 20, 21, 22, 
+	23, 24, 26, 27, 28, 29, 30, 31, 
+	32, 34, 37, 38, 39, 43, 44, 45, 
+	47, 63, 77, 78, 95, 97, 100, 105, 
+	106, 109, 110, 111, 112, 113, 114, 124, 
+	126, 127, 128, 129, 130, 132, 133, 134, 
+	135, 136, 137, 138, 139, 140, 141, 143, 
+	150, 166, 170, 171, 172, 174, 190, 204, 
+	205, 222, 224, 227, 232, 233, 236, 237, 
+	240
 };
 
-static const char _parser_trans_keys[] ICACHE_XS6RO_ATTR = {
-	-17, 32, 60, 9, 13, -69, -65, 32, 
-	60, 9, 13, 33, 63, 96, 0, 64, 
-	91, 94, 123, 127, 32, 47, 62, 96, 
-	0, 8, 9, 13, 14, 44, 59, 64, 
-	91, 94, 123, 127, 32, 47, 62, 96, 
-	0, 8, 9, 13, 14, 64, 91, 94, 
-	123, 127, 32, 47, 61, 62, 96, 0, 
-	8, 9, 13, 14, 44, 59, 64, 91, 
-	94, 123, 127, 62, 34, 39, 34, 38, 
-	60, 32, 47, 62, 9, 13, 59, 38, 
-	39, 60, 59, 45, 68, 45, 45, 45, 
-	45, 45, 62, 79, 67, 84, 89, 80, 
-	69, 62, 91, 93, 32, 62, 9, 13, 
-	63, 63, 62, 63, 60, 60, 33, 47, 
-	63, 96, 0, 64, 91, 94, 123, 127, 
-	32, 47, 62, 96, 0, 8, 9, 13, 
-	14, 44, 59, 64, 91, 94, 123, 127, 
-	32, 47, 62, 96, 0, 8, 9, 13, 
-	14, 64, 91, 94, 123, 127, 32, 47, 
-	61, 62, 96, 0, 8, 9, 13, 14, 
-	44, 59, 64, 91, 94, 123, 127, 62, 
-	34, 39, 34, 38, 60, 32, 47, 62, 
-	9, 13, 59, 38, 39, 60, 59, 45, 
-	91, 45, 45, 45, 45, 45, 62, 67, 
-	68, 65, 84, 65, 91, 93, 93, 93, 
-	62, 93, 96, 0, 64, 91, 94, 123, 
-	127, 32, 47, 62, 96, 0, 8, 9, 
-	13, 14, 44, 59, 64, 91, 94, 123, 
-	127, 32, 62, 9, 13, 63, 63, 62, 
-	63, 32, 9, 13, 0
+static const unsigned char _parser_trans_keys[] ICACHE_XS6RO_ATTR = {
+	32u, 60u, 239u, 9u, 13u, 32u, 60u, 9u, 
+	13u, 33u, 63u, 96u, 0u, 64u, 91u, 94u, 
+	123u, 127u, 45u, 68u, 45u, 45u, 45u, 45u, 
+	45u, 62u, 79u, 67u, 84u, 89u, 80u, 69u, 
+	62u, 91u, 34u, 39u, 93u, 34u, 39u, 32u, 
+	62u, 9u, 13u, 63u, 63u, 62u, 63u, 32u, 
+	47u, 62u, 96u, 0u, 8u, 9u, 13u, 14u, 
+	44u, 59u, 64u, 91u, 94u, 123u, 127u, 32u, 
+	47u, 62u, 96u, 0u, 8u, 9u, 13u, 14u, 
+	64u, 91u, 94u, 123u, 127u, 62u, 32u, 47u, 
+	61u, 62u, 96u, 0u, 8u, 9u, 13u, 14u, 
+	44u, 59u, 64u, 91u, 94u, 123u, 127u, 34u, 
+	39u, 34u, 38u, 60u, 32u, 47u, 62u, 9u, 
+	13u, 59u, 38u, 39u, 60u, 59u, 187u, 191u, 
+	60u, 60u, 33u, 47u, 63u, 96u, 0u, 64u, 
+	91u, 94u, 123u, 127u, 45u, 91u, 45u, 45u, 
+	45u, 45u, 45u, 62u, 67u, 68u, 65u, 84u, 
+	65u, 91u, 93u, 93u, 93u, 62u, 93u, 96u, 
+	0u, 64u, 91u, 94u, 123u, 127u, 32u, 47u, 
+	62u, 96u, 0u, 8u, 9u, 13u, 14u, 44u, 
+	59u, 64u, 91u, 94u, 123u, 127u, 32u, 62u, 
+	9u, 13u, 63u, 63u, 62u, 63u, 32u, 47u, 
+	62u, 96u, 0u, 8u, 9u, 13u, 14u, 44u, 
+	59u, 64u, 91u, 94u, 123u, 127u, 32u, 47u, 
+	62u, 96u, 0u, 8u, 9u, 13u, 14u, 64u, 
+	91u, 94u, 123u, 127u, 62u, 32u, 47u, 61u, 
+	62u, 96u, 0u, 8u, 9u, 13u, 14u, 44u, 
+	59u, 64u, 91u, 94u, 123u, 127u, 34u, 39u, 
+	34u, 38u, 60u, 32u, 47u, 62u, 9u, 13u, 
+	59u, 38u, 39u, 60u, 59u, 32u, 9u, 13u, 
+	0
 };
 
 static const char _parser_single_lengths[] ICACHE_XS6RO_ATTR = {
-	0, 3, 1, 1, 2, 3, 4, 4, 
-	5, 1, 2, 3, 3, 1, 3, 1, 
-	2, 1, 1, 1, 1, 2, 1, 1, 
-	1, 1, 1, 1, 2, 1, 2, 1, 
-	1, 2, 1, 1, 4, 4, 4, 5, 
-	1, 2, 3, 3, 1, 3, 1, 2, 
+	0, 3, 2, 3, 2, 1, 1, 1, 
+	1, 2, 1, 1, 1, 1, 1, 1, 
+	2, 3, 1, 1, 2, 1, 1, 2, 
+	4, 4, 1, 5, 2, 3, 3, 1, 
+	3, 1, 1, 1, 1, 1, 4, 2, 
 	1, 1, 1, 1, 2, 1, 1, 1, 
 	1, 1, 1, 1, 1, 1, 2, 1, 
-	4, 2, 1, 1, 2, 1, 0
+	4, 2, 1, 1, 2, 4, 4, 1, 
+	5, 2, 3, 3, 1, 3, 1, 1, 
+	0
 };
 
 static const char _parser_range_lengths[] ICACHE_XS6RO_ATTR = {
-	0, 1, 0, 0, 1, 3, 6, 5, 
-	6, 0, 0, 0, 1, 0, 0, 0, 
+	0, 1, 1, 3, 0, 0, 0, 0, 
 	0, 0, 0, 0, 0, 0, 0, 0, 
-	0, 0, 0, 0, 0, 0, 1, 0, 
-	0, 0, 0, 0, 3, 6, 5, 6, 
-	0, 0, 0, 1, 0, 0, 0, 0, 
+	0, 0, 0, 0, 1, 0, 0, 0, 
+	6, 5, 0, 6, 0, 0, 1, 0, 
+	0, 0, 0, 0, 0, 0, 3, 0, 
 	0, 0, 0, 0, 0, 0, 0, 0, 
 	0, 0, 0, 0, 0, 0, 0, 3, 
-	6, 1, 0, 0, 0, 1, 0
+	6, 1, 0, 0, 0, 6, 5, 0, 
+	6, 0, 0, 1, 0, 0, 0, 1, 
+	0
 };
 
 static const short _parser_index_offsets[] ICACHE_XS6RO_ATTR = {
-	0, 0, 5, 7, 9, 13, 20, 31, 
-	41, 53, 55, 58, 62, 67, 69, 73, 
-	75, 78, 80, 82, 84, 86, 89, 91, 
-	93, 95, 97, 99, 101, 104, 106, 110, 
-	112, 114, 117, 119, 121, 129, 140, 150, 
-	162, 164, 167, 171, 176, 178, 182, 184, 
-	187, 189, 191, 193, 195, 198, 200, 202, 
-	204, 206, 208, 210, 212, 214, 216, 219, 
-	224, 235, 239, 241, 243, 246, 249
+	0, 0, 5, 9, 16, 19, 21, 23, 
+	25, 27, 30, 32, 34, 36, 38, 40, 
+	42, 45, 49, 51, 53, 57, 59, 61, 
+	64, 75, 85, 87, 99, 102, 106, 111, 
+	113, 117, 119, 121, 123, 125, 127, 135, 
+	138, 140, 142, 144, 146, 149, 151, 153, 
+	155, 157, 159, 161, 163, 165, 167, 170, 
+	175, 186, 190, 192, 194, 197, 208, 218, 
+	220, 232, 235, 239, 244, 246, 250, 252, 
+	255
 };
 
 static const char _parser_indicies[] ICACHE_XS6RO_ATTR = {
-	0, 2, 3, 2, 1, 4, 1, 2, 
-	1, 2, 3, 2, 1, 6, 7, 1, 
-	1, 1, 1, 5, 9, 10, 11, 1, 
-	1, 9, 1, 1, 1, 1, 8, 13, 
-	14, 15, 1, 1, 13, 1, 1, 1, 
-	12, 17, 18, 19, 20, 1, 1, 17, 
-	1, 1, 1, 1, 16, 21, 1, 22, 
-	23, 1, 25, 26, 1, 24, 27, 28, 
-	29, 27, 1, 24, 26, 31, 25, 1, 
-	30, 30, 31, 32, 33, 1, 34, 1, 
-	36, 35, 38, 37, 39, 37, 39, 40, 
-	37, 41, 1, 42, 1, 43, 1, 44, 
-	1, 45, 1, 46, 1, 2, 47, 46, 
-	48, 47, 48, 2, 48, 1, 50, 49, 
-	52, 51, 53, 52, 51, 55, 54, 57, 
-	56, 59, 60, 61, 1, 1, 1, 1, 
-	58, 63, 64, 65, 1, 1, 63, 1, 
-	1, 1, 1, 62, 67, 68, 69, 1, 
-	1, 67, 1, 1, 1, 66, 71, 72, 
-	73, 74, 1, 1, 71, 1, 1, 1, 
-	1, 70, 75, 1, 76, 77, 1, 79, 
-	80, 1, 78, 81, 82, 83, 81, 1, 
-	78, 80, 85, 79, 1, 84, 84, 85, 
-	86, 87, 1, 88, 1, 90, 89, 92, 
-	91, 93, 91, 93, 94, 91, 95, 1, 
-	96, 1, 97, 1, 98, 1, 99, 1, 
-	100, 1, 102, 101, 104, 103, 105, 103, 
-	106, 105, 103, 1, 1, 1, 1, 107, 
-	109, 1, 110, 1, 1, 109, 1, 1, 
-	1, 1, 108, 111, 112, 111, 1, 114, 
-	113, 116, 115, 117, 116, 115, 21, 21, 
-	1, 1, 0
+	0, 2, 3, 0, 1, 0, 2, 0, 
+	1, 4, 5, 1, 1, 1, 1, 6, 
+	7, 8, 1, 9, 1, 11, 10, 13, 
+	12, 14, 12, 14, 15, 12, 16, 1, 
+	17, 1, 18, 1, 19, 1, 20, 1, 
+	21, 1, 0, 22, 21, 23, 24, 25, 
+	22, 22, 23, 22, 24, 25, 0, 25, 
+	1, 27, 26, 29, 28, 30, 29, 28, 
+	31, 33, 34, 1, 1, 31, 1, 1, 
+	1, 1, 32, 35, 36, 37, 1, 1, 
+	35, 1, 1, 1, 38, 39, 1, 40, 
+	42, 43, 44, 1, 1, 40, 1, 1, 
+	1, 1, 41, 45, 46, 1, 48, 49, 
+	1, 47, 50, 51, 52, 50, 1, 47, 
+	49, 54, 48, 1, 53, 53, 54, 55, 
+	1, 0, 1, 57, 56, 59, 58, 60, 
+	61, 62, 1, 1, 1, 1, 63, 64, 
+	65, 1, 66, 1, 68, 67, 70, 69, 
+	71, 69, 71, 72, 69, 73, 1, 74, 
+	1, 75, 1, 76, 1, 77, 1, 78, 
+	1, 80, 79, 82, 81, 83, 81, 84, 
+	83, 81, 1, 1, 1, 1, 85, 86, 
+	1, 88, 1, 1, 86, 1, 1, 1, 
+	1, 87, 89, 90, 89, 1, 92, 91, 
+	94, 93, 95, 94, 93, 96, 98, 99, 
+	1, 1, 96, 1, 1, 1, 1, 97, 
+	100, 101, 102, 1, 1, 100, 1, 1, 
+	1, 103, 104, 1, 105, 107, 108, 109, 
+	1, 1, 105, 1, 1, 1, 1, 106, 
+	110, 111, 1, 113, 114, 1, 112, 115, 
+	116, 117, 115, 1, 112, 114, 119, 113, 
+	1, 118, 118, 119, 39, 39, 1, 1, 
+	0
 };
 
 static const char _parser_trans_targs[] ICACHE_XS6RO_ATTR = {
-	2, 0, 4, 5, 3, 6, 16, 31, 
-	6, 7, 9, 69, 8, 7, 9, 69, 
-	8, 7, 9, 10, 69, 69, 11, 14, 
-	11, 12, 13, 7, 9, 69, 14, 15, 
-	17, 22, 18, 19, 20, 19, 20, 21, 
-	4, 23, 24, 25, 26, 27, 28, 29, 
-	30, 32, 33, 32, 33, 4, 35, 36, 
-	35, 34, 37, 47, 63, 66, 37, 38, 
-	40, 34, 39, 38, 40, 34, 39, 38, 
-	40, 41, 34, 34, 42, 45, 42, 43, 
-	44, 38, 40, 34, 45, 46, 48, 53, 
-	49, 50, 51, 50, 51, 52, 34, 54, 
-	55, 56, 57, 58, 59, 60, 61, 60, 
-	61, 62, 34, 64, 64, 65, 70, 65, 
-	70, 67, 68, 67, 68, 34
+	2, 0, 3, 34, 4, 21, 24, 5, 
+	10, 6, 7, 8, 7, 8, 9, 2, 
+	11, 12, 13, 14, 15, 16, 17, 18, 
+	19, 20, 22, 23, 22, 23, 2, 25, 
+	24, 26, 71, 25, 26, 71, 27, 71, 
+	25, 27, 26, 28, 71, 29, 32, 29, 
+	30, 31, 25, 26, 71, 32, 33, 35, 
+	37, 38, 37, 36, 39, 55, 58, 61, 
+	40, 45, 41, 42, 43, 42, 43, 44, 
+	36, 46, 47, 48, 49, 50, 51, 52, 
+	53, 52, 53, 54, 36, 56, 57, 56, 
+	72, 57, 72, 59, 60, 59, 60, 36, 
+	62, 61, 63, 36, 62, 63, 36, 64, 
+	36, 62, 64, 63, 65, 36, 66, 69, 
+	66, 67, 68, 62, 63, 36, 69, 70
 };
 
 static const char _parser_trans_actions[] ICACHE_XS6RO_ATTR = {
-	0, 0, 0, 0, 0, 1, 0, 0, 
-	0, 16, 16, 44, 1, 0, 0, 7, 
-	0, 13, 13, 13, 39, 0, 3, 3, 
-	0, 0, 0, 19, 19, 49, 0, 0, 
+	0, 0, 0, 0, 0, 0, 1, 0, 
+	0, 0, 1, 1, 0, 0, 0, 28, 
+	0, 0, 0, 0, 0, 0, 0, 0, 
+	0, 0, 1, 1, 0, 0, 22, 16, 
+	0, 16, 44, 0, 0, 7, 1, 0, 
+	13, 0, 13, 13, 39, 3, 3, 0, 
+	0, 0, 19, 19, 49, 0, 0, 0, 
+	1, 0, 0, 35, 0, 0, 0, 1, 
 	0, 0, 0, 1, 1, 0, 0, 0, 
-	28, 0, 0, 0, 0, 0, 0, 0, 
-	0, 1, 1, 0, 0, 22, 1, 0, 
-	0, 35, 1, 0, 0, 0, 0, 16, 
-	16, 44, 1, 0, 0, 7, 0, 13, 
-	13, 13, 39, 0, 3, 3, 0, 0, 
-	0, 19, 19, 49, 0, 0, 0, 0, 
-	0, 1, 1, 0, 0, 0, 28, 0, 
-	0, 0, 0, 0, 0, 1, 1, 0, 
-	0, 0, 25, 1, 0, 5, 31, 0, 
-	10, 1, 1, 0, 0, 22
+	28, 0, 0, 0, 0, 0, 0, 1, 
+	1, 0, 0, 0, 25, 1, 5, 0, 
+	31, 0, 10, 1, 1, 0, 0, 22, 
+	16, 0, 16, 44, 0, 0, 7, 1, 
+	0, 13, 0, 13, 13, 39, 3, 3, 
+	0, 0, 0, 19, 19, 49, 0, 0
 };
 
 static const int parser_start = 1;
-static const int parser_first_final = 69;
+static const int parser_first_final = 71;
 static const int parser_error = 0;
 
-static const int parser_en_inner = 34;
+static const int parser_en_inner = 36;
 static const int parser_en_main = 1;
 
 
-#line 412 "modXML.rl"
+#line 555 "modXML.rl"
 
 #pragma unused (parser_en_inner)
 #pragma unused (parser_en_main)
@@ -503,37 +650,50 @@ void xs_xml_parse(xsMachine* the)
 	parser->compact = (xsmcArgc > 1) ? xsmcToBoolean(xsArg(1)) : 1;
 	parser->textOffset = 0;
 	parser->textLength = 0;
-	parser->copy = NULL;
+	parser->input.transcode = 0;
 	xsmcSetNewArray(xsVar(0), 0);
-	parser->base = xsmcToString(xsArg(0));
-	length = (xsIntegerValue)c_strlen(parser->base);
-#if mxXMLCopyInput
-	parser->copy = c_malloc(length + 1);
-	if (!parser->copy)
-		xsUnknownError("not enough memory");
-	c_memcpy(parser->copy, parser->base, length + 1);
-	parser->base = parser->copy;
-	xsTry {
+	if (xsmcTypeOf(xsArg(0)) == xsStringType) {
+		parser->input.buffer = 0;
+		parser->input.relocatable = 1;
+		parser->base = xsmcToString(xsArg(0));
+		length = (xsIntegerValue)c_strlen(parser->base);
+	}
+	else {
+		void* data;
+		xsUnsignedValue count;
+		xsIntegerValue anyInvalid = 0, anySupplementary = 0;
+		parser->input.buffer = 1;
+		parser->input.relocatable = (xsBufferRelocatable == xsmcGetBufferReadable(xsArg(0), &data, &count));
+		parser->base = (xsStringValue)data;
+		length = (xsIntegerValue)count;
+		// classify only: parsing is in place either way; flagged input is repaired slice
+		// by slice during copy-out (see xml_transcode)
+		xml_transcode(NULL, parser->base, length, 0, &anyInvalid, &anySupplementary);
+#if mxCESU8
+		parser->input.transcode = anyInvalid || anySupplementary;
+#else
+		parser->input.transcode = anyInvalid;
 #endif
+	}
 	parser->fsm.p = parser->base;
 	parser->fsm.pe = parser->fsm.p + length;
 	parser->fsm.eof = parser->fsm.pe;
 	
-#line 521 "modXML.c"
+#line 681 "modXML.c"
 	{
 	 parser->fsm.cs = parser_start;
 	 parser->fsm.top = 0;
 	}
 
-#line 443 "modXML.rl"
+#line 599 "modXML.rl"
 	
-#line 529 "modXML.c"
+#line 689 "modXML.c"
 	{
 	int _klen;
 	unsigned int _trans;
 	const char *_acts;
 	unsigned int _nacts;
-	const char *_keys;
+	const unsigned char *_keys;
 
 	if ( ( parser->fsm.p) == ( parser->fsm.pe) )
 		goto _test_eof;
@@ -545,17 +705,17 @@ _resume:
 
 	_klen = _parser_single_lengths[ parser->fsm.cs];
 	if ( _klen > 0 ) {
-		const char *_lower = _keys;
-		const char *_mid;
-		const char *_upper = _keys + _klen - 1;
+		const unsigned char *_lower = _keys;
+		const unsigned char *_mid;
+		const unsigned char *_upper = _keys + _klen - 1;
 		while (1) {
 			if ( _upper < _lower )
 				break;
 
 			_mid = _lower + ((_upper-_lower) >> 1);
-			if ( (*( parser->fsm.p)) < *_mid )
+			if ( ( (unsigned char)(*parser->fsm.p)) < *_mid )
 				_upper = _mid - 1;
-			else if ( (*( parser->fsm.p)) > *_mid )
+			else if ( ( (unsigned char)(*parser->fsm.p)) > *_mid )
 				_lower = _mid + 1;
 			else {
 				_trans += (unsigned int)(_mid - _keys);
@@ -568,17 +728,17 @@ _resume:
 
 	_klen = _parser_range_lengths[ parser->fsm.cs];
 	if ( _klen > 0 ) {
-		const char *_lower = _keys;
-		const char *_mid;
-		const char *_upper = _keys + (_klen<<1) - 2;
+		const unsigned char *_lower = _keys;
+		const unsigned char *_mid;
+		const unsigned char *_upper = _keys + (_klen<<1) - 2;
 		while (1) {
 			if ( _upper < _lower )
 				break;
 
 			_mid = _lower + (((_upper-_lower) >> 1) & ~1);
-			if ( (*( parser->fsm.p)) < _mid[0] )
+			if ( ( (unsigned char)(*parser->fsm.p)) < _mid[0] )
 				_upper = _mid - 2;
-			else if ( (*( parser->fsm.p)) > _mid[1] )
+			else if ( ( (unsigned char)(*parser->fsm.p)) > _mid[1] )
 				_lower = _mid + 2;
 			else {
 				_trans += (unsigned int)((_mid - _keys)>>1);
@@ -602,105 +762,105 @@ _match:
 		switch ( *_acts++ )
 		{
 	case 0:
-#line 322 "modXML.rl"
+#line 465 "modXML.rl"
 	{
 		xml_parser_assign_value(the, parser);
 	}
 	break;
 	case 1:
-#line 326 "modXML.rl"
+#line 469 "modXML.rl"
 	{
 		xml_parser_attribute(the, parser);
 	}
 	break;
 	case 2:
-#line 330 "modXML.rl"
+#line 473 "modXML.rl"
 	{
 		xml_parser_cdata_section(the, parser);
 	}
 	break;
 	case 3:
-#line 334 "modXML.rl"
+#line 477 "modXML.rl"
 	{
 		xml_parser_comment(the, parser);
 	}
 	break;
 	case 4:
-#line 338 "modXML.rl"
+#line 481 "modXML.rl"
 	{
 		xml_parser_element(the, parser);
 	}
 	break;
 	case 5:
-#line 342 "modXML.rl"
+#line 485 "modXML.rl"
 	{
 		xml_parser_enter_element(the, parser);
 	}
 	break;
 	case 6:
-#line 346 "modXML.rl"
+#line 489 "modXML.rl"
 	{
 		xml_parser_exit_element(the, parser);
 	}
 	break;
 	case 7:
-#line 350 "modXML.rl"
+#line 493 "modXML.rl"
 	{
 		xml_parser_processing_instruction(the, parser);
 	}
 	break;
 	case 8:
-#line 354 "modXML.rl"
+#line 497 "modXML.rl"
 	{
 		xml_parser_start_text(the, parser, 0);
 	}
 	break;
 	case 9:
-#line 358 "modXML.rl"
+#line 501 "modXML.rl"
 	{
 		xml_parser_start_text(the, parser, 1);
 	}
 	break;
 	case 10:
-#line 362 "modXML.rl"
+#line 505 "modXML.rl"
 	{
 		xml_parser_stop_text(the, parser, 0);
 	}
 	break;
 	case 11:
-#line 366 "modXML.rl"
+#line 509 "modXML.rl"
 	{
 		xml_parser_stop_text(the, parser, -1);
 	}
 	break;
 	case 12:
-#line 370 "modXML.rl"
+#line 513 "modXML.rl"
 	{
 		xml_parser_stop_text(the, parser, -2);
 	}
 	break;
 	case 13:
-#line 374 "modXML.rl"
+#line 517 "modXML.rl"
 	{
 		xml_parser_text(the, parser, 1);
 	}
 	break;
 	case 14:
-#line 394 "modXML.rl"
+#line 537 "modXML.rl"
 	{ {
 		if (parser->fsm.top == XML_STACK_SIZE)
 			xsUnknownError("xml_parser: stack overflow");
-	{ parser->fsm.stack[ parser->fsm.top++] =  parser->fsm.cs;  parser->fsm.cs = 34;goto _again;}} }
+	{ parser->fsm.stack[ parser->fsm.top++] =  parser->fsm.cs;  parser->fsm.cs = 36;goto _again;}} }
 	break;
 	case 15:
-#line 400 "modXML.rl"
+#line 543 "modXML.rl"
 	{ ( parser->fsm.p)--; }
 	break;
 	case 16:
-#line 404 "modXML.rl"
+#line 547 "modXML.rl"
 	{ { parser->fsm.cs =  parser->fsm.stack[-- parser->fsm.top]; goto _again;} }
 	break;
-#line 702 "modXML.c"
+#line 862 "modXML.c"
 		}
 	}
 
@@ -713,16 +873,7 @@ _again:
 	_out: {}
 	}
 
-#line 444 "modXML.rl"
-#if mxXMLCopyInput
-	}
-	xsCatch {
-		c_free(parser->copy);
-		xsThrow(xsException);
-	}
-	c_free(parser->copy);
-	parser->copy = NULL;
-#endif
+#line 600 "modXML.rl"
 	if (parser->fsm.cs < parser_first_final)
 		xsUnknownError("xml_parser: error");
 }
@@ -731,16 +882,16 @@ _again:
 
 static xsStringValue xml_text_scanner_base(xsMachine* the, XMLTextScanner scanner)
 {
-	return scanner->copy ? scanner->copy : xsmcToString(xsArg(0));
+	return xml_input_base(the, &scanner->input);
 }
 
 static void xml_text_scanner_rebase(xsMachine* the, XMLTextScanner scanner)
 {
 	xsStringValue base;
 	ptrdiff_t delta;
-	if (scanner->copy)
+	if (!scanner->input.relocatable)
 		return;
-	base = xsmcToString(xsArg(0));
+	base = xml_input_base(the, &scanner->input);
 	delta = base - scanner->base;
 	if (delta) {
 		scanner->fsm.p += delta;
@@ -763,21 +914,11 @@ static void xml_text_scanner_append(xsMachine* the, XMLTextScanner scanner, xsSl
 	xml_text_scanner_rebase(the, scanner);
 }
 
-static void xml_text_scanner_append_static(xsMachine* the, XMLTextScanner scanner, const char* text)
-{
-	xsmcSetString(xsVar(4), (xsStringValue)text);
-	xml_text_scanner_append(the, scanner, &xsVar(4));
-}
-
 static void xml_text_scanner_append_slice(xsMachine* the, XMLTextScanner scanner, xsStringValue ts, xsStringValue te)
 {
 	xsIntegerValue offset = (xsIntegerValue)(ts - scanner->base);
 	xsIntegerValue length = (xsIntegerValue)(te - ts);
-	xsStringValue src, dst;
-	xsmcSetStringBuffer(xsVar(4), NULL, length);
-	src = xml_text_scanner_base(the, scanner) + offset;
-	dst = xsmcToString(xsVar(4));
-	xml_copy(dst, src, length, (scanner->mode == 3) ? 1 : 0);
+	xml_slice_to_slot(the, &scanner->input, &xsVar(4), offset, length, 1);
 	xml_text_scanner_append(the, scanner, &xsVar(4));
 }
 
@@ -797,7 +938,7 @@ static void xml_text_scanner_append_codepoint_reference(xsMachine* the, XMLTextS
 	xsStringValue base = xml_text_scanner_base(the, scanner);
 	xsIntegerValue codepoint = 0;
 	xsIntegerValue i = 2;
-	char c = c_read8(base + offset + i);
+	unsigned char c = (unsigned char)c_read8(base + offset + i);
 	// stop accumulating once out of range: the value cannot become valid again and
 	// this keeps the intermediate below 0x10FFFF * 16 + 15, so no integer overflow
 	if ((c == 'X') || (c == 'x')) {
@@ -818,180 +959,139 @@ static void xml_text_scanner_append_codepoint_reference(xsMachine* the, XMLTextS
 	xml_text_scanner_append_codepoint(the, scanner, codepoint);
 }
 
-static void xml_text_scanner_append_character_reference(xsMachine* the, XMLTextScanner scanner, xsStringValue ts, xsStringValue te)
-{
-	xsIntegerValue offset = (xsIntegerValue)(ts - scanner->base);
-	xsIntegerValue length = (xsIntegerValue)(te - ts);
-	xsIntegerValue i;
-	char reference[7] = "&#x??;";
-	for (i = 0; i < length; i++) {
-		char c = c_read8(xml_text_scanner_base(the, scanner) + offset + i);
-		reference[3] = escapeHexa(c >> 4);
-		reference[4] = escapeHexa(c);
-		xml_text_scanner_append_static(the, scanner, reference);
-	}
-}
-
 // xml text scanner specification
 
 
-#line 666 "modXML.rl"
+#line 738 "modXML.rl"
 
 
 
-#line 841 "modXML.c"
+#line 968 "modXML.c"
 static const char _scanner_actions[] ICACHE_XS6RO_ATTR = {
 	0, 1, 0, 1, 1, 1, 2, 1, 
 	3, 1, 4, 1, 5, 1, 6, 1, 
 	7, 1, 8, 1, 9, 1, 10, 1, 
-	11, 1, 12, 1, 13, 1, 14, 1, 
-	15, 1, 16, 1, 17, 1, 18, 1, 
-	19, 1, 20, 1, 21, 1, 22
+	11
 };
 
 static const char _scanner_key_offsets[] ICACHE_XS6RO_ATTR = {
 	0, 4, 7, 13, 20, 22, 23, 24, 
 	25, 26, 27, 28, 29, 30, 31, 32, 
-	33, 34, 35, 36, 37, 38, 43, 53, 
-	63, 68, 69, 70
+	33, 34, 35, 36, 37
 };
 
-static const char _scanner_trans_keys[] ICACHE_XS6RO_ATTR = {
-	88, 120, 48, 57, 59, 48, 57, 48, 
-	57, 65, 70, 97, 102, 59, 48, 57, 
-	65, 70, 97, 102, 109, 112, 112, 59, 
-	111, 115, 59, 116, 59, 116, 59, 117, 
-	111, 116, 59, 62, 38, 38, 35, 97, 
-	103, 108, 113, 34, 38, 39, 60, 62, 
-	127, 1, 8, 14, 31, 34, 60, 62, 
-	127, 1, 8, 14, 31, 38, 39, 127, 
-	1, 8, 14, 31, 93, 93, 93, 0
+static const unsigned char _scanner_trans_keys[] ICACHE_XS6RO_ATTR = {
+	88u, 120u, 48u, 57u, 59u, 48u, 57u, 48u, 
+	57u, 65u, 70u, 97u, 102u, 59u, 48u, 57u, 
+	65u, 70u, 97u, 102u, 109u, 112u, 112u, 59u, 
+	111u, 115u, 59u, 116u, 59u, 116u, 59u, 117u, 
+	111u, 116u, 59u, 38u, 38u, 35u, 97u, 103u, 
+	108u, 113u, 0
 };
 
 static const char _scanner_single_lengths[] ICACHE_XS6RO_ATTR = {
 	2, 1, 0, 1, 2, 1, 1, 1, 
 	1, 1, 1, 1, 1, 1, 1, 1, 
-	1, 1, 1, 1, 1, 5, 6, 4, 
-	1, 1, 1, 1
+	1, 1, 1, 1, 5
 };
 
 static const char _scanner_range_lengths[] ICACHE_XS6RO_ATTR = {
 	1, 1, 3, 3, 0, 0, 0, 0, 
 	0, 0, 0, 0, 0, 0, 0, 0, 
-	0, 0, 0, 0, 0, 0, 2, 3, 
-	2, 0, 0, 0
+	0, 0, 0, 0, 0
 };
 
 static const char _scanner_index_offsets[] ICACHE_XS6RO_ATTR = {
 	0, 4, 7, 11, 16, 19, 21, 23, 
 	25, 27, 29, 31, 33, 35, 37, 39, 
-	41, 43, 45, 47, 49, 51, 57, 66, 
-	74, 78, 80, 82
+	41, 43, 45, 47, 49
 };
 
 static const char _scanner_trans_targs[] ICACHE_XS6RO_ATTR = {
-	2, 2, 1, 19, 19, 1, 19, 3, 
-	3, 3, 19, 19, 3, 3, 3, 19, 
-	5, 7, 19, 6, 19, 19, 19, 8, 
-	19, 9, 19, 19, 19, 11, 19, 19, 
-	19, 13, 19, 19, 19, 15, 19, 16, 
-	19, 17, 19, 19, 19, 25, 25, 21, 
-	20, 19, 20, 0, 4, 10, 12, 14, 
-	19, 22, 22, 22, 22, 22, 24, 24, 
-	24, 23, 22, 22, 22, 22, 22, 22, 
-	22, 23, 24, 24, 24, 22, 27, 26, 
-	25, 26, 18, 25, 19, 19, 19, 19, 
-	19, 19, 19, 19, 19, 19, 19, 19, 
-	19, 19, 19, 19, 19, 19, 25, 19, 
-	19, 22, 22, 25, 25, 0
+	2, 2, 1, 18, 18, 1, 18, 3, 
+	3, 3, 18, 18, 3, 3, 3, 18, 
+	5, 7, 18, 6, 18, 18, 18, 8, 
+	18, 9, 18, 18, 18, 11, 18, 18, 
+	18, 13, 18, 18, 18, 15, 18, 16, 
+	18, 17, 18, 18, 18, 20, 19, 18, 
+	19, 0, 4, 10, 12, 14, 18, 18, 
+	18, 18, 18, 18, 18, 18, 18, 18, 
+	18, 18, 18, 18, 18, 18, 18, 18, 
+	18, 18, 18, 0
 };
 
 static const char _scanner_trans_actions[] ICACHE_XS6RO_ATTR = {
-	0, 0, 0, 45, 29, 0, 45, 0, 
-	0, 0, 45, 29, 0, 0, 0, 45, 
-	0, 0, 45, 0, 45, 35, 45, 0, 
-	45, 0, 45, 31, 45, 0, 45, 39, 
-	45, 0, 45, 37, 45, 0, 45, 0, 
-	45, 0, 45, 33, 45, 21, 27, 5, 
-	0, 43, 0, 0, 0, 0, 0, 0, 
-	41, 9, 11, 7, 13, 15, 0, 0, 
-	0, 0, 19, 19, 19, 19, 19, 19, 
-	19, 0, 0, 0, 0, 17, 5, 0, 
-	25, 0, 0, 23, 45, 45, 45, 45, 
-	45, 45, 45, 45, 45, 45, 45, 45, 
-	45, 45, 45, 45, 45, 45, 27, 43, 
-	41, 19, 17, 25, 23, 0
+	0, 0, 0, 23, 7, 0, 23, 0, 
+	0, 0, 23, 7, 0, 0, 0, 23, 
+	0, 0, 23, 0, 23, 13, 23, 0, 
+	23, 0, 23, 9, 23, 0, 23, 17, 
+	23, 0, 23, 15, 23, 0, 23, 0, 
+	23, 0, 23, 11, 23, 5, 0, 21, 
+	0, 0, 0, 0, 0, 0, 19, 23, 
+	23, 23, 23, 23, 23, 23, 23, 23, 
+	23, 23, 23, 23, 23, 23, 23, 23, 
+	23, 21, 19, 0
 };
 
 static const char _scanner_to_state_actions[] ICACHE_XS6RO_ATTR = {
 	0, 0, 0, 0, 0, 0, 0, 0, 
 	0, 0, 0, 0, 0, 0, 0, 0, 
-	0, 0, 0, 1, 0, 0, 1, 0, 
-	0, 1, 0, 0
+	0, 0, 1, 0, 0
 };
 
 static const char _scanner_from_state_actions[] ICACHE_XS6RO_ATTR = {
 	0, 0, 0, 0, 0, 0, 0, 0, 
 	0, 0, 0, 0, 0, 0, 0, 0, 
-	0, 0, 0, 3, 0, 0, 3, 0, 
-	0, 3, 0, 0
+	0, 0, 3, 0, 0
 };
 
 static const char _scanner_eof_trans[] ICACHE_XS6RO_ATTR = {
-	102, 102, 102, 102, 102, 102, 102, 102, 
-	102, 102, 102, 102, 102, 102, 102, 102, 
-	102, 102, 103, 0, 104, 105, 0, 106, 
-	107, 0, 108, 109
+	73, 73, 73, 73, 73, 73, 73, 73, 
+	73, 73, 73, 73, 73, 73, 73, 73, 
+	73, 73, 0, 74, 75
 };
 
-static const int scanner_start = 19;
-static const int scanner_first_final = 19;
+static const int scanner_start = 18;
+static const int scanner_first_final = 18;
 static const int scanner_error = -1;
 
-static const int scanner_en_escape = 22;
-static const int scanner_en_escape_cdata_section = 25;
-static const int scanner_en_unescape = 19;
+static const int scanner_en_unescape = 18;
 
 
-#line 669 "modXML.rl"
+#line 741 "modXML.rl"
 
 #pragma unused (scanner_error)
 #pragma unused (scanner_start)
 
-static void xml_text_scanner(xsMachine* the, xsIntegerValue offset, xsIntegerValue length, xsIntegerValue mode, xsStringValue copy)
+// decodes entity and character references: the parser's mode 3; escaping lives in xml_writer_escape
+static void xml_text_scanner(xsMachine* the, xsIntegerValue offset, xsIntegerValue length, XMLInput input)
 {
 	XMLTextScannerRecord scannerRecord;
 	XMLTextScanner scanner = &scannerRecord;
 	xsmcSetString(xsResult, "");
-	scanner->mode = mode;
-	scanner->copy = copy;
-	if (mode == 3)
-		scanner->fsm.cs = scanner_en_unescape;
-	else if (mode == 2)
-		scanner->fsm.cs = scanner_en_escape_cdata_section;
-	else
-		scanner->fsm.cs = scanner_en_escape; // attribute value (1), normal text (0)
-	scanner->base = copy ? copy : xsmcToString(xsArg(0));
+	scanner->input = *input;
+	scanner->fsm.cs = scanner_en_unescape;
+	scanner->base = xml_input_base(the, input);
 	scanner->fsm.p = scanner->base + offset;
 	scanner->fsm.pe = scanner->fsm.p + length;
 	scanner->fsm.eof = scanner->fsm.pe;
 	
-#line 978 "modXML.c"
+#line 1078 "modXML.c"
 	{
 	( scanner->fsm.ts) = 0;
 	( scanner->fsm.te) = 0;
 	 scanner->fsm.act = 0;
 	}
 
-#line 691 "modXML.rl"
+#line 758 "modXML.rl"
 	
-#line 987 "modXML.c"
+#line 1087 "modXML.c"
 	{
 	int _klen;
 	unsigned int _trans;
 	const char *_acts;
 	unsigned int _nacts;
-	const char *_keys;
+	const unsigned char *_keys;
 
 	if ( ( scanner->fsm.p) == ( scanner->fsm.pe) )
 		goto _test_eof;
@@ -1004,7 +1104,7 @@ _resume:
 #line 1 "NONE"
 	{( scanner->fsm.ts) = ( scanner->fsm.p);}
 	break;
-#line 1006 "modXML.c"
+#line 1106 "modXML.c"
 		}
 	}
 
@@ -1013,17 +1113,17 @@ _resume:
 
 	_klen = _scanner_single_lengths[ scanner->fsm.cs];
 	if ( _klen > 0 ) {
-		const char *_lower = _keys;
-		const char *_mid;
-		const char *_upper = _keys + _klen - 1;
+		const unsigned char *_lower = _keys;
+		const unsigned char *_mid;
+		const unsigned char *_upper = _keys + _klen - 1;
 		while (1) {
 			if ( _upper < _lower )
 				break;
 
 			_mid = _lower + ((_upper-_lower) >> 1);
-			if ( (*( scanner->fsm.p)) < *_mid )
+			if ( ( (unsigned char)(*scanner->fsm.p)) < *_mid )
 				_upper = _mid - 1;
-			else if ( (*( scanner->fsm.p)) > *_mid )
+			else if ( ( (unsigned char)(*scanner->fsm.p)) > *_mid )
 				_lower = _mid + 1;
 			else {
 				_trans += (unsigned int)(_mid - _keys);
@@ -1036,17 +1136,17 @@ _resume:
 
 	_klen = _scanner_range_lengths[ scanner->fsm.cs];
 	if ( _klen > 0 ) {
-		const char *_lower = _keys;
-		const char *_mid;
-		const char *_upper = _keys + (_klen<<1) - 2;
+		const unsigned char *_lower = _keys;
+		const unsigned char *_mid;
+		const unsigned char *_upper = _keys + (_klen<<1) - 2;
 		while (1) {
 			if ( _upper < _lower )
 				break;
 
 			_mid = _lower + (((_upper-_lower) >> 1) & ~1);
-			if ( (*( scanner->fsm.p)) < _mid[0] )
+			if ( ( (unsigned char)(*scanner->fsm.p)) < _mid[0] )
 				_upper = _mid - 2;
-			else if ( (*( scanner->fsm.p)) > _mid[1] )
+			else if ( ( (unsigned char)(*scanner->fsm.p)) > _mid[1] )
 				_lower = _mid + 2;
 			else {
 				_trans += (unsigned int)((_mid - _keys)>>1);
@@ -1074,132 +1174,60 @@ _eof_trans:
 	{( scanner->fsm.te) = ( scanner->fsm.p)+1;}
 	break;
 	case 3:
-#line 609 "modXML.rl"
+#line 698 "modXML.rl"
 	{( scanner->fsm.te) = ( scanner->fsm.p)+1;{
-		if (scanner->mode)
-			xml_text_scanner_append_static(the, scanner, "&apos;");
-		else
-			xml_text_scanner_append_static(the, scanner, "'");
+		xml_text_scanner_append_codepoint_reference(the, scanner, scanner->fsm.ts, scanner->fsm.te);
 	}}
 	break;
 	case 4:
-#line 624 "modXML.rl"
+#line 710 "modXML.rl"
 	{( scanner->fsm.te) = ( scanner->fsm.p)+1;{
-		if (scanner->mode)
-			xml_text_scanner_append_static(the, scanner, "&quot;");
-		else
-			xml_text_scanner_append_static(the, scanner, "\"");
+		xml_text_scanner_append_codepoint(the, scanner, 0x00027); // '
 	}}
 	break;
 	case 5:
-#line 605 "modXML.rl"
+#line 702 "modXML.rl"
 	{( scanner->fsm.te) = ( scanner->fsm.p)+1;{
-		xml_text_scanner_append_static(the, scanner, "&amp;");
+		xml_text_scanner_append_codepoint(the, scanner, 0x00022); // "
 	}}
 	break;
 	case 6:
-#line 616 "modXML.rl"
+#line 706 "modXML.rl"
 	{( scanner->fsm.te) = ( scanner->fsm.p)+1;{
-		xml_text_scanner_append_static(the, scanner, "&lt;");
+		xml_text_scanner_append_codepoint(the, scanner, 0x00026); // &
 	}}
 	break;
 	case 7:
-#line 620 "modXML.rl"
+#line 714 "modXML.rl"
 	{( scanner->fsm.te) = ( scanner->fsm.p)+1;{
-		xml_text_scanner_append_static(the, scanner, "&gt;");
+		xml_text_scanner_append_codepoint(the, scanner, 0x0003C); // <
 	}}
 	break;
 	case 8:
-#line 601 "modXML.rl"
-	{( scanner->fsm.te) = ( scanner->fsm.p);( scanner->fsm.p)--;{
-		xml_text_scanner_append_character_reference(the, scanner, scanner->fsm.ts, scanner->fsm.te);
+#line 718 "modXML.rl"
+	{( scanner->fsm.te) = ( scanner->fsm.p)+1;{
+		xml_text_scanner_append_codepoint(the, scanner, 0x0003E); // >
 	}}
 	break;
 	case 9:
-#line 631 "modXML.rl"
+#line 722 "modXML.rl"
 	{( scanner->fsm.te) = ( scanner->fsm.p);( scanner->fsm.p)--;{
 		xml_text_scanner_append_slice(the, scanner, scanner->fsm.ts, scanner->fsm.te);
 	}}
 	break;
 	case 10:
-#line 573 "modXML.rl"
-	{( scanner->fsm.te) = ( scanner->fsm.p)+1;{
-		xml_text_scanner_append_static(the, scanner, "]]]]><![CDATA[>"); // or throw like KPR/Expat?
+#line 722 "modXML.rl"
+	{( scanner->fsm.te) = ( scanner->fsm.p);( scanner->fsm.p)--;{
+		xml_text_scanner_append_slice(the, scanner, scanner->fsm.ts, scanner->fsm.te);
 	}}
 	break;
 	case 11:
-#line 631 "modXML.rl"
-	{( scanner->fsm.te) = ( scanner->fsm.p);( scanner->fsm.p)--;{
-		xml_text_scanner_append_slice(the, scanner, scanner->fsm.ts, scanner->fsm.te);
-	}}
-	break;
-	case 12:
-#line 631 "modXML.rl"
-	{( scanner->fsm.te) = ( scanner->fsm.p);( scanner->fsm.p)--;{
-		xml_text_scanner_append_slice(the, scanner, scanner->fsm.ts, scanner->fsm.te);
-	}}
-	break;
-	case 13:
-#line 631 "modXML.rl"
+#line 722 "modXML.rl"
 	{{( scanner->fsm.p) = ((( scanner->fsm.te)))-1;}{
 		xml_text_scanner_append_slice(the, scanner, scanner->fsm.ts, scanner->fsm.te);
 	}}
 	break;
-	case 14:
-#line 577 "modXML.rl"
-	{( scanner->fsm.te) = ( scanner->fsm.p)+1;{
-		xml_text_scanner_append_codepoint_reference(the, scanner, scanner->fsm.ts, scanner->fsm.te);
-	}}
-	break;
-	case 15:
-#line 589 "modXML.rl"
-	{( scanner->fsm.te) = ( scanner->fsm.p)+1;{
-		xml_text_scanner_append_codepoint(the, scanner, 0x00027); // '
-	}}
-	break;
-	case 16:
-#line 581 "modXML.rl"
-	{( scanner->fsm.te) = ( scanner->fsm.p)+1;{
-		xml_text_scanner_append_codepoint(the, scanner, 0x00022); // "
-	}}
-	break;
-	case 17:
-#line 585 "modXML.rl"
-	{( scanner->fsm.te) = ( scanner->fsm.p)+1;{
-		xml_text_scanner_append_codepoint(the, scanner, 0x00026); // &
-	}}
-	break;
-	case 18:
-#line 593 "modXML.rl"
-	{( scanner->fsm.te) = ( scanner->fsm.p)+1;{
-		xml_text_scanner_append_codepoint(the, scanner, 0x0003C); // <
-	}}
-	break;
-	case 19:
-#line 597 "modXML.rl"
-	{( scanner->fsm.te) = ( scanner->fsm.p)+1;{
-		xml_text_scanner_append_codepoint(the, scanner, 0x0003E); // >
-	}}
-	break;
-	case 20:
-#line 631 "modXML.rl"
-	{( scanner->fsm.te) = ( scanner->fsm.p);( scanner->fsm.p)--;{
-		xml_text_scanner_append_slice(the, scanner, scanner->fsm.ts, scanner->fsm.te);
-	}}
-	break;
-	case 21:
-#line 631 "modXML.rl"
-	{( scanner->fsm.te) = ( scanner->fsm.p);( scanner->fsm.p)--;{
-		xml_text_scanner_append_slice(the, scanner, scanner->fsm.ts, scanner->fsm.te);
-	}}
-	break;
-	case 22:
-#line 631 "modXML.rl"
-	{{( scanner->fsm.p) = ((( scanner->fsm.te)))-1;}{
-		xml_text_scanner_append_slice(the, scanner, scanner->fsm.ts, scanner->fsm.te);
-	}}
-	break;
-#line 1201 "modXML.c"
+#line 1229 "modXML.c"
 		}
 	}
 
@@ -1212,7 +1240,7 @@ _again:
 #line 1 "NONE"
 	{( scanner->fsm.ts) = 0;}
 	break;
-#line 1214 "modXML.c"
+#line 1242 "modXML.c"
 		}
 	}
 
@@ -1229,33 +1257,359 @@ _again:
 
 	}
 
-#line 692 "modXML.rl"
+#line 759 "modXML.rl"
 	if (scanner->fsm.cs < scanner_first_final)
 		xsUnknownError("xml_text_scanner: error");
 }
 
+// xml serializer
+//
+// Walks the object tree that xs_xml_parse produces (or the application builds) and
+// writes the document into one C buffer, then hands XS a single string. No XS
+// allocation happens while a pointer into the tree is held: every xsmcToString
+// result is consumed before the next XS call. The walk is iterative; open elements
+// are kept in an XS array (xsVar(0)) so the tree stays rooted, and the depth is
+// bounded by XML_STACK_SIZE like the parser.
+
+// a linked list of fixed-size chunks: no realloc, no re-copy while writing; each byte is
+// written once here and once into the final String or ArrayBuffer
+typedef struct XMLWriterChunkStruct {
+	struct XMLWriterChunkStruct* next;
+	xsIntegerValue length;
+	char data[XML_WRITER_CHUNK];
+} XMLWriterChunkRecord, *XMLWriterChunk;
+
+typedef struct {
+	XMLWriterChunk first;
+	XMLWriterChunk last;
+	xsIntegerValue total;
+} XMLWriterRecord, *XMLWriter;
+
+static void xml_writer_free(XMLWriter writer)
+{
+	XMLWriterChunk chunk = writer->first;
+	while (chunk) {
+		XMLWriterChunk next = chunk->next;
+		c_free(chunk);
+		chunk = next;
+	}
+	writer->first = writer->last = NULL;
+	writer->total = 0;
+}
+
+static void xml_writer_append(xsMachine* the, XMLWriter writer, const char* text, xsIntegerValue length)
+{
+	while (length > 0) {
+		XMLWriterChunk chunk = writer->last;
+		xsIntegerValue room = chunk ? (XML_WRITER_CHUNK - chunk->length) : 0;
+		xsIntegerValue take;
+		if (room == 0) {
+			chunk = c_malloc(sizeof(XMLWriterChunkRecord));
+			if (!chunk) {
+				xml_writer_free(writer);
+				xsUnknownError("not enough memory");
+			}
+			chunk->next = NULL;
+			chunk->length = 0;
+			if (writer->last)
+				writer->last->next = chunk;
+			else
+				writer->first = chunk;
+			writer->last = chunk;
+			room = XML_WRITER_CHUNK;
+		}
+		take = (length < room) ? length : room;
+		c_memcpy(chunk->data + chunk->length, text, take);
+		chunk->length += take;
+		writer->total += take;
+		text += take;
+		length -= take;
+	}
+}
+
+static void xml_writer_append_static(xsMachine* the, XMLWriter writer, const char* text)
+{
+	xml_writer_append(the, writer, text, (xsIntegerValue)c_strlen(text));
+}
+
+// the same rules as the escape scanner: mode 0 text, 1 attribute value, 2 CDATA section
+static void xml_writer_escape(xsMachine* the, XMLWriter writer, xsStringValue text, xsIntegerValue mode)
+{
+	xsIntegerValue length = (xsIntegerValue)c_strlen(text);
+	xsIntegerValue i, start = 0;
+	if (mode == 2) {
+		for (i = 0; i + 2 < length; i++) {
+			if ((c_read8(text + i) == ']') && (c_read8(text + i + 1) == ']') && (c_read8(text + i + 2) == '>')) {
+				xml_writer_append(the, writer, text + start, i - start);
+				xml_writer_append_static(the, writer, "]]]]><![CDATA[>"); // split: CDATA has no escape
+				i += 2;
+				start = i + 1;
+			}
+		}
+		xml_writer_append(the, writer, text + start, length - start);
+		return;
+	}
+	for (i = 0; i < length; i++) {
+		unsigned char c = (unsigned char)c_read8(text + i);
+		const char* replacement = NULL;
+		char reference[7];
+		switch (c) {
+			case '&': replacement = "&amp;"; break;
+			case '<': replacement = "&lt;"; break;
+			case '>': replacement = "&gt;"; break;
+			case '"': replacement = mode ? "&quot;" : NULL; break;
+			case '\'': replacement = mode ? "&apos;" : NULL; break;
+			// XML 1.0 §2.11: readers turn literal CR into LF before parsing, so CR must be a
+			// reference to survive; §3.3.3: in attribute values readers turn literal TAB and LF
+			// into spaces, so those too. Canonical XML (C14N 1.0) writes the same references.
+			case '\r': replacement = "&#x0D;"; break;
+			case '\t': replacement = mode ? "&#x09;" : NULL; break;
+			case '\n': replacement = mode ? "&#x0A;" : NULL; break;
+			case '\v': case '\f': break;
+			default:
+				if ((c > 0) && (c < 32)) {	// bytes above 0x7F pass through: c is unsigned
+					c_memcpy(reference, "&#x??;", 7); // not an initializer: GCC would memcpy from ROM, which faults on ESP8266; here in the rare branch, not once per byte
+					reference[3] = escapeHexa(c >> 4);
+					reference[4] = escapeHexa(c);
+					replacement = reference;
+				}
+				break;
+		}
+		if (replacement) {
+			xml_writer_append(the, writer, text + start, i - start);
+			xml_writer_append_static(the, writer, replacement);
+			start = i + 1;
+		}
+	}
+	xml_writer_append(the, writer, text + start, length - start);
+}
+
+// XML.escape: kind "text" (default), "attribute", or "cdata" runs the writer's escaper,
+// the single implementation of the escaping rules
 void xs_xml_escape(xsMachine* the)
 {
-	xsIntegerValue mode = (xsmcArgc > 1) ? xsmcToInteger(xsArg(1)) : 0;
+	xsIntegerValue mode = 0;
+
+	xsmcVars(6);
+	if ((xsmcArgc > 1) && (xsmcTypeOf(xsArg(1)) != xsUndefinedType)) {
+		xsStringValue kind = xsmcToString(xsArg(1));
+		if (!c_strcmp(kind, "attribute"))
+			mode = 1;
+		else if (!c_strcmp(kind, "cdata"))
+			mode = 2;
+		else if (c_strcmp(kind, "text"))
+			xsUnknownError("xml_escape: kind must be \"text\", \"attribute\", or \"cdata\"");
+	}
+	{
+		XMLWriterRecord writerRecord = {NULL, NULL, 0};
+		XMLWriter writer = &writerRecord;
+		XMLWriterChunk chunk;
+		xsStringValue dst;
+		xml_writer_escape(the, writer, xsmcToString(xsArg(0)), mode);
+		xsmcSetStringBuffer(xsResult, NULL, writer->total);
+		dst = xsmcToString(xsResult);
+		for (chunk = writer->first; chunk; chunk = chunk->next) {
+			c_memcpy(dst, chunk->data, chunk->length);
+			dst += chunk->length;
+		}
+		xml_writer_free(writer);
+	}
+}
+
+// XML.unescape: entity and character references become characters, through the scanner the
+// parser itself uses, so the semantics are identical to parsing
+void xs_xml_unescape(xsMachine* the)
+{
+	XMLInputRecord input = { 0, 1, 0 };	// a string: relocatable, no transcoding
 	xsIntegerValue length;
-	xsStringValue copy = NULL;
 
 	xsmcVars(6);
 	length = (xsIntegerValue)c_strlen(xsmcToString(xsArg(0)));
-#if mxXMLCopyInput
-	copy = c_malloc(length + 1);
-	if (!copy)
-		xsUnknownError("not enough memory");
-	c_memcpy(copy, xsmcToString(xsArg(0)), length + 1);
+	xml_text_scanner(the, 0, length, &input);
+}
+
+// ` name="value"` or ` name`; the value is escaped as an attribute value
+static void xml_serialize_attribute(xsMachine* the, XMLWriter writer, xsSlot* name, xsSlot* value, xsBooleanValue bare)
+{
+	xml_writer_append_static(the, writer, " ");
+	xml_writer_append_static(the, writer, xsmcToString(*name));
+	if (bare)
+		return;
+	xml_writer_append_static(the, writer, "=\"");
+	xml_writer_escape(the, writer, xsmcToString(*value), 1);
+	xml_writer_append_static(the, writer, "\"");
+}
+
+// `<name attributes` then `/>` for a leaf (returns 0) or `>` when children follow (returns 1)
+static xsBooleanValue xml_serialize_open(xsMachine* the, XMLWriter writer, xsSlot* item)
+{
+	xsIntegerValue i, count;
+	xml_writer_append_static(the, writer, "<");
+	xsmcGet(xsVar(2), *item, xsID_name);
+	xml_writer_append_static(the, writer, xsmcToString(xsVar(2)));
+
+	xsmcGet(xsVar(2), *item, xsID_attributes);
+	if (xsmcIsInstanceOf(xsVar(2), xsArrayPrototype)) {
+		xsmcGet(xsVar(3), xsVar(2), xsID_length);
+		count = xsmcToInteger(xsVar(3));
+		for (i = 0; i < count; i++) {
+			xsmcGetIndex(xsVar(3), xsVar(2), i);
+			xsmcGet(xsVar(4), xsVar(3), xsID_name);
+			xsmcGet(xsVar(5), xsVar(3), xsID_value);
+			xml_serialize_attribute(the, writer, &xsVar(4), &xsVar(5), !xsmcHas(xsVar(3), xsID_value));
+		}
+	}
+	else if (xsmcTypeOf(xsVar(2)) == xsReferenceType) {
+		xsmcGet(xsVar(3), xsGlobal, xsID_Object);
+		xsmcCall(xsVar(3), xsVar(3), xsID_keys, &xsVar(2), NULL);
+		xsmcGet(xsVar(4), xsVar(3), xsID_length);
+		count = xsmcToInteger(xsVar(4));
+		for (i = 0; i < count; i++) {
+			xsmcGetIndex(xsVar(4), xsVar(3), i);
+			xsmcGetAt(xsVar(5), xsVar(2), xsVar(4));
+			if (xsmcTypeOf(xsVar(5)) == xsBooleanType) {
+				if (xsmcToBoolean(xsVar(5)))
+					xml_serialize_attribute(the, writer, &xsVar(4), &xsVar(5), 1);
+			}
+			else
+				xml_serialize_attribute(the, writer, &xsVar(4), &xsVar(5), 0);
+		}
+	}
+
+	xsmcGet(xsVar(2), *item, xsID_elements);
+	if (xsmcIsInstanceOf(xsVar(2), xsArrayPrototype)) {
+		xsmcGet(xsVar(3), xsVar(2), xsID_length);
+		count = xsmcToInteger(xsVar(3));
+	}
+	else
+		count = 0;
+	if ((count == 0) && !xsmcHas(*item, xsID_text) && !xsmcHas(*item, xsID_TEXT)) {
+		xml_writer_append_static(the, writer, "/>");
+		return 0;
+	}
+	// `text: undefined` and `TEXT: undefined` count as absent, as in JavaScript
+	if (count == 0) {
+		xsmcGet(xsVar(3), *item, xsID_text);
+		xsmcGet(xsVar(4), *item, xsID_TEXT);
+		if ((xsmcTypeOf(xsVar(3)) == xsUndefinedType) && (xsmcTypeOf(xsVar(4)) == xsUndefinedType)) {
+			xml_writer_append_static(the, writer, "/>");
+			return 0;
+		}
+	}
+	xml_writer_append_static(the, writer, ">");
+	return 1;
+}
+
+// text, CDATA section, and `</name>`
+static void xml_serialize_close(xsMachine* the, XMLWriter writer, xsSlot* item)
+{
+	xsmcGet(xsVar(2), *item, xsID_text);
+	if (xsmcTypeOf(xsVar(2)) != xsUndefinedType)
+		xml_writer_escape(the, writer, xsmcToString(xsVar(2)), 0);
+	xsmcGet(xsVar(2), *item, xsID_TEXT);
+	if (xsmcTypeOf(xsVar(2)) != xsUndefinedType) {
+		xml_writer_append_static(the, writer, "<![CDATA[");
+		xml_writer_escape(the, writer, xsmcToString(xsVar(2)), 2);
+		xml_writer_append_static(the, writer, "]]>");
+	}
+	xml_writer_append_static(the, writer, "</");
+	xsmcGet(xsVar(2), *item, xsID_name);
+	xml_writer_append_static(the, writer, xsmcToString(xsVar(2)));
+	xml_writer_append_static(the, writer, ">");
+}
+
+static void xml_serialize(xsMachine* the, XMLWriter writer, xsBooleanValue declaration)
+{
+	xsIntegerValue depth = 0;
+	if (declaration)
+		xml_writer_append_static(the, writer, "<?xml version=\"1.0\" encoding=\"utf-8\"?>");
+	xsmcSetNewArray(xsVar(0), 0);
+	xsVar(1) = xsArg(0);
+	if (!xml_serialize_open(the, writer, &xsVar(1)))
+		return;
+	// stack: item at 2 * depth, index of the next child at 2 * depth + 1
+	xsmcSetIndex(xsVar(0), 0, xsVar(1));
+	xsmcSetInteger(xsVar(1), 0);
+	xsmcSetIndex(xsVar(0), 1, xsVar(1));
+	depth = 1;
+	while (depth > 0) {
+		xsIntegerValue index, count;
+		xsmcGetIndex(xsVar(1), xsVar(0), 2 * depth - 2);
+		xsmcGetIndex(xsVar(2), xsVar(0), 2 * depth - 1);
+		index = xsmcToInteger(xsVar(2));
+		xsmcGet(xsVar(2), xsVar(1), xsID_elements);
+		if (xsmcIsInstanceOf(xsVar(2), xsArrayPrototype)) {
+			xsmcGet(xsVar(3), xsVar(2), xsID_length);
+			count = xsmcToInteger(xsVar(3));
+		}
+		else
+			count = 0;
+		if (index < count) {
+			xsmcSetInteger(xsVar(3), index + 1);
+			xsmcSetIndex(xsVar(0), 2 * depth - 1, xsVar(3));
+			xsmcGetIndex(xsVar(1), xsVar(2), index);
+			if (xml_serialize_open(the, writer, &xsVar(1))) {
+				if (depth == XML_STACK_SIZE)
+					xsUnknownError("xml_serializer: stack overflow");
+				xsmcSetIndex(xsVar(0), 2 * depth, xsVar(1));
+				xsmcSetInteger(xsVar(1), 0);
+				xsmcSetIndex(xsVar(0), 2 * depth + 1, xsVar(1));
+				depth++;
+			}
+			continue;
+		}
+		xml_serialize_close(the, writer, &xsVar(1));
+		depth--;
+		xsmcSetInteger(xsVar(1), 2 * depth);
+		xsmcSet(xsVar(0), xsID_length, xsVar(1));
+	}
+}
+
+void xs_xml_serialize(xsMachine* the)
+{
+	XMLWriterRecord writerRecord = {NULL, NULL, 0};
+	XMLWriter writer = &writerRecord;
+	xsBooleanValue declaration = 1;
+	xsIntegerValue toBuffer = 0;
+	XMLWriterChunk chunk;
+	xsStringValue dst;
+
+	xsmcVars(6);
+	// options, ECMA-419 style: { format: "string" (default) | "buffer", declaration: true (default) }
+	if ((xsmcArgc > 1) && (xsmcTypeOf(xsArg(1)) != xsUndefinedType)) {
+		if (xsmcHas(xsArg(1), xsID_declaration)) {
+			xsmcGet(xsVar(0), xsArg(1), xsID_declaration);
+			declaration = xsmcToBoolean(xsVar(0));
+		}
+		if (xsmcHas(xsArg(1), xsID_format)) {
+			xsStringValue format;
+			xsmcGet(xsVar(0), xsArg(1), xsID_format);
+			format = xsmcToString(xsVar(0));
+			if (!c_strcmp(format, "buffer"))
+				toBuffer = 1;
+			else if (c_strcmp(format, "string"))
+				xsUnknownError("xml_serializer: format must be \"string\" or \"buffer\"");
+		}
+	}
 	xsTry {
-#endif
-	xml_text_scanner(the, 0, length, mode, copy);
-#if mxXMLCopyInput
+		xml_serialize(the, writer, declaration);
 	}
 	xsCatch {
-		c_free(copy);
+		xml_writer_free(writer);
 		xsThrow(xsException);
 	}
-	c_free(copy);
-#endif
+	// allocate once, then fill from the fragments with no XS calls in between
+	if (toBuffer) {
+		xsmcSetArrayBuffer(xsResult, NULL, writer->total);
+		dst = (xsStringValue)xsmcToArrayBuffer(xsResult);
+	}
+	else {
+		xsmcSetStringBuffer(xsResult, NULL, writer->total);
+		dst = xsmcToString(xsResult);
+	}
+	for (chunk = writer->first; chunk; chunk = chunk->next) {
+		c_memcpy(dst, chunk->data, chunk->length);
+		dst += chunk->length;
+	}
+	xml_writer_free(writer);
 }

@@ -116,10 +116,9 @@ class CaptivePortal {
 				if (found)
 					this.#scan = Array.from(found.values());
 
-				let SSID;
-				do {
-					SSID = `${this.#ssid}-${randomText(6)}`;
-				} while (found?.has(SSID));
+				let SSID = this.#ssid;
+				while (found?.has(SSID))
+					SSID = `${this.#ssid}-${randomText(4)}`;
 
 				const options = {
 					SSID,
@@ -170,8 +169,10 @@ class CaptivePortal {
 	#onWiFiChanged(property, value) {
 		if ("connection" !== property) return;
 
-		if (value >= 500)
+		if (value >= 500) {
 			this.#setPhase("provisioned", this.#credentials);
+			this.#onInfo?.({event: "credentials", ...this.#credentials})
+		}
 		else if (value >= 300)
 			this.#setPhase("connecting", this.#credentials);
 		else if ((value <= 200) && ("connecting" === this.#phase))
@@ -379,6 +380,7 @@ class CaptivePortal {
 		if (msg.secure) options.secure = msg.secure;
 		this.#credentials = options;
 		try {
+			this.#wifi.disconnect();		// ensure connect() is a fresh attempt (not currently connected to the same access point)
 			this.#wifi.connect(options);
 		   this.#setPhase("connecting", options);
 		}

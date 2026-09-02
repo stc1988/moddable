@@ -28,7 +28,10 @@
 			"modules": {
 				"*": "$(MODDABLE)/modules/io/common/builtinCommon",
 				"embedded:io/audio/out": "./esp32/audioout-esp32"
-			}
+			},
+			"dependency": [
+				{ "idf": "esp_driver_i2s" }
+			]
 		},
 		"pico": {
 			"modules": {

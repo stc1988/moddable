@@ -66,13 +66,13 @@ PiuGlyph PiuFontGetGlyph(PiuFont* self, xsIntegerValue character, uint8_t needPi
 			return &piuGlyph;
 		
 		piuGlyph.advance = cfeGlyph->advance;
+		piuGlyph.dx = cfeGlyph->dx;			// where the ink falls: measuring wants this as much as drawing does
+		piuGlyph.dy = cfeGlyph->dy;
+		piuGlyph.sw = cfeGlyph->w;
+		piuGlyph.sh = cfeGlyph->h;
 		if (needPixels) {
-			piuGlyph.dx = cfeGlyph->dx;
-			piuGlyph.dy = cfeGlyph->dy;
 			piuGlyph.sx = cfeGlyph->sx;
 			piuGlyph.sy = cfeGlyph->sy;
-			piuGlyph.sw = cfeGlyph->w;
-			piuGlyph.sh = cfeGlyph->h;
 			if (texture) {
 				PiuFlags flags = (*texture)->flags;
 				piuGlyph.bits = (flags & piuTextureColor) ? &((*texture)->bits) : NULL;
@@ -102,14 +102,32 @@ PiuDimension PiuFontGetHeight(PiuFont* self)
 	return (*self)->height;
 }
 
-PiuDimension PiuFontGetWidth(PiuFont* self, xsSlot* string, xsIntegerValue offset, xsIntegerValue length)
+/*
+	The width of a string is the sum of what its glyphs advance, but their ink is
+	not held to that: a J reaches back before the pen, an f leans past it. When
+	ink is wanted, it comes back as how far the ink falls outside the box the
+	metrics describe -- the width on either side, the ascent and descent above
+	and below -- so a caller can repaint what it drew. An accent rises past the
+	ascent, a box drawing character fills below the descent, and .notdef, which
+	stands in for every character a font does not have, usually does both.
+*/
+PiuDimension PiuFontMeasure(PiuFont* self, xsSlot* string, xsIntegerValue offset, xsIntegerValue length, PiuCoordinate* inkLeft, PiuCoordinate* inkRight, PiuCoordinate* inkTop, PiuCoordinate* inkBottom)
 {
 	xsMachine* the = (*self)->the;
 	xsStringValue text = PiuToString(string);
 	xsIntegerValue character = 0;
 	PiuGlyph glyph;
 	PiuDimension width = 0;
+	PiuCoordinate ink0 = 0, ink1 = 0;
+	PiuCoordinate inkAbove = 0, inkBelow = 0;
+	PiuDimension height = inkLeft ? PiuFontGetHeight(self) : 0;
 	text += offset;
+	if (inkLeft) {
+		*inkLeft = 0;
+		*inkRight = 0;
+		*inkTop = 0;
+		*inkBottom = 0;
+	}
 #if pebble
 	if ((*self)->gfont) {
 		char tmp[100];
@@ -168,13 +186,40 @@ PiuDimension PiuFontGetWidth(PiuFont* self, xsSlot* string, xsIntegerValue offse
 			if (!glyph)
 				continue;
 		}
-		width += glyph->advance;
 #if MODDEF_CFE_KERN
 		if (formerCharacter)
 			width += CFEGetKerningOffset(gCFE, formerCharacter, character);
 #endif
+		if (inkLeft && glyph->sw) {
+			PiuCoordinate left = width + (int16_t)glyph->dx;		// a bearing may reach back before the pen
+			PiuCoordinate right = left + glyph->sw;
+			PiuCoordinate top = (int16_t)glyph->dy;					// from the top of the line
+			PiuCoordinate bottom = top + glyph->sh;
+			if (left < ink0) ink0 = left;
+			if (right > ink1) ink1 = right;
+			if (top < inkAbove) inkAbove = top;
+			if (bottom > inkBelow) inkBelow = bottom;
+		}
+		width += glyph->advance;
 	}
+
+	if (inkLeft) {
+		if (ink0 < 0)
+			*inkLeft = -ink0;
+		if (ink1 > width)
+			*inkRight = ink1 - width;
+		if (inkAbove < 0)
+			*inkTop = -inkAbove;
+		if (inkBelow > height)
+			*inkBottom = inkBelow - height;
+	}
+
 	return width;
+}
+
+PiuDimension PiuFontGetWidth(PiuFont* self, xsSlot* string, xsIntegerValue offset, xsIntegerValue length)
+{
+	return PiuFontMeasure(self, string, offset, length, NULL, NULL, NULL, NULL);
 }
 
 void PiuFontMark(xsMachine* the, void* it, xsMarkRoot markRoot)
@@ -293,11 +338,21 @@ void PiuStyleLookupFont(PiuStyle* self)
 	}
 #endif
 #if MODDEF_CFE_TTF
-	c_strcat(path, ".ttf");
-//	fprintf(stderr, "%s %d %d %d\n", path, (*self)->size, (*self)->weight, (*self)->flags & piuStyleBits);
-	buffer = (uint8_t *)fxGetResource(the, archive, path, &bufferSize);
-	if (!buffer)
-		xsURIError("font not found: %s", path);
+	{
+		xsIntegerValue extension = c_strlen(path);
+
+		c_strcpy(path + extension, ".ttf");
+//		fprintf(stderr, "%s %d %d %d\n", path, (*self)->size, (*self)->weight, (*self)->flags & piuStyleBits);
+		buffer = (uint8_t *)fxGetResource(the, archive, path, &bufferSize);
+		if (!buffer) {
+			c_strcpy(path + extension, ".otf");
+			buffer = (uint8_t *)fxGetResource(the, archive, path, &bufferSize);
+		}
+		if (!buffer) {
+			path[extension] = 0;
+			xsURIError("font not found: %s (.ttf or .otf)", path);
+		}
+	}
 	(*font)->next = (*fontList)->first;
 	(*fontList)->first = font;
 #else

@@ -1,0 +1,45 @@
+{
+	"build": {
+		"NAME": "webdav-listener"
+	},
+	"include": [
+		"$(MODDABLE)/examples/manifest_base.json",
+		"$(MODDABLE)/examples/manifest_net.json",
+		"$(MODDABLE)/modules/network/net/manifest.json",
+		"./manifest_webdav.json"
+	],
+	"modules": {
+		"*": "./main"
+	},
+	"defines": {
+		"file": {
+			"lfs": {
+				"read_size": 512,
+				"prog_size": 512,
+				"cache_size": 512,
+				"lookahead_size": 512
+			}
+		}
+	},
+	"platforms": {
+		"esp": {
+			"creation": {
+				"static": 24576
+			}
+		},
+		"pico": {
+			"defines": {
+				"file": {
+					"lfs": {
+						"partition_size": 1048576
+					}
+				}
+			}
+		},
+		"esp32/moddable_six": {
+			"build": {
+				"PARTITIONS_FILE": "./partitions.csv"
+			}
+		}
+	}
+}

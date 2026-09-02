@@ -1,0 +1,16 @@
+{
+	"include": [
+		"$(MODDABLE)/examples/manifest_base.json",
+		"$(MODDABLE)/examples/manifest_piu.json",
+		"$(COMMODETTO)/manifest_cfeft.json"
+	],
+	"config": {
+		"touchCount": 2
+	},
+	"modules": {
+		"*": "./main"
+	},
+	"data": {
+		"*": "$(MODDABLE)/tools/mcsim/fonts/OpenSans-Regular"
+	}
+}
