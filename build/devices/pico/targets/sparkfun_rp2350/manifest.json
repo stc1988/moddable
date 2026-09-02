@@ -38,7 +38,8 @@
 		},
 		"ili9341": {
 			"cs_pin": 21,
-			"dc_pin": 7
+			"dc_pin": 7,
+			"spi_port": 0
 		}
 	}
 }
