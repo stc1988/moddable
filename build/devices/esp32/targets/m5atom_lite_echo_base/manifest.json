@@ -2,7 +2,9 @@
 	"include": [
 		"$(MODULES)/pins/smbus/manifest.json",
 		"$(MODULES)/pins/digital/manifest.json",
-		"$(MODULES)/pins/digital/monitor/manifest.json"
+		"$(MODULES)/pins/digital/monitor/manifest.json",
+		"$(MODULES)/pins/i2s/manifest.json",
+		"$(MODULES)/drivers/neopixel/manifest.json"
 	],
 	"build": {
 		"UPLOAD_SPEED": "1500000",
@@ -10,30 +12,25 @@
 	},
 	"modules": {
 		"*": [
-			"$(MODULES)/drivers/neopixel/*",
-			"$(MODULES)/drivers/neopixel/esp32/*",
 			"../m5stack_fire/m5button"
 		],
 		"setup/target": "./setup-target",
-		"pins/audioout": "$(MODULES)/pins/i2s/*",
-                "pins/smbus": "$(MODULES)/pins/smbus/smbus"
+		"pins/smbus": "$(MODULES)/pins/smbus/smbus"
 	},
 	"preload": [
-		"pins/audioout",
 		"audioin",
 		"m5button",
-		"neopixel",
 		"setup/target"
 	],
 	"config": {
-                "startupSound": "bflatmajor.maud",
+		"startupSound": "bflatmajor.maud",
 		"es8311": {
 			"volume": 160
 		}
         },
 	"resources": {
-                "*": "$(MODDABLE)/examples/assets/sounds/bflatmajor"
-        },
+		"*": "$(MODDABLE)/examples/assets/sounds/bflatmajor"
+	},
 	"creation": {
 		"static": 0,
 		"chunk": {
