@@ -101,6 +101,7 @@ typedef struct {
 	int yMax;
 	int ping;
 	uint8_t nothingSent;
+	uint8_t writeCommand;
 
 	uint8_t						firstFrame;
 #ifdef MODDEF_ILI9341P8_TEARINGEFFECT_PIN
@@ -455,18 +456,10 @@ void ili9341Send(PocoPixel *pixels, int byteLength, void *refcon)
 	{
 		int one = 1;
 		xQueueSend(sd->ops, &one, portMAX_DELAY);
-		esp_lcd_panel_io_tx_color(sd->io_handle, 0x2C, pixels, byteLength);
+		esp_lcd_panel_io_tx_color(sd->io_handle, sd->writeCommand, pixels, byteLength);
+		sd->writeCommand = 0x3C;
 
-		int lines = (byteLength >> 1) / sd->updateWidth;
-		sd->yMin += lines;
-		sd->updateLinesRemaining -= lines;
-
-		if (sd->updateLinesRemaining) {
-			uint8_t *data = sd->data + (4 * (sd->ping++ & 7));
-			setCommand16(data, sd->yMin);
-			setCommand16(data + 2, sd->yMax);
-			ili9341CommandAsync(sd, 0x2b, data, 4);
-		}
+		sd->updateLinesRemaining -= (byteLength >> 1) / sd->updateWidth;
 	}
 	
 	if (sync) {
@@ -592,6 +585,7 @@ void ili9341Begin(void *refcon, CommodettoCoordinate x, CommodettoCoordinate y, 
 	sd->updateLinesRemaining = h;
 	sd->yMin = yMin;
 	sd->yMax = yMax;
+	sd->writeCommand = 0x2C;
 #ifdef MODDEF_ILI9341P8_TEARINGEFFECT_PIN
 	sd->firstBuffer = !sd->firstFrame && !sd->isContinue;
 #endif
