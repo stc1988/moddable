@@ -670,9 +670,10 @@ $(TMP_DIR)\buildinfo.h:
 $(TMP_DIR)\buildinfo.c.o: $(TMP_DIR)\buildinfo.h $(TMP_DIR)\buildinfo.c
 	$(CC) $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) $(TMP_DIR)\buildinfo.c -o $(TMP_DIR)\buildinfo.c.o
 
-$(BIN_DIR)\xs_$(ESP32_SUBCLASS).a: $(TMP_DIR)\buildinfo.c.o $(PROJ_DIR)\main\main.c $(SDKCONFIG_H) $(XS_OBJ) $(TMP_DIR)\mc.xs.o $(TMP_DIR)\mc.resources.o $(OBJECTS)
+$(BIN_DIR)\xs_$(ESP32_SUBCLASS).a: $(TMP_DIR)\buildinfo.c.o $(PROJ_DIR)\main\main.c $(SDKCONFIG_H) $(XS_OBJ) $(TMP_DIR)\mc_xs.o $(TMP_DIR)\mc_resources.o $(OBJECTS)
 	@echo # ld xs_esp32.bin
-	$(AR) $(AR_OPTIONS) $(BIN_DIR)\xs_$(ESP32_SUBCLASS).a $(XS_OBJ) $(TMP_DIR)\mc.xs.o $(TMP_DIR)\mc.resources.o $(OBJECTS) $(TMP_DIR)\buildinfo.c.o
+	-@del $(BIN_DIR)\xs_$(ESP32_SUBCLASS).a 2> nul
+	$(AR) $(AR_OPTIONS) $(BIN_DIR)\xs_$(ESP32_SUBCLASS).a $(XS_OBJ) $(TMP_DIR)\mc_xs.o $(TMP_DIR)\mc_resources.o $(OBJECTS) $(TMP_DIR)\buildinfo.c.o
 
 $(PROJ_DIR) : $(PROJ_DIR_TEMPLATE)
 	echo d | xcopy /s $(PROJ_DIR_TEMPLATE)\* $(PROJ_DIR)
@@ -732,13 +733,14 @@ $(XS_OBJ): $(XS_HEADERS)
 	@echo # cc $(@F) (strings in flash)
 	$(CC) $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) $< -o $@
 
-$(TMP_DIR)\mc.xs.o: $(TMP_DIR)\mc.xs.c
+# See make.esp32.mk
+$(TMP_DIR)\mc_xs.o: $(TMP_DIR)\mc.xs.c
 	@echo # cc $(@F) (slots in flash)
-	$(CC) $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) $? -o $@
+	$(CC) $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -fno-merge-constants $? -o $@
 
-$(TMP_DIR)\mc.resources.o: $(TMP_DIR)\mc.resources.c
+$(TMP_DIR)\mc_resources.o: $(TMP_DIR)\mc.resources.c
 	@echo # cc $(@F) (slots in flash)
-	$(CC) $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) $? -o $@
+	$(CC) $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -fno-merge-constants $? -o $@
 
 $(TMP_DIR)\mc.xs.c: $(MODULES) $(MANIFEST)
 	@echo # xsl modules
