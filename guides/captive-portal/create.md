@@ -8,6 +8,8 @@ To create a captive portal, you provide the name (`SSID`) for the Wi-Fi access p
 
 The `SSID` is optional and defaults to `"Moddable"`. Don't worry about choosing a unique SSID. The Captive Portal module scans for SSID collisions and appends random characters as needed to your SSID to ensure a unique name.
 
+The captive portal's HTTP server always runs on port 80 for compatibilty with phones and computers. If your project has a server on port 80, it must close it during the captive portal session.
+
 ```js
 import CaptivePortal from "captiveportal";
 
@@ -41,17 +43,13 @@ new CaptivePortal({
 
 ---
 
-The captive portal has a couple of options you may never need to use.
-
-- Set the `port` for the HTTP server to use. The default is 80, which is the most compatible choice.
-- Request the Wi-Fi access point operate on a specific Wi-Fi channel. This is only a request because the hardware may not support all channels and because the host may not support requesting a specific channel, for example if it already has a Wi-Fi station mode connection. By default, the captive portal tries to select a channel that is relatively clear.
+The captive portal has am of options you may never need to us: request the Wi-Fi access point operate on a specific Wi-Fi channel. This is only a request because the hardware may not support all channels and because the host may not support requesting a specific channel, for example if it already has a Wi-Fi station mode connection. By default, the captive portal tries to select a channel that is relatively clear.
 
 ```js
 import CaptivePortal from "captiveportal";
 
 new CaptivePortal({
 	SSID: "Lightbulb Setup",
-	port: 8080,
 	channel: 11,
 	onPage(path) {
 		// see Provide Web Pages for Captive Portal

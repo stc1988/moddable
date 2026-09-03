@@ -50,13 +50,13 @@ declare module "captiveportal" {
 		onPage: (this: void, path: string) => CaptivePortalPage | undefined;
 
 		onStatus?: (this: void, phase: CaptivePortalPhase, detail?: CaptivePortalAccess | CaptivePortalCredentials) => void;
+		onInfo?: (this: void, msg: any) => void;
 		onClose?: (this: void) => void;
 		onError?: (this: void, error: Error) => void;
 
 		SSID?: string;
 		password?: string;
 		channel?: number;
-		port?: number;
 	}
 
 	class CaptivePortal {

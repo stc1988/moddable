@@ -67,7 +67,6 @@ class CaptivePortal {
 	#httpServer;
 	#dnsServer;
 	#ws;
-	#port;
 	#channel;
 	#onPage;
 	#onClose;
@@ -81,7 +80,7 @@ class CaptivePortal {
 	#scan;
 
 	constructor(options) {
-		const {onPage} = options;
+		const {onPage, target} = options;
 		if (!onPage)
 			throw new Error("onPage required");
 
@@ -90,10 +89,12 @@ class CaptivePortal {
 		this.#onError = options.onError;
 		this.#onStatus = options.onStatus;
 		this.#onInfo = options.onInfo;
-		this.#port = options.port ?? 80;
 		this.#channel = options.channel;
 		this.#ssid = options.SSID ?? "Moddable";
 		this.#password = options.password ?? randomText(10);
+
+		if (undefined !==target)
+			this.target = target;
 
 		this.#wifi = new WiFi({
 			onChanged: property => this.#onWiFiChanged(property, this.#wifi[property])
@@ -214,7 +215,7 @@ class CaptivePortal {
 		const portal = this;
 		return new device.network.http.server.io({
 			...device.network.http.server,
-			port: this.#port,
+			port: 80,
 			onRoute: request => {
 				if ("GET" !== request.method)
 					return;
