@@ -163,9 +163,9 @@ if (target.startsWith('esp32/')) {
     // Probe device hardware configuration to avoid auto-probing delays during build
     if (mode !== 'build') {
         try {
-            process.stdout.write("Probing ESP32 hardware via esptool.py... ");
+            process.stdout.write("Probing ESP32 hardware via esptool... ");
             const portArg = process.env.UPLOAD_PORT ? ` --port ${process.env.UPLOAD_PORT}` : '';
-            const esptoolOut = require('child_process').execSync(`esptool.py${portArg} chip_id`, { encoding: 'utf-8', env: process.env, stdio: ['ignore', 'pipe', 'ignore'] });
+            const esptoolOut = require('child_process').execSync(`esptool${portArg} chip-id`, { encoding: 'utf-8', env: process.env, stdio: ['ignore', 'pipe', 'ignore'] });
             const portMatch = esptoolOut.match(/Serial port\s+([^\r\n:]+)/);
             const chipMatch = esptoolOut.match(/Chip is\s+(.+)/);
             const featuresMatch = esptoolOut.match(/Features:\s+(.+)/);
