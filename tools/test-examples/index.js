@@ -46,6 +46,9 @@ Usage: node index.js <target> [options]
 
 Arguments:
   <target>                Platform target to build for (e.g., mac, sim/moddable_six, esp32/moddable_six).
+                          The subplatform may use a wildcard (e.g., esp32/*, esp32/m5*) to build
+                          against every matching target. A wildcard implies '--mode build', since
+                          only one device can be connected at a time.
 
 Options:
   --dir <path>            Run tests recursively from a directory. Defaults to $MODDABLE/examples.
@@ -59,7 +62,8 @@ Options:
 
 Output:
   'report.json' is output to tools/test-examples/ on completion. It opens with
-  the settings and time of the run, followed by one entry per example.
+  the settings and time of the run, followed by one entry per example. Failures
+  include the full build log; successes omit it to keep the report small.
 `);
     process.exit(isHelp ? 0 : 1);
 }
@@ -122,8 +126,45 @@ try {
     process.exit(1);
 }
 
-const isEmbedded = !['mac', 'win', 'lin'].includes(target.toLowerCase()) && target.toLowerCase() !== 'sim' && !target.toLowerCase().startsWith('sim/');
 const examplesDir = customDir ? path.resolve(customDir) : path.join(moddableDir, 'examples');
+
+// A wildcard in the subplatform (e.g. esp32/m5*) expands to every matching target
+// directory. Only one device can be connected, so wildcard runs are build-only.
+let targets = [target];
+if (target.includes('*')) {
+    const slash = target.indexOf('/');
+    const platform = (slash >= 0) ? target.slice(0, slash) : target;
+    const pattern = (slash >= 0) ? target.slice(slash + 1) : '';
+    if (platform.includes('*') || !pattern) {
+        console.error("Error: a wildcard is only supported in the subplatform (e.g. esp32/*, esp32/m5*). The platform must be given.");
+        process.exit(1);
+    }
+
+    const targetsDir = (platform === 'sim')
+        ? path.join(moddableDir, 'build', 'simulators')
+        : path.join(moddableDir, 'build', 'devices', platform, 'targets');
+    let names = [];
+    try {
+        names = fs.readdirSync(targetsDir, { withFileTypes: true })
+            .filter(entry => entry.isDirectory() && (entry.name !== 'modules'))
+            .map(entry => entry.name);
+    } catch {
+        console.error(`Error: platform '${platform}' has no targets directory (${targetsDir}).`);
+        process.exit(1);
+    }
+
+    const regex = new RegExp('^' + pattern.split('*').map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*') + '$');
+    targets = names.filter(name => regex.test(name)).sort().map(name => `${platform}/${name}`);
+    if (!targets.length) {
+        console.error(`Error: no targets under ${targetsDir} match '${pattern}'.`);
+        process.exit(1);
+    }
+
+    if (mode && mode !== 'build')
+        console.warn(`[Test Harness] Wildcard target: ignoring '--mode ${mode}'; builds only.`);
+    mode = 'build';
+    console.log(`[Test Harness] Target '${target}' matches ${targets.length} target${(targets.length === 1) ? '' : 's'}: ${targets.map(t => t.slice(slash + 1)).join(', ')}`);
+}
 
 if (target.startsWith('esp32/')) {
     const idfPath = process.env.IDF_PATH;
@@ -186,7 +227,7 @@ if (target.startsWith('esp32/')) {
             if (portMatch) console.log(`   Port: ${process.env.UPLOAD_PORT}`);
         } catch {
             const portHelp = process.env.UPLOAD_PORT ? ` on $UPLOAD_PORT (${process.env.UPLOAD_PORT})` : '';
-            console.error(`\nError: Failed to probe ESP32 via esptool.py${portHelp}. Is the device connected?\nUse '--mode build' to test builds without a device.`);
+            console.error(`\nError: Failed to probe ESP32 via esptool${portHelp}. Is the device connected?\nUse '--mode build' to test builds without a device.`);
             process.exit(1);
         }
     }
@@ -340,10 +381,11 @@ function describeRunTimeout(seconds, d) {
     return `Run timeout: instrumentation stopped after ${d.samples} sample${(d.samples === 1) ? '' : 's'}, ${d.stalledForSeconds}s before the timeout (the application hung).${seen}`;
 }
 
-function runTest(examplePath) {
+function runTest(examplePath, target) {
     return new Promise((resolve) => {
         const startTime = Date.now();
-        console.log(`\n========= Testing ${examplePath} =========`);
+        const isEmbedded = !['mac', 'win', 'lin'].includes(target.toLowerCase()) && target.toLowerCase() !== 'sim' && !target.toLowerCase().startsWith('sim/');
+        console.log(`\n========= Testing ${examplePath} (${target}) =========`);
         const manifestPath = path.join(examplePath, 'manifest.json');
         const packageJsonPath = path.join(examplePath, 'package.json');
         const isPackage = fs.existsSync(packageJsonPath);
@@ -818,6 +860,7 @@ function writeReport(results, state) {
         },
         settings: {
             target,
+            targets: target.includes('*') ? targets : undefined,
             device: deviceInfo || (process.env.UPLOAD_PORT ? { port: process.env.UPLOAD_PORT } : undefined),
             mode: mode || 'run',
             cleanBuild,
@@ -844,7 +887,8 @@ function writeReport(results, state) {
 }
 
 async function main() {
-    let examples = specificExample ? [specificExample] : findExamples(examplesDir);
+    const examples = specificExample ? [specificExample] : findExamples(examplesDir);
+    let jobs = examples.flatMap(ex => targets.map(t => ({ example: ex, target: t })));
     let passes = 0;
     let fails = 0;
     let results = [];
@@ -856,8 +900,9 @@ async function main() {
             const pastData = Array.isArray(past) ? past : past.results;
             if (Array.isArray(pastData)) {
                 results = pastData;
-                const completedPaths = new Set(results.map(r => r.path ? path.join(moddableDir, r.path) : ''));
-                examples = examples.filter(ex => !completedPaths.has(ex));
+                // Results written before targets could vary within a run carry no 'target'.
+                const completed = new Set(results.map(r => `${r.path ? path.join(moddableDir, r.path) : ''}|${r.target || target}`));
+                jobs = jobs.filter(job => !completed.has(`${job.example}|${job.target}`));
                 passes = results.filter(r => r.success === true).length;
                 fails = results.filter(r => r.success === false).length;
                 let skips = results.filter(isSkipped).length;
@@ -876,7 +921,7 @@ async function main() {
     process.on('SIGINT', () => {
         let currentSkips = results.filter(isSkipped).length;
         let completedThisRun = (passes - initialPasses) + (fails - initialFails) + (currentSkips - initialSkips);
-        let aborted = examples.length - completedThisRun;
+        let aborted = jobs.length - completedThisRun;
         console.log('\n\n=====================================');
         console.log(`TEST RUN INTERRUPTED BY USER (^C)`);
         console.log(`Total Passed: ${passes}, Total Failed: ${fails}, Bypassed: ${currentSkips}, Aborted Remaining: ${aborted}`);
@@ -892,8 +937,9 @@ async function main() {
         process.exit(1);
     });
 
-    for (let ex of examples) {
-        const res = await runTest(ex);
+    for (let job of jobs) {
+        const ex = job.example;
+        const res = await runTest(ex, job.target);
         const durationSecs = (res.durationMs / 1000).toFixed(1);
         if (isSkipped(res)) {
             console.log(`⏭️  SKIPPED - Target missing 'manifest_base.json' (likely a library).`);
@@ -907,7 +953,9 @@ async function main() {
             }
             fails++;
         }
-        results.push({ path: path.relative(moddableDir, ex), dir: path.dirname(ex), name: path.basename(ex), ...res });
+        if (res.success !== false)
+            delete res.log;        // keep report.json small: full logs are only of interest for failures
+        results.push({ path: path.relative(moddableDir, ex), dir: path.dirname(ex), name: path.basename(ex), target: job.target, ...res });
         
         if (res.code === 'SERIAL_FAIL') {
             console.log(`\nFATAL ERROR: Hardware serial communication failure detected.`);
