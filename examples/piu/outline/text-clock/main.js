@@ -286,7 +286,7 @@ class ClockShapeBehavior extends Behavior {
 	onStep(shape) {
 		const cx = this.cx;
 		const cy = this.cy;
-		shape.fillOutline = this.fillOutline.clone().translate(-cx, -cy).rotate(this.angle, this.rx, this.ry).scale(this.scale).translate(cx / 2, cy / 2);
+		shape.fillOutline = this.fillOutline.clone(shape.fillOutline).translate(-cx, -cy).rotate(this.angle, this.rx, this.ry).scale(this.scale).translate(cx / 2, cy / 2);
 	}
 }
 
