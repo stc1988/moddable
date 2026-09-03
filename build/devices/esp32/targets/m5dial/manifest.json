@@ -11,6 +11,7 @@
     "$(MODDABLE)/modules/io/manifest.json",
     "$(MODULES)/drivers/gc9a01/manifest.json",
     "$(MODULES)/drivers/sensors/ft6206/manifest.json",
+    "$(MODDABLE)/modules/drivers/sensors/rfid/mfrc522/manifest.json",
     "$(MODULES)/drivers/peripherals/bm8563/manifest.json",
     "$(MODULES)/drivers/peripherals/backlight/manifest.json",
     "$(MODULES)/drivers/peripherals/button/manifest.json"

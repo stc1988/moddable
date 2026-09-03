@@ -1,0 +1,12 @@
+{
+	"include": [
+		"$(MODDABLE)/modules/data/text/encoder/manifest.json",
+		"$(MODDABLE)/modules/data/text/decoder/manifest.json"
+	],
+	"modules": {
+		"embedded:sensor/RFID/ndef": "./ndef"
+	},
+	"preload": [
+		"embedded:sensor/RFID/ndef"
+	]
+}

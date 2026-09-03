@@ -29,6 +29,7 @@ import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 import RTC from "embedded:RTC/BM8563";
 import Touch from "embedded:sensor/Touch/FT6x06";
+import MFRC522 from "embedded:sensor/RFID/MFRC522";
 
 import Timer from "timer";
 import Backlight from "backlight";
@@ -174,6 +175,22 @@ const device = {
         });
         result.configure({});
         return result;
+      }
+    },
+    /*
+     * Built-in WS1850S/MFRC522 on internal I2C @ 0x28 (G11 SDA / G12 SCL).
+     * Do not pass reset: RST is shared with LCD_RESET (G8).
+     */
+    RFID: class {
+      constructor(options = {}) {
+        return new MFRC522({
+          ...options,
+          sensor: {
+            ...device.I2C.internal,
+            io: device.io.SMBus,
+            address: 0x28,
+          },
+        });
       }
     }
   },
