@@ -44,6 +44,7 @@ static void PiuShapeBind(void* it, PiuApplication* application, PiuView* view);
 static void PiuShapeDictionary(xsMachine* the, void* it);
 static void PiuShapeDraw(void* it, PiuView* view, PiuRectangle area);
 static void PiuShapeDrawAux(void* it, PiuView* view, PiuCoordinate x, PiuCoordinate y, PiuDimension sw, PiuDimension sh);
+static void PiuShapeInvalidate(void* it, PiuRectangle area);
 static void PiuShapeMark(xsMachine* the, void* it, xsMarkRoot markRoot);
 static void PiuShapeMeasureHorizontally(void* it);
 static void PiuShapeMeasureVertically(void* it);
@@ -58,7 +59,7 @@ const PiuDispatchRecord ICACHE_FLASH_ATTR PiuShapeDispatchRecord = {
 	PiuContentFitVertically,
 	PiuContentHit,
 	PiuContentIdle,
-	PiuContentInvalidate,
+	PiuShapeInvalidate,
 	PiuShapeMeasureHorizontally,
 	PiuShapeMeasureVertically,
 	PiuContentPlace,
@@ -144,6 +145,21 @@ void PiuShapeDrawAux(void* it, PiuView* view, PiuCoordinate x, PiuCoordinate y, 
 		PocoOutlineFill((*view)->poco, (*self)->strokeColor, (*self)->strokeBlend, outline, x, y);
 	}
 	xsEndHost((*self)->the);
+}
+
+void PiuShapeInvalidate(void* it, PiuRectangle area)
+{
+	PiuLabel* self = it;
+ 	if ((*self)->flags & piuClip) {
+		PiuContentInvalidate(it, area);
+		return;
+ 	}
+	PiuApplication* application = (*self)->application;
+	if (application) {
+		PiuRectangleRecord bounds = (*application)->bounds;
+		PiuContentFromApplicationCoordinates(self, bounds.x, bounds.y, &bounds.x, &bounds.y);
+		PiuContentInvalidate(it, &bounds);
+	}
 }
 
 void PiuShapeMark(xsMachine* the, void* it, xsMarkRoot markRoot)
@@ -261,7 +277,7 @@ void PiuShape_set_fillOutline(xsMachine *the)
 	if ((((*self)->coordinates.horizontal & piuLeftRightWidth) < piuLeftRight) || (((*self)->coordinates.vertical & piuTopBottomHeight) < piuTopBottom))
 		PiuContentReflow(self, piuSizeChanged);
 	else
-		PiuContentInvalidate(self, NULL);
+		(*(*self)->dispatch->invalidate)(self, NULL);
 }
 
 void PiuShape_set_strokeOutline(xsMachine *the)
@@ -271,7 +287,7 @@ void PiuShape_set_strokeOutline(xsMachine *the)
 	if ((((*self)->coordinates.horizontal & piuLeftRightWidth) < piuLeftRight) || (((*self)->coordinates.vertical & piuTopBottomHeight) < piuTopBottom))
 		PiuContentReflow(self, piuSizeChanged);
 	else
-		PiuContentInvalidate(self, NULL);
+		(*(*self)->dispatch->invalidate)(self, NULL);
 }
 
 

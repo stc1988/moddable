@@ -518,6 +518,7 @@ extern void PiuContentDictionary(xsMachine* the, void* it);
 extern void PiuContentDraw(void* it, PiuView* view, PiuRectangle area);
 extern void PiuContentFitHorizontally(void* it);
 extern void PiuContentFitVertically(void* it);
+extern void PiuContentFromApplicationCoordinates(void* it, PiuCoordinate x0, PiuCoordinate y0, PiuCoordinate *x1, PiuCoordinate *y1);
 extern void* PiuContentHit(void* it, PiuCoordinate x, PiuCoordinate y);
 extern void PiuContentIdle(void* it, PiuInterval interval);
 extern void PiuContentInvalidate(void* it, PiuRectangle area);
