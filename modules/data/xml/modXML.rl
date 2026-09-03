@@ -66,12 +66,15 @@
 
 static const char gHexa[] ICACHE_XS6RO2_ATTR = "0123456789ABCDEF";
 #define escapeHexa(X) (char)c_read8(gHexa + ((X) & 15))
-#define unescapeHexa(X) \
-	((('0' <= (X)) && ((X) <= '9')) \
-		? ((X) - '0') \
-		: ((('a' <= (X)) && ((X) <= 'f')) \
-			? (10 + (X) - 'a') \
-			: (10 + (X) - 'A')))
+
+static xsIntegerValue xml_hex_value(unsigned char c)
+{
+	if (('0' <= c) && (c <= '9'))
+		return c - '0';
+	if (('a' <= c) && (c <= 'f'))
+		return 10 + c - 'a';
+	return 10 + c - 'A';
+}
 
 // Ragel call stack: one entry per open element (see header note). Override from a
 // manifest with "defines": { "xml": { "stack_size": 64 } }.
@@ -82,6 +85,18 @@ static const char gHexa[] ICACHE_XS6RO2_ATTR = "0123456789ABCDEF";
 #endif
 #define XML_MAX_CODEPOINT 0x10FFFF
 #define XML_REPLACEMENT_CHARACTER 0xFFFD
+
+// XS slots every native reserves; the helpers use xsVar(4) and xsVar(5) as scratch
+#define XML_VARS 6
+
+// escape contexts: xml_writer_escape, and the XML.escape kinds in the same order
+#define XML_ESCAPE_TEXT 0
+#define XML_ESCAPE_ATTRIBUTE 1
+#define XML_ESCAPE_CDATA 2
+
+// text copy-out: as written (names, CDATA) or with references decoded (text, attribute values)
+#define XML_TEXT_VERBATIM 0
+#define XML_TEXT_UNESCAPE 1
 
 // Serializer output chunk. Override from a manifest with
 // "defines": { "xml": { "writer_chunk": 1024 } }.
@@ -176,7 +191,6 @@ static xsIntegerValue xml_transcode(xsStringValue dst, xsStringValue src, xsInte
 		}
 		else if ((c >= 0xC2) && (c <= 0xDF)) {
 			if ((remain >= 2) && ((c_read8(src + i + 1) & 0xC0) == 0x80)) { take = 2; valid = 1; }
-			else if (remain >= 1) take = 1;
 		}
 		else if ((c >= 0xE0) && (c <= 0xEF)) {
 			unsigned char lo = 0x80, hi = 0xBF, b1;
@@ -238,10 +252,10 @@ static xsIntegerValue xml_transcode(xsStringValue dst, xsStringValue src, xsInte
 		}
 		if (anyInvalid)
 			*anyInvalid = 1;
-		if (dst) {	// U+FFFD
-			*dst++ = (char)0xEF;
-			*dst++ = (char)0xBF;
-			*dst++ = (char)0xBD;
+		if (dst) {	// U+FFFD as UTF-8
+			*dst++ = (char)(0xE0 | (XML_REPLACEMENT_CHARACTER >> 12));
+			*dst++ = (char)(0x80 | ((XML_REPLACEMENT_CHARACTER >> 6) & 0x3F));
+			*dst++ = (char)(0x80 | (XML_REPLACEMENT_CHARACTER & 0x3F));
 		}
 		out += 3;
 		i += take;
@@ -297,19 +311,27 @@ static void xml_array_push_property(xsMachine* the, xsSlot* container, xsUnsigne
 
 // xml parser
 
+// how far the input moved since *base was taken; updates *base. Zero when the input
+// cannot move or did not.
+static ptrdiff_t xml_input_delta(xsMachine* the, XMLInput input, xsStringValue* base)
+{
+	xsStringValue current;
+	ptrdiff_t delta;
+	if (!input->relocatable)
+		return 0;
+	current = xml_input_base(the, input);
+	delta = current - *base;
+	*base = current;
+	return delta;
+}
+
 static void xml_parser_rebase(xsMachine* the, XMLParser parser)
 {
-	xsStringValue base;
-	ptrdiff_t delta;
-	if (!parser->input.relocatable)
-		return;
-	base = xml_input_base(the, &parser->input);
-	delta = base - parser->base;
+	ptrdiff_t delta = xml_input_delta(the, &parser->input, &parser->base);
 	if (delta) {
 		parser->fsm.p += delta;
 		parser->fsm.pe += delta;
 		parser->fsm.eof += delta;
-		parser->base = base;
 	}
 }
 
@@ -339,9 +361,10 @@ static void xml_parser_stop_text(xsMachine* the, XMLParser parser, xsIntegerValu
 	parser->textLength = (xsIntegerValue)(parser->fsm.p - parser->base) + offset - parser->textOffset;
 }
 
-static void xml_parser_xsVar2_text_helper(xsMachine* the, XMLParser parser, xsIntegerValue mode)
+// the current text run into xsVar(2): as written, or with references decoded
+static void xml_parser_text_value(xsMachine* the, XMLParser parser, xsIntegerValue unescape)
 {
-	if (mode) {
+	if (unescape) {
 		xsVar(3) = xsResult;
 		xml_text_scanner(the, parser->textOffset, parser->textLength, &parser->input);
 		xsVar(2) = xsResult;
@@ -354,36 +377,40 @@ static void xml_parser_xsVar2_text_helper(xsMachine* the, XMLParser parser, xsIn
 
 static void xml_parser_assign_value(xsMachine* the, XMLParser parser)
 {
-	xml_parser_xsVar2_text_helper(the, parser, 3);
+	xml_parser_text_value(the, parser, XML_TEXT_UNESCAPE);
 	xsmcSet(xsVar(1), xsID_value, xsVar(2));
 	xml_parser_rebase(the, parser);
 }
 
 static void xml_parser_attribute(xsMachine* the, XMLParser parser)
 {
-	xml_parser_xsVar2_text_helper(the, parser, 0);
+	xml_parser_text_value(the, parser, XML_TEXT_VERBATIM);
 	xsmcSetNewObject(xsVar(1));
 	xsmcSet(xsVar(1), xsID_name, xsVar(2));
 	xml_array_push_property(the, &xsResult, xsID_attributes, &xsVar(1));
 	xml_parser_rebase(the, parser);
 }
 
-static void xml_parser_comment(xsMachine* the, XMLParser parser)
+// the innermost open element (the top of the xsVar(0) stack) into slot; returns the
+// depth, and leaves slot alone when it is zero
+static xsIntegerValue xml_parser_top(xsMachine* the, xsSlot* slot)
 {
-	// not processed
+	xsIntegerValue length = xml_array_length(the, &xsVar(0));
+	if (length > 0) {
+		xsmcSetInteger(xsVar(5), length - 1);
+		xsmcGetAt(*slot, xsVar(0), xsVar(5));
+	}
+	return length;
 }
 
 static void xml_parser_element(xsMachine* the, XMLParser parser)
 {
-	xsIntegerValue length = xml_array_length(the, &xsVar(0));
+	xsIntegerValue length = xml_parser_top(the, &xsVar(1));
 	xsmcSetNewObject(xsResult);
-	xml_parser_xsVar2_text_helper(the, parser, 0);
+	xml_parser_text_value(the, parser, XML_TEXT_VERBATIM);
 	xsmcSet(xsResult, xsID_name, xsVar(2));
-	if (length > 0) {
-		xsmcSetInteger(xsVar(5), length - 1);
-		xsmcGetAt(xsVar(1), xsVar(0), xsVar(5));
+	if (length > 0)
 		xml_array_push_property(the, &xsVar(1), xsID_elements, &xsResult);
-	}
 	xml_parser_rebase(the, parser);
 }
 
@@ -397,11 +424,10 @@ static void xml_parser_enter_element(xsMachine* the, XMLParser parser)
 
 static void xml_parser_exit_element(xsMachine* the, XMLParser parser)
 {
-	xsIntegerValue length = xml_array_length(the, &xsVar(0));
+	xsIntegerValue length = xml_parser_top(the, &xsResult);
 	xsmcSetInteger(xsVar(5), length - 1);
-	xsmcGetAt(xsResult, xsVar(0), xsVar(5));
-	xsmcSet(xsVar(0), xsID_length, xsVar(5));
-	xml_parser_xsVar2_text_helper(the, parser, 0);
+	xsmcSet(xsVar(0), xsID_length, xsVar(5)); // pop
+	xml_parser_text_value(the, parser, XML_TEXT_VERBATIM);
 	xsmcGet(xsVar(1), xsResult, xsID_name);
 	if (c_strcmp(xsmcToString(xsVar(1)), xsmcToString(xsVar(2))))
 		xsUnknownError("xml_parser: tag mismatch");
@@ -417,19 +443,11 @@ static void xml_parser_exit_element(xsMachine* the, XMLParser parser)
 	xml_parser_rebase(the, parser);
 }
 
-static void xml_parser_processing_instruction(xsMachine* the, XMLParser parser)
+static void xml_parser_text(xsMachine* the, XMLParser parser, xsIntegerValue unescape)
 {
-	// not processed
-}
-
-static void xml_parser_text(xsMachine* the, XMLParser parser, xsIntegerValue normal)
-{
-	xsIntegerValue length = xml_array_length(the, &xsVar(0));
-	if (0 == length)
+	if (0 == xml_parser_top(the, &xsVar(1)))
 		xsUnknownError("xml_parser: text outside element");
-	xsmcSetInteger(xsVar(5), length - 1);
-	xsmcGetAt(xsVar(1), xsVar(0), xsVar(5));
-	xml_parser_xsVar2_text_helper(the, parser, normal ? 3 : 0);
+	xml_parser_text_value(the, parser, unescape);
 	if (parser->compact) { // compact text concat / merge CDATA section text
 		if (xsmcGet(xsVar(3), xsVar(1), xsID_text))
 			xsmcCall(xsVar(2), xsVar(3), xsID_concat, &xsVar(2), NULL);
@@ -445,7 +463,7 @@ static void xml_parser_text(xsMachine* the, XMLParser parser, xsIntegerValue nor
 
 static void xml_parser_cdata_section(xsMachine* the, XMLParser parser)
 {
-	xml_parser_text(the, parser, 0);
+	xml_parser_text(the, parser, XML_TEXT_VERBATIM);
 }
 
 // xml parser specification
@@ -476,10 +494,6 @@ static void xml_parser_cdata_section(xsMachine* the, XMLParser parser)
 		xml_parser_cdata_section(the, parser);
 	}
 
-	action comment {
-		xml_parser_comment(the, parser);
-	}
-
 	action element {
 		xml_parser_element(the, parser);
 	}
@@ -490,10 +504,6 @@ static void xml_parser_cdata_section(xsMachine* the, XMLParser parser)
 
 	action exit_element {
 		xml_parser_exit_element(the, parser);
-	}
-
-	action processing_instruction {
-		xml_parser_processing_instruction(the, parser);
 	}
 
 	action start_text {
@@ -517,7 +527,7 @@ static void xml_parser_cdata_section(xsMachine* the, XMLParser parser)
 	}
 
 	action text {
-		xml_parser_text(the, parser, 1);
+		xml_parser_text(the, parser, XML_TEXT_UNESCAPE);
 	}
 
 	name_char = ( alnum | '-' | '_' | '.' | ':' | 0x80..0xFF ); # any non-ASCII (UTF-8) byte
@@ -530,15 +540,16 @@ static void xml_parser_cdata_section(xsMachine* the, XMLParser parser)
 
 	attribute = ( name >start_text %stop_text %attribute ( '=' value >start_text_1 %stop_text_1 %assign_value )? );
 
-	# bodies run up to the first terminator (finish-guarded ':>>'); the actions sit on the
-	# terminator's final character so they fire once, not on every candidate start
+	# bodies run up to the first terminator (finish-guarded ':>>'); the CDATA actions sit on
+	# the terminator's final character so they fire once, not on every candidate start.
+	# Comments and processing instructions are skipped: no actions, nothing to track.
 	cdata_section = ( '<![CDATA[' ( any* ) >start_text :>> ']]>' @stop_text_2 @cdata_section );
 
-	comment = ( '<!--' ( any* ) >start_text :>> '-->' @stop_text_2 @comment );
+	comment = ( '<!--' ( any* ) :>> '-->' );
 
 	element = ( '<' name >start_text %stop_text %element ( space+ attribute )* space* ( '/>' | '>' @enter_element @{ fcall inner; } ));
 
-	processing_instruction = ( '<?' ( any* ) >start_text :>> '?>' @stop_text_1 @processing_instruction );
+	processing_instruction = ( '<?' ( any* ) :>> '?>' );
 
 	doctype = ( '<!DOCTYPE' [^\[>]* ( '[' ( [^\]"'] | '"' [^"]* '"' | "'" [^']* "'" )* ']' space* )? '>' ); # skipped, not processed; ']' inside a quoted literal does not end the subset (2.8)
 
@@ -565,7 +576,7 @@ void xs_xml_parse(xsMachine* the)
 	XMLParser parser = &parserRecord;
 	xsIntegerValue length;
 
-	xsmcVars(6);
+	xsmcVars(XML_VARS);
 	parser->compact = (xsmcArgc > 1) ? xsmcToBoolean(xsArg(1)) : 1;
 	parser->textOffset = 0;
 	parser->textLength = 0;
@@ -605,19 +616,9 @@ void xs_xml_parse(xsMachine* the)
 
 // xml text scanner
 
-static xsStringValue xml_text_scanner_base(xsMachine* the, XMLTextScanner scanner)
-{
-	return xml_input_base(the, &scanner->input);
-}
-
 static void xml_text_scanner_rebase(xsMachine* the, XMLTextScanner scanner)
 {
-	xsStringValue base;
-	ptrdiff_t delta;
-	if (!scanner->input.relocatable)
-		return;
-	base = xml_input_base(the, &scanner->input);
-	delta = base - scanner->base;
+	ptrdiff_t delta = xml_input_delta(the, &scanner->input, &scanner->base);
 	if (delta) {
 		scanner->fsm.p += delta;
 		scanner->fsm.pe += delta;
@@ -626,7 +627,6 @@ static void xml_text_scanner_rebase(xsMachine* the, XMLTextScanner scanner)
 			scanner->fsm.ts += delta;
 		if (scanner->fsm.te)
 			scanner->fsm.te += delta;
-		scanner->base = base;
 	}
 }
 
@@ -660,7 +660,7 @@ static void xml_text_scanner_append_codepoint_reference(xsMachine* the, XMLTextS
 	// '&#' codepoint ';'
 	xsIntegerValue offset = (xsIntegerValue)(ts - scanner->base);
 	xsIntegerValue length = (xsIntegerValue)(te - ts);
-	xsStringValue base = xml_text_scanner_base(the, scanner);
+	xsStringValue base = xml_input_base(the, &scanner->input);
 	xsIntegerValue codepoint = 0;
 	xsIntegerValue i = 2;
 	unsigned char c = (unsigned char)c_read8(base + offset + i);
@@ -669,7 +669,7 @@ static void xml_text_scanner_append_codepoint_reference(xsMachine* the, XMLTextS
 	if ((c == 'X') || (c == 'x')) {
 		i++;
 		while ((i < length - 1) && (codepoint <= XML_MAX_CODEPOINT)) {
-			codepoint = (codepoint * 0x10) + unescapeHexa(c_read8(base + offset + i));
+			codepoint = (codepoint * 0x10) + xml_hex_value((unsigned char)c_read8(base + offset + i));
 			i++;
 		}
 	}
@@ -744,7 +744,7 @@ static void xml_text_scanner_append_codepoint_reference(xsMachine* the, XMLTextS
 #pragma unused (scanner_error)
 #pragma unused (scanner_start)
 
-// decodes entity and character references: the parser's mode 3; escaping lives in xml_writer_escape
+// decodes entity and character references (XML_TEXT_UNESCAPE); escaping lives in xml_writer_escape
 static void xml_text_scanner(xsMachine* the, xsIntegerValue offset, xsIntegerValue length, XMLInput input)
 {
 	XMLTextScannerRecord scannerRecord;
@@ -832,12 +832,34 @@ static void xml_writer_append_static(xsMachine* the, XMLWriter writer, const cha
 	xml_writer_append(the, writer, text, (xsIntegerValue)c_strlen(text));
 }
 
-// the same rules as the escape scanner: mode 0 text, 1 attribute value, 2 CDATA section
-static void xml_writer_escape(xsMachine* the, XMLWriter writer, xsStringValue text, xsIntegerValue mode)
+// allocate the result once, fill it from the chunks with no XS call in between, release the chunks
+static void xml_writer_to_result(xsMachine* the, XMLWriter writer, xsIntegerValue toBuffer)
+{
+	XMLWriterChunk chunk;
+	xsStringValue dst;
+	if (toBuffer) {
+		xsmcSetArrayBuffer(xsResult, NULL, writer->total);
+		dst = (xsStringValue)xsmcToArrayBuffer(xsResult);
+	}
+	else {
+		xsmcSetStringBuffer(xsResult, NULL, writer->total);
+		dst = xsmcToString(xsResult);
+	}
+	for (chunk = writer->first; chunk; chunk = chunk->next) {
+		c_memcpy(dst, chunk->data, chunk->length);
+		dst += chunk->length;
+	}
+	xml_writer_free(writer);
+}
+
+// escapes text for a context: XML_ESCAPE_TEXT, XML_ESCAPE_ATTRIBUTE (adds quotes and whitespace),
+// XML_ESCAPE_CDATA (splits "]]>")
+static void xml_writer_escape(xsMachine* the, XMLWriter writer, xsStringValue text, xsIntegerValue context)
 {
 	xsIntegerValue length = (xsIntegerValue)c_strlen(text);
 	xsIntegerValue i, start = 0;
-	if (mode == 2) {
+	xsIntegerValue attribute = (context == XML_ESCAPE_ATTRIBUTE);
+	if (context == XML_ESCAPE_CDATA) {
 		for (i = 0; i + 2 < length; i++) {
 			if ((c_read8(text + i) == ']') && (c_read8(text + i + 1) == ']') && (c_read8(text + i + 2) == '>')) {
 				xml_writer_append(the, writer, text + start, i - start);
@@ -857,14 +879,14 @@ static void xml_writer_escape(xsMachine* the, XMLWriter writer, xsStringValue te
 			case '&': replacement = "&amp;"; break;
 			case '<': replacement = "&lt;"; break;
 			case '>': replacement = "&gt;"; break;
-			case '"': replacement = mode ? "&quot;" : NULL; break;
-			case '\'': replacement = mode ? "&apos;" : NULL; break;
+			case '"': replacement = attribute ? "&quot;" : NULL; break;
+			case '\'': replacement = attribute ? "&apos;" : NULL; break;
 			// XML 1.0 §2.11: readers turn literal CR into LF before parsing, so CR must be a
 			// reference to survive; §3.3.3: in attribute values readers turn literal TAB and LF
 			// into spaces, so those too. Canonical XML (C14N 1.0) writes the same references.
 			case '\r': replacement = "&#x0D;"; break;
-			case '\t': replacement = mode ? "&#x09;" : NULL; break;
-			case '\n': replacement = mode ? "&#x0A;" : NULL; break;
+			case '\t': replacement = attribute ? "&#x09;" : NULL; break;
+			case '\n': replacement = attribute ? "&#x0A;" : NULL; break;
 			case '\v': case '\f': break;
 			default:
 				if ((c > 0) && (c < 32)) {	// bytes above 0x7F pass through: c is unsigned
@@ -888,32 +910,22 @@ static void xml_writer_escape(xsMachine* the, XMLWriter writer, xsStringValue te
 // the single implementation of the escaping rules
 void xs_xml_escape(xsMachine* the)
 {
-	xsIntegerValue mode = 0;
+	XMLWriterRecord writerRecord = {NULL, NULL, 0};
+	XMLWriter writer = &writerRecord;
+	xsIntegerValue context = XML_ESCAPE_TEXT;
 
-	xsmcVars(6);
+	xsmcVars(XML_VARS);
 	if ((xsmcArgc > 1) && (xsmcTypeOf(xsArg(1)) != xsUndefinedType)) {
 		xsStringValue kind = xsmcToString(xsArg(1));
 		if (!c_strcmp(kind, "attribute"))
-			mode = 1;
+			context = XML_ESCAPE_ATTRIBUTE;
 		else if (!c_strcmp(kind, "cdata"))
-			mode = 2;
+			context = XML_ESCAPE_CDATA;
 		else if (c_strcmp(kind, "text"))
 			xsUnknownError("xml_escape: kind must be \"text\", \"attribute\", or \"cdata\"");
 	}
-	{
-		XMLWriterRecord writerRecord = {NULL, NULL, 0};
-		XMLWriter writer = &writerRecord;
-		XMLWriterChunk chunk;
-		xsStringValue dst;
-		xml_writer_escape(the, writer, xsmcToString(xsArg(0)), mode);
-		xsmcSetStringBuffer(xsResult, NULL, writer->total);
-		dst = xsmcToString(xsResult);
-		for (chunk = writer->first; chunk; chunk = chunk->next) {
-			c_memcpy(dst, chunk->data, chunk->length);
-			dst += chunk->length;
-		}
-		xml_writer_free(writer);
-	}
+	xml_writer_escape(the, writer, xsmcToString(xsArg(0)), context);
+	xml_writer_to_result(the, writer, 0);
 }
 
 // XML.unescape: entity and character references become characters, through the scanner the
@@ -923,7 +935,7 @@ void xs_xml_unescape(xsMachine* the)
 	XMLInputRecord input = { 0, 1, 0 };	// a string: relocatable, no transcoding
 	xsIntegerValue length;
 
-	xsmcVars(6);
+	xsmcVars(XML_VARS);
 	length = (xsIntegerValue)c_strlen(xsmcToString(xsArg(0)));
 	xml_text_scanner(the, 0, length, &input);
 }
@@ -936,8 +948,18 @@ static void xml_serialize_attribute(xsMachine* the, XMLWriter writer, xsSlot* na
 	if (bare)
 		return;
 	xml_writer_append_static(the, writer, "=\"");
-	xml_writer_escape(the, writer, xsmcToString(*value), 1);
+	xml_writer_escape(the, writer, xsmcToString(*value), XML_ESCAPE_ATTRIBUTE);
 	xml_writer_append_static(the, writer, "\"");
+}
+
+// item.elements into xsVar(2); returns its length, or 0 when it is not an array
+static xsIntegerValue xml_serialize_elements(xsMachine* the, xsSlot* item)
+{
+	xsmcGet(xsVar(2), *item, xsID_elements);
+	if (!xsmcIsInstanceOf(xsVar(2), xsArrayPrototype))
+		return 0;
+	xsmcGet(xsVar(3), xsVar(2), xsID_length);
+	return xsmcToInteger(xsVar(3));
 }
 
 // `<name attributes` then `/>` for a leaf (returns 0) or `>` when children follow (returns 1)
@@ -976,13 +998,7 @@ static xsBooleanValue xml_serialize_open(xsMachine* the, XMLWriter writer, xsSlo
 		}
 	}
 
-	xsmcGet(xsVar(2), *item, xsID_elements);
-	if (xsmcIsInstanceOf(xsVar(2), xsArrayPrototype)) {
-		xsmcGet(xsVar(3), xsVar(2), xsID_length);
-		count = xsmcToInteger(xsVar(3));
-	}
-	else
-		count = 0;
+	count = xml_serialize_elements(the, item);
 	if ((count == 0) && !xsmcHas(*item, xsID_text) && !xsmcHas(*item, xsID_TEXT)) {
 		xml_writer_append_static(the, writer, "/>");
 		return 0;
@@ -1005,11 +1021,11 @@ static void xml_serialize_close(xsMachine* the, XMLWriter writer, xsSlot* item)
 {
 	xsmcGet(xsVar(2), *item, xsID_text);
 	if (xsmcTypeOf(xsVar(2)) != xsUndefinedType)
-		xml_writer_escape(the, writer, xsmcToString(xsVar(2)), 0);
+		xml_writer_escape(the, writer, xsmcToString(xsVar(2)), XML_ESCAPE_TEXT);
 	xsmcGet(xsVar(2), *item, xsID_TEXT);
 	if (xsmcTypeOf(xsVar(2)) != xsUndefinedType) {
 		xml_writer_append_static(the, writer, "<![CDATA[");
-		xml_writer_escape(the, writer, xsmcToString(xsVar(2)), 2);
+		xml_writer_escape(the, writer, xsmcToString(xsVar(2)), XML_ESCAPE_CDATA);
 		xml_writer_append_static(the, writer, "]]>");
 	}
 	xml_writer_append_static(the, writer, "</");
@@ -1037,13 +1053,7 @@ static void xml_serialize(xsMachine* the, XMLWriter writer, xsBooleanValue decla
 		xsmcGetIndex(xsVar(1), xsVar(0), 2 * depth - 2);
 		xsmcGetIndex(xsVar(2), xsVar(0), 2 * depth - 1);
 		index = xsmcToInteger(xsVar(2));
-		xsmcGet(xsVar(2), xsVar(1), xsID_elements);
-		if (xsmcIsInstanceOf(xsVar(2), xsArrayPrototype)) {
-			xsmcGet(xsVar(3), xsVar(2), xsID_length);
-			count = xsmcToInteger(xsVar(3));
-		}
-		else
-			count = 0;
+		count = xml_serialize_elements(the, &xsVar(1));
 		if (index < count) {
 			xsmcSetInteger(xsVar(3), index + 1);
 			xsmcSetIndex(xsVar(0), 2 * depth - 1, xsVar(3));
@@ -1071,10 +1081,8 @@ void xs_xml_serialize(xsMachine* the)
 	XMLWriter writer = &writerRecord;
 	xsBooleanValue declaration = 1;
 	xsIntegerValue toBuffer = 0;
-	XMLWriterChunk chunk;
-	xsStringValue dst;
 
-	xsmcVars(6);
+	xsmcVars(XML_VARS);
 	// options, ECMA-419 style: { format: "string" (default) | "buffer", declaration: true (default) }
 	if ((xsmcArgc > 1) && (xsmcTypeOf(xsArg(1)) != xsUndefinedType)) {
 		if (xsmcHas(xsArg(1), xsID_declaration)) {
@@ -1098,18 +1106,5 @@ void xs_xml_serialize(xsMachine* the)
 		xml_writer_free(writer);
 		xsThrow(xsException);
 	}
-	// allocate once, then fill from the fragments with no XS calls in between
-	if (toBuffer) {
-		xsmcSetArrayBuffer(xsResult, NULL, writer->total);
-		dst = (xsStringValue)xsmcToArrayBuffer(xsResult);
-	}
-	else {
-		xsmcSetStringBuffer(xsResult, NULL, writer->total);
-		dst = xsmcToString(xsResult);
-	}
-	for (chunk = writer->first; chunk; chunk = chunk->next) {
-		c_memcpy(dst, chunk->data, chunk->length);
-		dst += chunk->length;
-	}
-	xml_writer_free(writer);
+	xml_writer_to_result(the, writer, toBuffer);
 }

@@ -49,7 +49,7 @@ export class XML {
 			const itemName = item.name;
 			if ((itemName === name) || (itemName === qualified))
 				return true;
-			if (prefix)
+			if (prefix || !itemName) // a verbose tree holds { text } entries with no name
 				return false;
 			const colon = itemName.indexOf(":");
 			return (colon >= 0) && (itemName.slice(colon + 1) === name);
