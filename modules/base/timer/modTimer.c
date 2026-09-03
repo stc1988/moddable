@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2025  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -106,6 +106,8 @@ void xs_timer_set(xsMachine *the)
 void xs_timer_repeat(xsMachine *the)
 {
 	int interval = xsmcToInteger(xsArg(1));
+	if (interval <= 0)
+		interval = 1;
 
 	createTimer(the, interval, interval);
 }
