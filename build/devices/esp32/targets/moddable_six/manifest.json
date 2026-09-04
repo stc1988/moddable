@@ -41,9 +41,8 @@
 		"stack": 512
 	},
 	"defines": {
-		"ft": {
-			"render_pool_size": 32768
-		},
+		"ft": { "render_pool_size": 32768 },
+		"cfe": { "ft": { "cachesize": 32768 } },
 		"i2c": {
 			"sda_pin": 4,
 			"scl_pin": 5
