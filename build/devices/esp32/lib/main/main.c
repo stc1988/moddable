@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2025  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -36,7 +36,6 @@
 #endif
 
 #include "modInstrumentation.h"
-#include "esp_system.h"		// to get system_get_free_heap_size, etc.
 
 #include "xs.h"
 #include "xsHost.h"
@@ -124,7 +123,11 @@ void app_main() {
 	esp_log_level_set("I2S", ESP_LOG_ERROR);
 #endif
 
-	ESP_ERROR_CHECK(nvs_flash_init());
+	esp_err_t err = nvs_flash_init();
+	if ((ESP_ERR_NOT_FOUND != err) && err) {
+		ESP_ERROR_CHECK(nvs_flash_erase());
+		ESP_ERROR_CHECK(nvs_flash_init());
+	}
 #if CONFIG_BT_ENABLED
 	ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
 #endif
