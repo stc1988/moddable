@@ -24,6 +24,9 @@
 
 import Timer from "timer";
 
+if (!globalThis.device?.sensor?.RFID)
+	throw new Error("Host does not provide RFID. See ../readme.md for info on installing a driver.");
+
 const URI = "http://www.moddable.com";
 //const URI = "http://www.intlweb.com/oops1.png";
 

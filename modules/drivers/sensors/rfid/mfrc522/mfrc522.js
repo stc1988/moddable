@@ -242,11 +242,10 @@ export default class MFRC522 {
 	}
 
 	get identification() {
-		return identification;
-	}
-
-	get version() {
-		return this.#read(Register.Version);
+		return {
+			...identification,
+			version: this.#read(Register.Version)
+		};
 	}
 
 	close() {
@@ -254,11 +253,13 @@ export default class MFRC522 {
 			this.#stopCrypto1();
 		}
 		catch {
+			/* this space intentionally left blank */
 		}
 		try {
 			this.#antennaOff();
 		}
 		catch {
+			/* this space intentionally left blank */
 		}
 		this.#io?.close();
 		this.#io = undefined;
@@ -269,7 +270,9 @@ export default class MFRC522 {
 	start(options = {}) {
 		const block = options.block;
 		const key = options.key ?? DEFAULT_KEY;
-		const cmd = (options.keyType === "B") ? PICC.MF_AUTH_KEY_B : PICC.MF_AUTH_KEY_A;
+		if (key.length !== MF_KEY_SIZE)
+			throw new Error("key must be 6 bytes");
+		const auth = (options.keyType === "B") ? PICC.MF_AUTH_KEY_B : PICC.MF_AUTH_KEY_A;
 		const tries = (typeof options.retries === "number") ? options.retries : 3;
 
 		let lastStatus = Status.ERROR;
@@ -283,18 +286,8 @@ export default class MFRC522 {
 				continue;
 			}
 
-			const send = this.#cmd;
-			send[0] = cmd;
-			send[1] = block;
-			for (let i = 0; i < MF_KEY_SIZE; i++)
-				send[2 + i] = key[i];
-			// Last 4 UID bytes (NXP AN10927)
 			const uid = card.uid;
-			const base = uid.length - 4;
-			for (let i = 0; i < 4; i++)
-				send[8 + i] = uid[base + i];
-
-			const r = this.#communicate(PCD.MFAuthent, 0x10, send, 12, null, 0, 0);
+			const r = this.#authenticate(auth, block, key, uid);
 			if (r.status === Status.OK) {
 				this.#crypto = true;
 				this.#lastUid = uid;
@@ -310,24 +303,12 @@ export default class MFRC522 {
 	}
 
 	readBlock(block) {
-		const buffer = this.#cmd;
-		buffer[0] = PICC.MF_READ;
-		buffer[1] = block;
-		const crc = this.#crc;
-		if (this.#calcCRC(buffer, 2, crc) !== Status.OK)
-			throw new Error("CRC failed");
-		buffer[2] = crc[0];
-		buffer[3] = crc[1];
-
-		const r = this.#transceive(buffer, 4, buffer, 18, 0, 0, true);
-		if (r.status !== Status.OK)
-			throw new Error(`readBlock failed (${r.status})`);
-		if (r.backLen < 16)
-			throw new Error("short read");
-		return buffer.slice(0, MF_BLOCK_SIZE);
+		return this.#read16(block);
 	}
 
 	writeBlock(block, data) {
+		if (data.length !== MF_BLOCK_SIZE)
+			throw new Error("block must be 16 bytes");
 
 		// Step 1: write command + block
 		const cmd = this.#cmd;
@@ -402,16 +383,19 @@ export default class MFRC522 {
 		if (status !== Status.OK)
 			return;
 		const out = new Uint8Array(uid.size);
-		for (let i = 0; i < uid.size; i++)
-			out[i] = uid.bytes[i];
+		out.set(uid.bytes.subarray(0, uid.size));
 		return { uid: out, sak: uid.sak };
 	}
 
 	/** Transceive with CRC_A appended; expect 4-bit MF_ACK (0xA). */
 	#mifareTransceive(data, length) {
 		const buf = this.#cmd;
-		for (let i = 0; i < length; i++)
-			buf[i] = data[i];
+		if (data.subarray)
+			buf.set(data.subarray(0, length));
+		else {
+			for (let i = 0; i < length; i++)
+				buf[i] = data[i];
+		}
 		const crc = this.#crc;
 		if (this.#calcCRC(buf, length, crc) !== Status.OK)
 			return Status.ERROR;
@@ -440,6 +424,7 @@ export default class MFRC522 {
 				return t2;
 		}
 		catch {
+			/* this space intentionally left blank */
 		}
 		return this.#ndefClassic(card);
 	}
@@ -474,8 +459,7 @@ export default class MFRC522 {
 				break;
 			}
 			const n = Math.min(MF_BLOCK_SIZE, NDEF_MAX - filled);
-			for (let i = 0; i < n; i++)
-				buf[filled + i] = chunk[i];
+			buf.set(chunk.subarray(0, n), filled);
 			filled += n;
 			page += 4;
 			const msg = extractNdefTlv(buf, filled);
@@ -486,17 +470,19 @@ export default class MFRC522 {
 		return wrapNdef(extractNdefTlv(buf, filled));
 	}
 
+	// AUTH + block + key(6) + UID(last 4)
+	#authenticate(auth, block, key, uid) {
+		const send = this.#cmd;
+		send[0] = auth;
+		send[1] = block;
+		send.set(key, 2);
+		send.set(uid.subarray(-4), 8);
+		return this.#communicate(PCD.MFAuthent, 0x10, send, 12, null, 0, 0);
+	}
+
 	#authSelected(uid, block, key) {
 		this.#stopCrypto1();
-		const send = this.#cmd;
-		send[0] = PICC.MF_AUTH_KEY_A;
-		send[1] = block;
-		for (let i = 0; i < MF_KEY_SIZE; i++)
-			send[2 + i] = key[i];
-		const base = uid.length - 4;
-		for (let i = 0; i < 4; i++)
-			send[8 + i] = uid[base + i];
-		const r = this.#communicate(PCD.MFAuthent, 0x10, send, 12, null, 0, 0);
+		const r = this.#authenticate(PICC.MF_AUTH_KEY_A, block, key, uid);
 		if (r.status === Status.OK) {
 			this.#crypto = true;
 			return true;
@@ -508,12 +494,8 @@ export default class MFRC522 {
 		if (!this.#authWithKeys(card, 4))
 			return;
 		const buf = this.#ndef;
-		let o = 0;
-		for (const block of [4, 5, 6]) {
-			const chunk = this.#read16(block);
-			for (let i = 0; i < MF_BLOCK_SIZE; i++)
-				buf[o++] = chunk[i];
-		}
+		for (const block of [4, 5, 6])
+			buf.set(this.#read16(block), (block - 4) * MF_BLOCK_SIZE);
 		return wrapNdef(extractNdefTlv(buf, 48));
 	}
 
@@ -558,9 +540,8 @@ export default class MFRC522 {
 		if (!this.#authWithKeys(card, 4))
 			throw new Error("start failed");
 		const padded = this.#ndef;
-		const n = tlv.length;
-		for (let i = 0; i < 48; i++)
-			padded[i] = (i < n) ? tlv[i] : 0;
+		padded.set(tlv);
+		padded.fill(0, tlv.length, 48);
 		this.writeBlock(4, padded.subarray(0, 16));
 		this.writeBlock(5, padded.subarray(16, 32));
 		this.writeBlock(6, padded.subarray(32, 48));
@@ -616,8 +597,12 @@ export default class MFRC522 {
 
 	#writeFIFO(data, length) {
 		const buf = this.#fifoWrite;
-		for (let i = 0; i < length; i++)
-			buf[i] = data[i];
+		if (data.subarray)
+			buf.set(data.subarray(0, length));
+		else {
+			for (let i = 0; i < length; i++)
+				buf[i] = data[i];
+		}
 		this.#io.writeBuffer(Register.FIFOData, this.#view(buf, this.#fifoView, length));
 	}
 
@@ -633,12 +618,11 @@ export default class MFRC522 {
 		if (rxAlign) {
 			const mask = (0xFF << rxAlign) & 0xFF;
 			dest[0] = (dest[0] & ~mask) | (tmp[0] & mask);
-			for (let i = 1; i < count; i++)
-				dest[i] = tmp[i];
+			if (count > 1)
+				dest.set(tmp.subarray(1), 1);
 		}
 		else {
-			for (let i = 0; i < count; i++)
-				dest[i] = tmp[i];
+			dest.set(tmp);
 		}
 	}
 
@@ -778,8 +762,7 @@ export default class MFRC522 {
 			// SELECT: SEL + NVB(0x70) + 4 data + BCC + CRC_A
 			buffer[0] = sel;
 			buffer[1] = 0x70;
-			for (let i = 0; i < 5; i++)
-				buffer[2 + i] = response[i];
+			buffer.set(response.subarray(0, 5), 2);
 			if (this.#calcCRC(buffer, 7, crc) !== Status.OK)
 				return Status.ERROR;
 			buffer[7] = crc[0];
@@ -796,14 +779,10 @@ export default class MFRC522 {
 				return Status.CRC_WRONG;
 
 			const hasCascadeTag = response[0] === PICC.CT;
-			if (hasCascadeTag) {
-				for (let i = 0; i < 3; i++)
-					uid.bytes[uidIndex + i] = response[1 + i];
-			}
-			else {
-				for (let i = 0; i < 4; i++)
-					uid.bytes[uidIndex + i] = response[i];
-			}
+			if (hasCascadeTag)
+				uid.bytes.set(response.subarray(1, 4), uidIndex);
+			else
+				uid.bytes.set(response.subarray(0, 4), uidIndex);
 
 			uid.sak = sakBuf[0];
 			if (!(sakBuf[0] & 0x04)) {

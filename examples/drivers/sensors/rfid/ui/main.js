@@ -33,6 +33,9 @@ const POLL_MS = 250;
 const WRITE_URI = "https://www.moddable.com";
 const canWrite = !!(device.peripheral?.button?.A || (typeof device.pin?.buttonA === "number"));
 
+if (!globalThis.device?.sensor?.RFID)
+	throw new Error("Host does not provide RFID. See ../readme.md for info on installing a driver.");
+
 let mode = "idle";
 let lastLine = "-";
 let ndefLine = "";
@@ -42,7 +45,7 @@ let render, white, green, amber, gray, blue, red, font, titleFont;
 
 const rfid = new device.sensor.RFID;
 lastLine = rfid.identification.model;
-trace(rfid.identification.model, "  version=0x", rfid.version.toString(16), "\n");
+trace(rfid.identification.model, "  version=0x", rfid.identification.version.toString(16), "\n");
 
 try {
 	if (config.Screen && !globalThis.screen) {

@@ -22,6 +22,9 @@
 
 import Timer from "timer";
 
+if (!globalThis.device?.sensor?.RFID)
+	throw new Error("Host does not provide RFID. See ../readme.md for info on installing a driver.");
+
 const rfid = new device.sensor.RFID;
 Timer.repeat(() => {
 	const s = rfid.sample();
@@ -43,4 +46,4 @@ Timer.repeat(() => {
 		trace("removed\n");
 }, 250);
 
-trace(rfid.identification.model, "  version=0x", rfid.version.toString(16), "\n");
+trace(rfid.identification.model, "  version=0x", rfid.identification.version.toString(16), "\n");

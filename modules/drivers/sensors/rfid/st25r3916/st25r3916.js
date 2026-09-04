@@ -266,11 +266,10 @@ export default class ST25R3916 {
 	}
 
 	get identification() {
-		return identification;
-	}
-
-	get version() {
-		return this.#read(Register.Identity);
+		return {
+			...identification,
+			version: this.#read(Register.Identity)
+		};
 	}
 
 	close() {
@@ -278,6 +277,7 @@ export default class ST25R3916 {
 			this.#antennaOff();
 		}
 		catch {
+			/* this space intentionally left blank */
 		}
 		this.#io?.close();
 		this.#io = undefined;
@@ -375,8 +375,7 @@ export default class ST25R3916 {
 		if (!this.#transceive(this.#tx, 2, 0, true) || (this.#fifoLen < MF_BLOCK_SIZE))
 			throw new Error("read failed");
 		const out = this.#block;
-		for (let i = 0; i < MF_BLOCK_SIZE; i++)
-			out[i] = this.#fifo[i];
+		out.set(this.#fifo.subarray(0, MF_BLOCK_SIZE));
 		return out;
 	}
 
@@ -393,8 +392,7 @@ export default class ST25R3916 {
 				break;
 			}
 			const n = Math.min(MF_BLOCK_SIZE, NDEF_MAX - filled);
-			for (let i = 0; i < n; i++)
-				buf[filled + i] = chunk[i];
+			buf.set(chunk.subarray(0, n), filled);
 			filled += n;
 			page += 4;
 			const msg = extractNdefTlv(buf, filled);
@@ -535,19 +533,14 @@ export default class ST25R3916 {
 			if (!this.#transceive(this.#tx, 2, 16, false) || (this.#fifoLen < 5))
 				return;
 			const ac = this.#ac;
-			for (let i = 0; i < 5; i++)
-				ac[i] = this.#fifo[i];
+			ac.set(this.#fifo.subarray(0, 5));
 			if ((ac[0] ^ ac[1] ^ ac[2] ^ ac[3]) !== ac[4])
 				return;
 
 			this.#write(Register.ISO14443A, 0);
 			this.#tx[0] = sel;
 			this.#tx[1] = 0x70;
-			this.#tx[2] = ac[0];
-			this.#tx[3] = ac[1];
-			this.#tx[4] = ac[2];
-			this.#tx[5] = ac[3];
-			this.#tx[6] = ac[4];
+			this.#tx.set(ac, 2);
 			if (!this.#transceive(this.#tx, 7, 0, true) || !this.#fifoLen)
 				return;
 			const sak = this.#fifo[0];
@@ -566,8 +559,7 @@ export default class ST25R3916 {
 
 			if (!(sak & 0x04)) {
 				const out = new Uint8Array(uidLen);
-				for (let i = 0; i < uidLen; i++)
-					out[i] = uid[i];
+				out.set(uid.subarray(0, uidLen));
 				return { uid: out, sak };
 			}
 		}
@@ -586,6 +578,7 @@ export default class ST25R3916 {
 			this.#waitMain(Irq.txe, 5);
 		}
 		catch {
+			/* this space intentionally left blank */
 		}
 	}
 
@@ -600,8 +593,7 @@ export default class ST25R3916 {
 		const bitCount = bits || (txLen << 3);
 		this.#command(Command.ClearFIFO);
 		const load = this.#view(this.#load, this.#loadView, txLen);
-		for (let i = 0; i < txLen; i++)
-			load[i] = tx[i];
+		load.set(tx.subarray(0, txLen));
 		this.#io.writeBuffer(Mode.FifoLoad, load);
 		this.#writeTxBits(bitCount);
 		this.#clearIrq();

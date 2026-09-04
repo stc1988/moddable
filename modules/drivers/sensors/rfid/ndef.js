@@ -138,8 +138,7 @@ function encodeNdefRecord(typeByte, payload) {
 	rec[1] = 1;
 	rec[2] = payload.length;
 	rec[3] = typeByte;
-	for (let i = 0; i < payload.length; i++)
-		rec[4 + i] = payload[i];
+	rec.set(payload, 4);
 	return rec;
 }
 
@@ -153,8 +152,7 @@ export function encodeUriRecord(uri) {
 	const rest = encodeUtf8(uri.slice(URI_PREFIX[code].length));
 	const payload = new Uint8Array(1 + rest.length);
 	payload[0] = code;
-	for (let i = 0; i < rest.length; i++)
-		payload[1 + i] = rest[i];
+	payload.set(rest, 1);
 	return encodeNdefRecord(0x55, payload);
 }
 
@@ -165,10 +163,8 @@ export function encodeTextRecord(text, language) {
 	const body = encodeUtf8(text);
 	const payload = new Uint8Array(1 + lang.length + body.length);
 	payload[0] = lang.length;
-	for (let i = 0; i < lang.length; i++)
-		payload[1 + i] = lang[i];
-	for (let i = 0; i < body.length; i++)
-		payload[1 + lang.length + i] = body[i];
+	payload.set(lang, 1);
+	payload.set(body, 1 + lang.length);
 	return encodeNdefRecord(0x54, payload);
 }
 
@@ -178,10 +174,8 @@ export function wrapTlv(message) {
 		? Uint8Array.of(0x03, n)
 		: Uint8Array.of(0x03, 0xFF, n >> 8, n & 0xFF);
 	const out = new Uint8Array(hdr.length + n + 1);
-	for (let i = 0; i < hdr.length; i++)
-		out[i] = hdr[i];
-	for (let i = 0; i < n; i++)
-		out[hdr.length + i] = message[i];
+	out.set(hdr);
+	out.set(message, hdr.length);
 	out[out.length - 1] = 0xFE;
 	return out;
 }

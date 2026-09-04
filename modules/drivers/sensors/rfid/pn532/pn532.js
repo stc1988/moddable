@@ -247,11 +247,10 @@ export default class PN532 {
 	}
 
 	get identification() {
-		return identification;
-	}
-
-	get version() {
-		return this.#version;
+		return {
+			...identification,
+			version: this.#version
+		};
 	}
 
 	close() {
@@ -259,11 +258,13 @@ export default class PN532 {
 			this.#release();
 		}
 		catch {
+			/* this space intentionally left blank */
 		}
 		try {
 			this.#setRF(false);
 		}
 		catch {
+			/* this space intentionally left blank */
 		}
 		this.#io?.close();
 		this.#io = undefined;
@@ -276,6 +277,8 @@ export default class PN532 {
 	start(options = {}) {
 		const block = options.block;
 		const key = options.key ?? DEFAULT_KEY;
+		if (key.length !== MF_KEY_SIZE)
+			throw new Error("key must be 6 bytes");
 		const auth = (options.keyType === "B") ? PICC.MF_AUTH_KEY_B : PICC.MF_AUTH_KEY_A;
 		const tries = (typeof options.retries === "number") ? options.retries : 3;
 
@@ -290,20 +293,9 @@ export default class PN532 {
 				continue;
 			}
 
-			const send = this.#cmd;
-			send[0] = Command.InDataExchange;
-			send[1] = 1;
-			send[2] = auth;
-			send[3] = block;
-			for (let i = 0; i < MF_KEY_SIZE; i++)
-				send[4 + i] = key[i];
 			const uid = card.uid;
-			const base = uid.length - 4;
-			for (let i = 0; i < 4; i++)
-				send[10 + i] = uid[base + i];
-
 			try {
-				const payload = this.#transact(send.subarray(0, 14), 200);
+				const payload = this.#authenticate(auth, block, key, uid);
 				if (payload[0] === 0) {
 					this.#lastUid = uid;
 					return { uid, sak: card.sak, type: typeName(card.sak) };
@@ -325,17 +317,7 @@ export default class PN532 {
 	 * @returns {Uint8Array} length 16
 	 */
 	readBlock(block) {
-		const send = this.#cmd;
-		send[0] = Command.InDataExchange;
-		send[1] = 1;
-		send[2] = PICC.MF_READ;
-		send[3] = block;
-		const payload = this.#transact(send.subarray(0, 4), 200);
-		if (payload[0] !== 0)
-			throw new Error(`readBlock failed (${payload[0]})`);
-		if (payload.length < 1 + MF_BLOCK_SIZE)
-			throw new Error("short read");
-		return payload.slice(1, 1 + MF_BLOCK_SIZE);
+		return this.#read16(block).slice();
 	}
 
 	/**
@@ -343,7 +325,7 @@ export default class PN532 {
 	 * Avoid block 0 and sector trailers (3, 7, 11, ...) unless you know the access bits.
 	 *
 	 * @param {number} block
-	 * @param {ArrayLike<number>|ArrayBuffer} data  Exactly 16 bytes
+	 * @param {ArrayLike<number>} data  Exactly 16 bytes
 	 */
 	writeBlock(block, data) {
 		const send = this.#cmd;
@@ -351,8 +333,9 @@ export default class PN532 {
 		send[1] = 1;
 		send[2] = PICC.MF_WRITE;
 		send[3] = block;
-		for (let i = 0; i < MF_BLOCK_SIZE; i++)
-			send[4 + i] = data[i];
+		if (data.length !== MF_BLOCK_SIZE)
+			throw new Error("block must be 16 bytes");
+		send.set(data, 4);
 
 		const payload = this.#transact(send.subarray(0, 4 + MF_BLOCK_SIZE), 200);
 		if (payload[0] !== 0)
@@ -415,6 +398,7 @@ export default class PN532 {
 				}
 			}
 			catch {
+				/* this space intentionally left blank */
 			}
 		}
 		if (version === undefined)
@@ -453,10 +437,7 @@ export default class PN532 {
 		const uidLen = payload[5];
 		if ((uidLen < 4) || (uidLen > 10) || (payload.length < 6 + uidLen))
 			return;
-		const uid = new Uint8Array(uidLen);
-		for (let i = 0; i < uidLen; i++)
-			uid[i] = payload[6 + i];
-		return { uid, sak: payload[4] };
+		return { uid: payload.slice(6, 6 + uidLen), sak: payload[4] };
 	}
 
 	#release() {
@@ -466,6 +447,7 @@ export default class PN532 {
 			this.#transact(CMD_IN_RELEASE, 80);
 		}
 		catch {
+			/* this space intentionally left blank */
 		}
 	}
 
@@ -483,6 +465,7 @@ export default class PN532 {
 				return t2;
 		}
 		catch {
+			/* this space intentionally left blank */
 		}
 		return this.#ndefClassic(card);
 	}
@@ -514,8 +497,7 @@ export default class PN532 {
 				break;
 			}
 			const n = Math.min(MF_BLOCK_SIZE, NDEF_MAX - filled);
-			for (let i = 0; i < n; i++)
-				buf[filled + i] = chunk[i];
+			buf.set(chunk.subarray(0, n), filled);
 			filled += n;
 			page += 4;
 			const msg = extractNdefTlv(buf, filled);
@@ -556,20 +538,21 @@ export default class PN532 {
 		Timer.delay(5);
 	}
 
-	#authListed(uid, block, key) {
+	// InDataExchange + Tg + AUTH + block + key(6) + UID(last 4)
+	#authenticate(auth, block, key, uid) {
 		const send = this.#cmd;
 		send[0] = Command.InDataExchange;
 		send[1] = 1;
-		send[2] = PICC.MF_AUTH_KEY_A;
+		send[2] = auth;
 		send[3] = block;
-		for (let i = 0; i < MF_KEY_SIZE; i++)
-			send[4 + i] = key[i];
-		const base = uid.length - 4;
-		for (let i = 0; i < 4; i++)
-			send[10 + i] = uid[base + i];
+		send.set(key, 4);
+		send.set(uid.subarray(-4), 10);
+		return this.#transact(send.subarray(0, 14), 200);
+	}
+
+	#authListed(uid, block, key) {
 		try {
-			const payload = this.#transact(send.subarray(0, 14), 200);
-			return payload[0] === 0;
+			return this.#authenticate(PICC.MF_AUTH_KEY_A, block, key, uid)[0] === 0;
 		}
 		catch {
 			return false;
@@ -595,9 +578,8 @@ export default class PN532 {
 		if (!this.#authWithKeys(card, 4))
 			throw new Error("start failed");
 		const padded = this.#ndef;
-		const n = tlv.length;
-		for (let i = 0; i < 48; i++)
-			padded[i] = (i < n) ? tlv[i] : 0;
+		padded.set(tlv);
+		padded.fill(0, tlv.length, 48);
 		this.writeBlock(4, padded.subarray(0, 16));
 		this.writeBlock(5, padded.subarray(16, 32));
 		this.writeBlock(6, padded.subarray(32, 48));
@@ -607,12 +589,8 @@ export default class PN532 {
 		if (!this.#authWithKeys(card, 4))
 			return;
 		const buf = this.#ndef;
-		let o = 0;
-		for (const block of [4, 5, 6]) {
-			const chunk = this.#read16(block);
-			for (let i = 0; i < MF_BLOCK_SIZE; i++)
-				buf[o++] = chunk[i];
-		}
+		for (const block of [4, 5, 6])
+			buf.set(this.#read16(block), (block - 4) * MF_BLOCK_SIZE);
 		return wrapNdef(extractNdefTlv(buf, 48));
 	}
 
@@ -620,8 +598,7 @@ export default class PN532 {
 		const n = data.length;
 		const total = 2 + n;
 		const send = (total <= this.#cmd.length) ? this.#cmd : new Uint8Array(total);
-		for (let i = n - 1; i >= 0; i--)
-			send[2 + i] = data[i];
+		send.set(data, 2);
 		send[0] = Command.InDataExchange;
 		send[1] = 1;
 		const payload = this.#transact((send.length === total) ? send : send.subarray(0, total), 300);
@@ -680,8 +657,7 @@ export default class PN532 {
 			read[4] = chunk;
 			const data = this.#apdu(read.subarray(0, 5));
 			const n = Math.min(data.length, nlen - got);
-			for (let i = 0; i < n; i++)
-				msg[got + i] = data[i];
+			msg.set(data.subarray(0, n), got);
 			got += n;
 			if (!n)
 				break;
@@ -755,10 +731,7 @@ export default class PN532 {
 			sum = (sum + buf[start + 7 + i]) & 0xFF;
 		if (((sum + buf[start + 7 + payloadLen]) & 0xFF) !== 0)
 			throw new Error("PN532 data checksum");
-		const payload = new Uint8Array(payloadLen);
-		for (let i = 0; i < payloadLen; i++)
-			payload[i] = buf[start + 7 + i];
-		return payload;
+		return buf.slice(start + 7, start + 7 + payloadLen);
 	}
 
 	static {
