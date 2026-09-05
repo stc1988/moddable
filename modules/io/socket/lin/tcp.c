@@ -26,6 +26,7 @@
 
 #include "builtinCommon.h"
 
+#include <errno.h>
 #include <signal.h>
 #include <termios.h>
 #include <sys/ioctl.h>
@@ -338,10 +339,16 @@ void xs_tcp_write(xsMachine *the)
 
 	int ret = write(tcp->skt, buffer, needed);
 	if (ret < 0) {
-		xsTrace("write failed");
+		if ((EAGAIN == errno) || (EWOULDBLOCK == errno)) {
+			tcp->bytesWritable += needed;
+			xsUnknownError("would block");
+		}
+		xsTrace("write failed\n");
 		tcpTrigger(tcp, kTCPError);
 		return;
 	}
+	if (ret != (int)needed)
+		xsUnknownError("incomplete write");
 
 	modInstrumentationAdjust(NetworkBytesWritten, needed);
 
@@ -451,6 +458,9 @@ void tcpTask(modTimer timer, void *refcon, int refconSize)
 				tcp->bytesReadable += bytesRead;
 				tcpTrigger(tcp, kTCPReadable);
 				modInstrumentationAdjust(NetworkBytesRead, bytesRead);
+			}
+			else if ((bytesRead < 0) && ((EAGAIN == errno) || (EWOULDBLOCK == errno) || (EINTR == errno))) {
+				;		// wait
 			}
 			else {
 				tcp->error = 1;
@@ -652,10 +662,9 @@ void xs_listener_read(xsMachine *the)
 	if (!pending)
 		return;
 
-	listener->pending = pending->next;
-
-	xsResult = xsArg(0);
+	xsResult = xsNewFunction0(xsArg(0));
 	tcp = xsmcGetHostDataValidate(xsResult, (void *)&xsTCPHooks);
+	listener->pending = pending->next;
 
 	tcp->skt = pending->skt;
 	c_free(pending);

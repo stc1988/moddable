@@ -26,6 +26,7 @@
 #include "errno.h"
 #include "pico.h"
 #include "pico/stdlib.h"
+#include "pico/rand.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -299,7 +300,7 @@ extern void pico_reboot(uint32_t kind);
 #define C_MAX_SAFE_INTEGER (double)9007199254740991
 #define C_MIN_SAFE_INTEGER (double)-9007199254740991
 #define C_NAN NAN
-#define C_RAND_MAX RAND_MAX
+#define C_RAND_MAX INT32_MAX
 
 #define C_FP_ILOGB0 FP_ILOGB0
 #define C_FP_ILOGBNAN FP_ILOGBNAN
@@ -334,7 +335,7 @@ extern void pico_reboot(uint32_t kind);
 #define c_log2 log2
 #define c_nearbyint nearbyint
 #define c_pow pow
-#define c_rand rand
+#define c_rand() (0x7fffffff & get_rand_32())
 #define c_round round
 #define c_signbit signbit
 #define c_sin sin

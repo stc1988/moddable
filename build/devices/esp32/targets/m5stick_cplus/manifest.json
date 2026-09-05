@@ -5,11 +5,12 @@
 	},
 	"include": [
 		"$(MODDABLE)/modules/io/manifest.json",
-		"$(MODULES)/pins/digital/monitor/manifest.json",
 		"$(MODULES)/drivers/st7789/manifest.json",
 		"$(MODULES)/drivers/sensors/mpu6886/manifest.json",
 		"$(MODULES)/drivers/peripherals/axp192/manifest.json",
-		"$(MODULES)/drivers/peripherals/bm8563/manifest.json"
+		"$(MODULES)/drivers/peripherals/bm8563/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/led/pwm/manifest.json"
 	],
 	"config": {
 		"screen": "st7789",
@@ -74,15 +75,10 @@
 		}
 	},
 	"modules": {
-		"*": [
-			"../m5stack_fire/m5button"
-		],
 		"setup/target": "./setup-target"
 	},
 	"preload": [
-		"monitor",
-		"setup/target",
-		"m5button"
+		"setup/target"
 	],
 	"creation": {
 		"static": 0,

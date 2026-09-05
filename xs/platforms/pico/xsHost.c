@@ -475,10 +475,16 @@ int modMessageService(xsMachine *the, int maxDelayMS)
 #if 1
 	// workaround for best_effort_wfe_or_timeout hanging on small/zero/negative timeouts
 	while (!gMessageQueue) {
-		absolute_time_t now = make_timeout_time_ms(0);
-		if (absolute_time_diff_us(until, now) < 1000)
+		absolute_time_t now = get_absolute_time();
+		if (absolute_time_diff_us(now, until) < 1000)
 			break;
 
+#if CYW43_LWIP
+		if (pico_cyw43_inited()) {
+			cyw43_arch_wait_for_work_until(until);
+			break;
+		}
+#endif
 		if (best_effort_wfe_or_timeout(until))
 			break;
 		tight_loop_contents();

@@ -1,4 +1,5 @@
 {
+	"warning": "** ECMA-419 SMBus recommended over classic 'pins/smbus' module **",
 	"include": [
 		"$(MODULES)/pins/i2c/manifest.json"
 	],

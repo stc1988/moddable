@@ -4,18 +4,19 @@
 	},
 	"include": [
 		"$(MODDABLE)/modules/io/manifest.json",
-		"$(MODDABLE)/modules/drivers/peripherals/pcf8563/manifest.json"
+		"$(MODULES)/drivers/peripherals/pcf8563/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/led/pwm/manifest.json",
+		"$(COMMODETTO)/manifest_dither.json"
 	],
 	"modules": {
 		"setup/target": "./setup-target",
-		"commodetto/Dither": "$(MODDABLE)/modules/commodetto/commodettoDither",
 		"*": [
 			"$(MODDABLE)/modules/drivers/gdew0154m09/*"
 		]
 	},
 	"preload": [
 		"setup/target",
-		"commodetto/Dither",
 		"gdew0154m09"
 	],
 	"config": {

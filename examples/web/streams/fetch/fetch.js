@@ -108,8 +108,8 @@ function fetchClientRequest(url, options) {
 		const host = url.hostname;
 		if (protocol == "http:") {
 			const port = url.port || 80;
-			client = new device.network.http.io({ 
-				...device.network.http,
+			client = new device.network.http.client.io({ 
+				...device.network.http.client,
 				host, 
 				port,  
 				onError() {
@@ -120,8 +120,8 @@ function fetchClientRequest(url, options) {
 		}
 		else {
 			const port = url.port || 443;
-			client = new device.network.https.io({ 
-				...device.network.https,
+			client = new device.network.https.client.io({ 
+				...device.network.https.client,
 				host, 
 				port,  
 				onError() {
@@ -138,6 +138,7 @@ function fetchClientRequest(url, options) {
 		path += query;
 	options.path = path;
 	client.request(options);
+	return client;
 }
 
 function fetch(href, info = {}) {
@@ -188,8 +189,13 @@ function fetch(href, info = {}) {
 		let buffer = null;
 		if (info.signal) {
 			info.signal.addEventListener("abort", event => {
+				client.close();
+				clients.delete(url.origin);
 				if (readableController) {
-					readableController.error(event.signal.reason);
+					if (event.signal.reason === null)
+						readableController.close();
+					else
+						readableController.error(event.signal.reason);
 					readableController = null;
 				}
 				else
@@ -207,13 +213,24 @@ function fetch(href, info = {}) {
 					return;
 				}
 				const readableStream = new ReadableStream({
-					type: "bytes",
 					start(controller) {
 						readableController = controller;
+						readableController.available = 0;
 					},
-					pull(controller) {
+					pull: (controller) => {
+						const count = readableController.available;
+						if (count > 0) {
+							readableController.available = 0;
+							readableController.enqueue(new Uint8Array(this.read(count)));
+						}
+						else {
+							readableController.promiseRecord = Promise.withResolvers();
+							return readableController.promiseRecord.promise;
+						}
 					},
-					cancel() {
+					cancel: () => {
+						client.close();
+						clients.delete(url.origin);
 					}
 				});
 
@@ -270,19 +287,27 @@ function fetch(href, info = {}) {
 					this.read();
 					return;
 				}
-				if (readableController)
-					readableController.enqueue(new Uint8Array(this.read(count)));
+				if (readableController) {
+					const promiseRecord = readableController.promiseRecord;
+					if (promiseRecord) {
+						readableController.promiseRecord = null;
+						readableController.enqueue(new Uint8Array(this.read(count)));
+						promiseRecord.resolve();
+					}
+					else
+						readableController.available = count;
+				}
 			},
 			onDone(/* error */) {
 				if (this.redirected) {
-					fetchClientRequest(url, options);
+					client = fetchClientRequest(url, options);
 					return;
 				}
 				if (readableController)
 					readableController.close();
 			}
 		};
-		fetchClientRequest(url, options);
+		let client = fetchClientRequest(url, options);
 		if (headers?.get("accept") == "text/event-stream") {
 			clients.delete(url.origin);
 		}	

@@ -713,7 +713,7 @@ clean:
 	-rm -rf $(TMP_DIR) 2>/dev/null
 	-rm -rf $(LIB_DIR) 2>/dev/null	
 
-$(SDKCONFIG_H): $(SDKCONFIG_FILE) | $(PROJ_DIR_FILES)
+$(SDKCONFIG_H): $(SDKCONFIG_FILE) $(wildcard $(TMP_DIR)/xs_idf_components.txt) | $(PROJ_DIR_FILES)
 	-rm $(PROJ_DIR)/sdkconfig 2>/dev/null
 	echo "# Reconfiguring ESP-IDF..." ; cd $(PROJ_DIR) ; bash -c "export KCONFIG_REPORT_VERBOSITY=quiet; $(IDF_RECONFIGURE_CMD)"
 
@@ -729,8 +729,9 @@ $(TMP_DIR)/buildinfo.c.o: $(TMP_DIR)/buildinfo.h $(TMP_DIR)/buildinfo.c
 $(LIB_DIR):
 	mkdir -p $(LIB_DIR)
 	
-$(BIN_DIR)/xs_$(ESP32_SUBCLASS).a: $(TMP_DIR)/buildinfo.c.o $(SDK_OBJ) $(XS_OBJ) $(TMP_DIR)/xsPlatform.c.o $(TMP_DIR)/xsHost.c.o $(TMP_DIR)/xsHosts.c.o $(TMP_DIR)/mc.xs.c.o $(TMP_DIR)/mc.resources.c.o $(OBJECTS)
+$(BIN_DIR)/xs_$(ESP32_SUBCLASS).a: $(TMP_DIR)/buildinfo.c.o $(SDK_OBJ) $(XS_OBJ) $(TMP_DIR)/xsPlatform.c.o $(TMP_DIR)/xsHost.c.o $(TMP_DIR)/xsHosts.c.o $(TMP_DIR)/mc_xs.c.o $(TMP_DIR)/mc_resources.c.o $(OBJECTS)
 	@echo "# ar xs_$(ESP32_SUBCLASS).a"
+	@rm -f $@
 	$(AR) $(AR_FLAGS) $(BIN_DIR)/xs_$(ESP32_SUBCLASS).a $^
 
 bootloaderCheck:
@@ -814,6 +815,18 @@ $(TMP_DIR)/xsHosts.c.o: xsHosts.c $(XS_HEADERS) $(TMP_DIR)/mc.defines.h $(TMP_DI
 $(LIB_DIR)/%.c.o: %.c $(SDKCONFIG_H) 
 	@echo "# cc" $(<F) "(strings in flash)"
 	$(CC) $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) $< -o $@
+
+# mc.xs.c and mc.resources.c change frequently during development. Their objects are named without dots
+# so the linker fragment in xsProj-*/main/CMakeLists.txt can place them at the end of flash. 
+# String merging is disabled so their strings stay with them rather than in the shared string pool
+# at the start of flash. This is optimal for esptool's differential flashing.
+$(TMP_DIR)/mc_xs.c.o: $(TMP_DIR)/mc.xs.c $(SDKCONFIG_H) 
+	@echo "# cc" $(<F) "(slots in flash)"
+	$(CC) $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -fno-merge-constants $< -o $@
+
+$(TMP_DIR)/mc_resources.c.o: $(TMP_DIR)/mc.resources.c $(SDKCONFIG_H) 
+	@echo "# cc" $(<F) "(slots in flash)"
+	$(CC) $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -fno-merge-constants $< -o $@
 
 $(TMP_DIR)/mc.%.c.o: $(TMP_DIR)/mc.%.c $(SDKCONFIG_H) 
 	@echo "# cc" $(<F) "(slots in flash)"

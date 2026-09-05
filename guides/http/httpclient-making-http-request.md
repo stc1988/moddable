@@ -1,7 +1,7 @@
 ---
 name: Make Request using HTTP Client
 SPDX-FileCopyrightText: Copyright (c) 2026 Moddable Tech, Inc.
-updated: 2026-08-04
+updated: 2026-08-14
 ---
 
 HTTP Client is a low-level API for making HTTP requests. Making an HTTP request always begins with two steps:
@@ -14,8 +14,8 @@ The HTTP Client invokes callback functions as the request is processed. This exa
 The `onDone()` callback calls the `close()` method of the HTTP Client to release its resources. 
 
 ```js
-const http = new device.network.http.io({
-	...device.network.http,
+const http = new device.network.http.client.io({
+	...device.network.http.client,
 	host: "example.com"
 });
 http.request({
@@ -44,8 +44,8 @@ You can make several HTTP requests to the same domain using a single instance of
 Requests are issued to the HTTP server sequentially in the order they are made.
 
 ```js
-const http = new device.network.http.io({
-	...device.network.http,
+const http = new device.network.http.client.io({
+	...device.network.http.client,
 	host: "httpbin.org"
 });
 
@@ -78,8 +78,8 @@ http.request({
 You can retrieve the response as JSON by calling `JSON.parse()` after receiving the complete response.
 
 ```js
-const http = new device.network.http.io({
-	...device.network.http,
+const http = new device.network.http.client.io({
+	...device.network.http.client,
 	host: "httpbin.org"
 });
 http.request({
@@ -104,8 +104,8 @@ http.request({
 Retrieve the response as a `Uint8Array` by concatenating response body fragments.
 
 ```js
-const http = new device.network.http.io({
-	...device.network.http,
+const http = new device.network.http.client.io({
+	...device.network.http.client,
 	host: "httpbin.org"
 });
 http.request({
@@ -129,8 +129,8 @@ http.request({
 The HTTP request method defaults to `"GET"`. Set the request method using the `method` option.
 
 ```js
-const http = new device.network.http.io({
-	...device.network.http,
+const http = new device.network.http.client.io({
+	...device.network.http.client,
 	host: "example.com"
 });
 http.request({

@@ -1,19 +1,45 @@
+/*
+ * Copyright (c) 2021-2026  Moddable Tech, Inc.
+ *
+ *   This file is part of the Moddable SDK Runtime.
+ *
+ *   The Moddable SDK Runtime is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU Lesser General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   The Moddable SDK Runtime is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public License
+ *   along with the Moddable SDK Runtime.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
 import config from "mc/config";
-import NeoPixel from "neopixel";
 import Timer from "timer";
-import Analog from "pins/analog";
-import DigitalButton from "button";
 
 const BUTTON_TOLERANCE = 10;
-const BUTTON_VALUES = [750 + BUTTON_TOLERANCE, 615 + BUTTON_TOLERANCE, 515 + BUTTON_TOLERANCE, 347 + BUTTON_TOLERANCE, 255 + BUTTON_TOLERANCE, 119 + BUTTON_TOLERANCE];
+const BUTTON_VALUES = Object.freeze([
+	750 + BUTTON_TOLERANCE,
+	615 + BUTTON_TOLERANCE,
+	515 + BUTTON_TOLERANCE,
+	347 + BUTTON_TOLERANCE,
+	255 + BUTTON_TOLERANCE,
+	119 + BUTTON_TOLERANCE
+]);
 
-class Button {
+// Analog resistor-ladder buttons on a single ADC pin
+class LadderButton {
 	static #state = {
 		active: {},
 		pushed: undefined,
-		timer: undefined
+		timer: undefined,
+		analog: undefined
 	};
-	
+
 	#button;
 	#onPush;
 
@@ -21,64 +47,70 @@ class Button {
 		this.#button = options.button;
 		this.#onPush = options.onPush;
 
-		if (Button.#state.active[this.#button])
+		if (LadderButton.#state.active[this.#button])
 			throw new Error("in use");
 
-		Button.#state.active[this.#button] = this;
+		LadderButton.#state.active[this.#button] = this;
 
-		if (Button.#state.timer)
+		if (LadderButton.#state.timer)
 			return;
 
-		Button.#state.timer = Timer.repeat( () => {
-			const value = Analog.read(config.buttonArray.pin);
+		const pin = config.buttonArray?.pin ?? device.pin.buttonArray;
+		const analog = LadderButton.#state.analog = new device.io.Analog({ pin });
+		const scale = 1023 / ((1 << analog.resolution) - 1);
+
+		LadderButton.#state.timer = Timer.repeat(() => {
+			const value = analog.read() * scale;
 			if (value > BUTTON_VALUES[0]) {
-				if (Button.#state.pushed === undefined)
+				if (LadderButton.#state.pushed === undefined)
 					return;
-				Button.#state.active[Button.#state.pushed]?.#onPush?.(0);
-				Button.#state.pushed = undefined;
+				LadderButton.#state.active[LadderButton.#state.pushed]?.#onPush?.(0);
+				LadderButton.#state.pushed = undefined;
 			}
 			for (let i = 5; i >= 0; i--) {
 				if (value < BUTTON_VALUES[i]) {
-					if (i !== Button.#state.pushed) {
-						if (Button.#state.pushed !== undefined)
-							Button.#state.active[Button.#state.pushed]?.#onPush?.(0);
-						Button.#state.pushed = i;
-						Button.#state.active[i]?.#onPush?.(1);
+					if (i !== LadderButton.#state.pushed) {
+						if (LadderButton.#state.pushed !== undefined)
+							LadderButton.#state.active[LadderButton.#state.pushed]?.#onPush?.(0);
+						LadderButton.#state.pushed = i;
+						LadderButton.#state.active[i]?.#onPush?.(1);
 					}
 					break;
 				}
 			}
-		}, config.buttonArray.delay ?? 50);
+		}, config.buttonArray?.delay ?? 50);
 	}
 
 	close() {
 		if (undefined === this.#button)
 			return;
-		
-		delete Button.#state.active[this.#button];
+
+		delete LadderButton.#state.active[this.#button];
 		this.#button = undefined;
 
-		if (Object.keys(Button.#state.active).length)
+		if (Object.keys(LadderButton.#state.active).length)
 			return;
 
-		Timer.clear(Button.#state.timer);
-		Button.#state.timer = undefined;
+		Timer.clear(LadderButton.#state.timer);
+		LadderButton.#state.timer = undefined;
+		LadderButton.#state.analog?.close();
+		LadderButton.#state.analog = undefined;
 	}
 
 	read() {
-		return (Button.#state.pushed === this.#button) ? 1 : 0;
+		return (LadderButton.#state.pushed === this.#button) ? 1 : 0;
 	}
 
 	get pressed() {
-		return (Button.#state.pushed === this.#button);
+		return (LadderButton.#state.pushed === this.#button);
 	}
 }
 
-function create(button) {
+function createLadder(button) {
 	const i = button;
 	return class {
 		constructor(options) {
-			return new Button({
+			return new LadderButton({
 				...options,
 				button: i
 			});
@@ -86,111 +118,30 @@ function create(button) {
 	};
 }
 
-class Flash {
-	constructor(options) {
-		return new DigitalButton({
-			...options,
-			pin: 0,
-			invert: true
-		});
+// Expose ladder buttons as device.peripheral.button.A–F
+/*		a new destination is necesary.
+device.peripheral.button.A = createLadder(0);
+device.peripheral.button.B = createLadder(1);
+device.peripheral.button.C = createLadder(2);
+device.peripheral.button.D = createLadder(3);
+device.peripheral.button.E = createLadder(4);
+device.peripheral.button.F = createLadder(5);
+*/
+
+if (config.touchpad?.pins) {
+	device.peripheral.Touchpad = {};
+	for (let x in config.touchpad.pins) {
+		const pin = config.touchpad.pins[x];
+		// touchpad pins map to ladder indices in original createTouch — keep if present
+		device.peripheral.Touchpad[x] = createLadder(pin);
 	}
 }
-
-class NeoPixelLED extends NeoPixel {
-	#value = 0;
-	read() {
-		return this.#value;
-	}
-	write(value) {
-		this.#value = value;
-		if (value) {
-			super.setPixel(0, super.makeRGB(255, 255, 255));
-			
-		}else{
-			super.setPixel(0, super.makeRGB(0, 0, 0));
-		}
-		super.update();
-	}
-	on() {
-		this.write(1);
-	}
-	off() {
-		this.write(0);
-	}
-}
-
-globalThis.Host = {
-	Button: {
-		Default: Flash,
-		Flash,
-		A: create(0),
-		B: create(1),
-		C: create(2),
-		D: create(3),
-		E: create(4),
-		F: create(5)
-	},
-	Touchpad: { },
-	LED: {
-		Default: class {
-			constructor(options) {
-				const led = new NeoPixelLED({
-					...options,
-					length: 1, 
-					pin: config.led.pin, 
-					order: "GRB"
-				});
-				led.brightness = config.led.brightness;
-				return led;
-			}
-		} 
-	}
-};
-
-if (config.touchpad?.pins)
-	for (let x in config.touchpad.pins)
-		Host.Touchpad[x] = createTouch(config.touchpad.pins[x]);
-
-const phases = [
-	//red, purple, blue, cyan, green, orange, white, black
-	[1, 0, -1, 0, 0, 1, 0, -1],
-	[0, 0, 0, 1, 0, 0, 0, -1],
-	[0, 1, 0, 0, -1, 0, 1, -1]
-];
-Object.freeze({phases, Host: globalThis.Host, BUTTON_VALUES}, true);
 
 export default function (done) {
-	if (config.led.rainbow) {
-		const neopixel = new Host.LED.Default;
-		const STEP = 3;
-
-		let rgb = [0, 0, 0];
-		let phase = 0;
-
-		Timer.repeat(() => {
-			let advance;
-			for (let i = 0; i < 3; i++) {
-				const direction = phases[i][phase];
-				if (!direction)
-					continue;
-
-				rgb[i] += direction * STEP;
-				if (rgb[i] >= 255) {
-					rgb[i] = 255;
-					advance = true;
-				}
-				else if (rgb[i] <= 0) {
-					rgb[i] = 0;
-					advance = true;
-				}
-			}
-			if (advance && (++phase >= phases[0].length))
-				phase = 0;
-	
-			neopixel.setPixel(0, neopixel.makeRGB(rgb[0], rgb[1], rgb[2]));
-			neopixel.update();
-		}, 33);
+	if (config.led?.rainbow) {
+		const led = new device.peripheral.led.Default({});
+		led.rainbow(3);
 	}
 
-	done();
+	done?.();
 }

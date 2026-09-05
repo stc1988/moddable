@@ -11,15 +11,14 @@
 		"$(IO)/pulsecount/manifest.json",
 		"$(IO)/pwm/manifest.json",
 		"$(IO)/serial/manifest.json",
-		"$(IO)/spi/manifest.json"
+		"$(IO)/spi/manifest.json",
+		"$(COMMODETTO)/manifest_bitmap.json"
 	],
 	"modules": {
 		"*": [
 			"$(IO)/common/builtinCommon",
 			"$(MODULES)/pins/digital/esp32/modGPIO"
 		],
-		"commodetto/Bitmap": "$(COMMODETTO)/commodettoBitmap",
-
 		"system": "$(IO)/system/*"
 	},
 	"preload": [
@@ -27,89 +26,34 @@
 	],
 	"platforms": {
 		"esp32": {
-			"include": [
-				"$(MODDABLE)/examples/manifest_net.json"
-			],
 			"modules": {
-				"embedded:provider/builtin": "$(IO)/host/$(PLATFORM)/provider",
+				"embedded:provider/builtin": "$(IO)/host/$(PLATFORM)/provider"
 
-				"embedded:io/socket/tcp": "$(IO)/socket/lwip/tcp",
-				"embedded:io/socket/udp": "$(IO)/socket/lwip/udp",
-				"embedded:io/socket/listener": "$(IO)/socket/lwip/listener"
-			},
-			"preload": [
-				"embedded:io/socket/tcp",
-				"embedded:io/socket/udp",
-				"embedded:io/socket/listener"
-			]
+			}
 		},
 		"esp32/esp32c3": {
-			"include": [
-				"$(MODDABLE)/examples/manifest_net.json"
-			],
 			"modules": {
-				"embedded:provider/builtin": "$(SUBPLATFORMDIRECTORY)/host/provider",
+				"embedded:provider/builtin": "$(SUBPLATFORMDIRECTORY)/host/provider"
 
-				"embedded:io/socket/tcp": "$(IO)/socket/lwip/tcp",
-				"embedded:io/socket/udp": "$(IO)/socket/lwip/udp",
-				"embedded:io/socket/listener": "$(IO)/socket/lwip/listener"
-			},
-			"preload": [
-				"embedded:io/socket/tcp",
-				"embedded:io/socket/udp",
-				"embedded:io/socket/listener"
-			]
+			}
 		},
 		"esp32/esp32c3_cdc": {
-			"include": [
-				"$(MODDABLE)/examples/manifest_net.json"
-			],
 			"modules": {
-				"embedded:provider/builtin": "$(SUBPLATFORMDIRECTORY)/host/provider",
+				"embedded:provider/builtin": "$(SUBPLATFORMDIRECTORY)/host/provider"
 
-				"embedded:io/socket/tcp": "$(IO)/socket/lwip/tcp",
-				"embedded:io/socket/udp": "$(IO)/socket/lwip/udp",
-				"embedded:io/socket/listener": "$(IO)/socket/lwip/listener"
-			},
-			"preload": [
-				"embedded:io/socket/tcp",
-				"embedded:io/socket/udp",
-				"embedded:io/socket/listener"
-			]
+			}
 		},
 		"esp32/esp32c6": {
-			"include": [
-				"$(MODDABLE)/examples/manifest_net.json"
-			],
 			"modules": {
-				"embedded:provider/builtin": "$(SUBPLATFORMDIRECTORY)/host/provider",
+				"embedded:provider/builtin": "$(SUBPLATFORMDIRECTORY)/host/provider"
 
-				"embedded:io/socket/tcp": "$(IO)/socket/lwip/tcp",
-				"embedded:io/socket/udp": "$(IO)/socket/lwip/udp",
-				"embedded:io/socket/listener": "$(IO)/socket/lwip/listener"
-			},
-			"preload": [
-				"embedded:io/socket/tcp",
-				"embedded:io/socket/udp",
-				"embedded:io/socket/listener"
-			]
+			}
 		},
 		"esp32/esp32c6_cdc": {
-			"include": [
-				"$(MODDABLE)/examples/manifest_net.json"
-			],
 			"modules": {
-				"embedded:provider/builtin": "$(SUBPLATFORMDIRECTORY)/host/provider",
+				"embedded:provider/builtin": "$(SUBPLATFORMDIRECTORY)/host/provider"
 
-				"embedded:io/socket/tcp": "$(IO)/socket/lwip/tcp",
-				"embedded:io/socket/udp": "$(IO)/socket/lwip/udp",
-				"embedded:io/socket/listener": "$(IO)/socket/lwip/listener"
-			},
-			"preload": [
-				"embedded:io/socket/tcp",
-				"embedded:io/socket/udp",
-				"embedded:io/socket/listener"
-			]
+			}
 		},
 		"esp32/esp32h2": {
 			"modules": {
@@ -122,21 +66,10 @@
 			}
 		},
 		"esp32/*": {
-			"include": [
-				"$(MODDABLE)/examples/manifest_net.json"
-			],
 			"modules": {
-				"embedded:provider/builtin": "$(SUBPLATFORMDIRECTORY)/host/provider",
+				"embedded:provider/builtin": "$(SUBPLATFORMDIRECTORY)/host/provider"
 
-				"embedded:io/socket/tcp": "$(IO)/socket/lwip/tcp",
-				"embedded:io/socket/udp": "$(IO)/socket/lwip/udp",
-				"embedded:io/socket/listener": "$(IO)/socket/lwip/listener"
-			},
-			"preload": [
-				"embedded:io/socket/tcp",
-				"embedded:io/socket/udp",
-				"embedded:io/socket/listener"
-			]
+			}
 		},
 		"...": {
 			"error": "ESP32 manifest"

@@ -3,7 +3,8 @@
 		"$(MODDABLE)/modules/io/manifest.json",
 		"$(MODDABLE)/modules/data/logical/manifest.json",
 		"$(MODDABLE)/modules/data/text/decoder/manifest.json",
-		"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json"
+		"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json",
+		"$(MODDABLE)/modules/io/socket/manifest.json"
 	],
 	"modules": {
 		"wsclient/config": "./config",

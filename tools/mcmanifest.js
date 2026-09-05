@@ -176,6 +176,64 @@ export class MakeFile extends FILE {
 		});
 		this.line("");
 	}
+	checkConfigSymbols(tool, sdkconfig, outputConfigDirectory) {
+		let path = outputConfigDirectory + tool.slash + "build" + tool.slash + "config" + tool.slash + "sdkconfig.json";
+		if (1 != tool.isDirectoryOrFile(path))
+			return;
+		let symbols;
+		try {
+			symbols = JSON.parse(tool.readFileString(path));
+		}
+		catch {
+			return;
+		}
+		let unknown = [];
+		sdkconfig.split(/[\r\n]+/).forEach(line => {
+			let match = /^CONFIG_([A-Za-z0-9_]+)=/.exec(line);
+			if (match && !(match[1] in symbols))
+				unknown.push(match[1]);
+		});
+		if (!unknown.length)
+			return;
+		const prefixes = new Set;
+		for (let name in symbols) {
+			let parts = name.split("_");
+			if (parts.length > 2)
+				prefixes.add(parts[0] + "_" + parts[1]);
+		}
+		const renames = this.readConfigRenames(tool);
+		unknown.forEach(name => {
+			let to = renames["CONFIG_" + name];
+			let parts = name.split("_");
+			if (!to && !((parts.length > 2) && prefixes.has(parts[0] + "_" + parts[1])))
+				return;
+			tool.reportWarning(null, 0, `sdkconfig: ESP-IDF does not define CONFIG_${name}${to ? ` (renamed to ${to})` : ""} - the setting has no effect`);
+		});
+	}
+	readConfigRenames(tool) {
+		const renames = {};
+		const idf = tool.getenv("IDF_PATH");
+		if (!idf)
+			return renames;
+		const read = path => {
+			if (1 != tool.isDirectoryOrFile(path))
+				return;
+			tool.readFileString(path).split(/[\r\n]+/).forEach(line => {
+				let parts = line.trim().split(/\s+/);
+				if ((2 == parts.length) && parts[0].startsWith("CONFIG_") && !parts[0].startsWith("#"))
+					renames[parts[0]] = parts[1];
+			});
+		};
+		read(idf + tool.slash + "sdkconfig.rename");
+		let components = idf + tool.slash + "components";
+		if (-1 == tool.isDirectoryOrFile(components)) {
+			tool.enumerateDirectory(components).forEach(name => {
+				if (!name.startsWith("."))
+					read(components + tool.slash + name + tool.slash + "sdkconfig.rename");
+			});
+		}
+		return renames;
+	}
 	setConfigOption(sdkconfig, option) {
 		let name = option.name;
 		let value = option.value;
@@ -334,6 +392,9 @@ otadata, data, ota, , ${OTADATA_SIZE},`;
 			}
 		}
 
+		for (let name in tool.manifest.esp32Config)
+			mergedConfig.push(name + "=" + tool.manifest.esp32Config[name]);
+
 		// Merge any application sdkconfig files
 		if (tool.environment.SDKCONFIGPATH != baseConfigDirectory) {
 			let appConfigFile = tool.environment.SDKCONFIGPATH + tool.slash + "sdkconfig.defaults";
@@ -397,48 +458,6 @@ otadata, data, ota, , ${OTADATA_SIZE},`;
 			}
 		});
 
-		//BLE configuration, moved from bles2gatt.js
-		let defines = tool.defines;
-		if (defines && ("ble" in defines)) {
-			let server, client, nimble;
-			client = server = false;
-			if ("server" in defines.ble && true == defines.ble.server)
-				server = true;
-			if ("client" in defines.ble && true == defines.ble.client)
-				client = true;
-			nimble = ("esp32" == tool.platform) && !(tool.getenv("ESP32_BLUEDROID") === "1");
-
-			let options = [];
-			if (client || server) {
-				options.push({ name: "CONFIG_BT_ENABLED", value: "y" });
-				if (nimble) {
-					options.push({ name: "CONFIG_BT_NIMBLE_ENABLED", value: "y" });
-					options.push({ name: "CONFIG_BT_BLUEDROID_ENABLED", value: "n" });
-					options.push({ name: "CONFIG_BTDM_CTRL_MODE_BLE_ONLY", value: "y" });
-					options.push({ name: "CONFIG_BT_NIMBLE_SM_LEGACY", value: "y" });
-					options.push({ name: "CONFIG_BT_NIMBLE_SM_SC", value: "y" });
-					options.push({ name: "CONFIG_BT_NIMBLE_ROLE_PERIPHERAL", value: (server ? "y" : "n") });
-					options.push({ name: "CONFIG_BT_NIMBLE_ROLE_CENTRAL", value: (client ? "y" : "n") });
-				}
-				else {
-					options.push({ name: "CONFIG_BT_BLUEDROID_ENABLED", value: "y" });
-					options.push({ name: "CONFIG_BT_NIMBLE_ENABLED", value: "n" });
-					options.push({ name: "CONFIG_BT_BLE_SMP_ENABLE", value: "y" });
-					options.push({ name: "CONFIG_BT_GATTS_ENABLE", value: (server ? "y" : "n") });
-					options.push({ name: "CONFIG_BT_GATTC_ENABLE", value: (client ? "y" : "n") });
-				}
-			} else {
-				options.push({ name: "CONFIG_BT_ENABLED", value: "n" });
-			}
-
-			for (let i = 0; i < options.length; ++i) {
-				let result = this.setConfigOption(baseConfig, options[i]);
-				if (result.changed) {
-					baseConfig = result.sdkconfig;
-				}
-			}
-		}
-
 		// Write the result, if it has changed
 		let buildConfigFile = outputConfigDirectory + tool.slash + "sdkconfig.mc";
 		tool.setenv("SDKCONFIG_FILE", buildConfigFile);
@@ -481,7 +500,7 @@ otadata, data, ota, , ${OTADATA_SIZE},`;
 				server = true;
 			if ("client" in defines.ble && true == defines.ble.client)
 				client = true;
-			nimble = ("esp32" == tool.platform) && !(tool.getenv("ESP32_BLUEDROID") === "1");
+			nimble = ("esp32" == tool.platform);		// Bluedroid is legacy; esp32 builds use NimBLE
 		}
 		this.write("$(TMP_DIR)");
 		this.write(tool.slash);
@@ -1135,6 +1154,19 @@ otadata, data, ota, , ${OTADATA_SIZE},`;
 				depStr.push(`grep -q 'espressif/esp_tinyusb' ${idf_component} || idf.py add-dependency "espressif/esp_tinyusb"`);
 			this.line("BUILD_DEPENDENCIES = " + depStr.join("& "));
 			this.line();
+
+			const core = tool.environment.IDF_COMPONENTS_CORE;
+			if (core) {
+				let componentsStr = "set(COMPONENTS " + core;
+				for (dep of tool.dependencies) {
+					if (undefined !== dep.idf)
+						componentsStr += ` ${dep.idf}`;
+				}
+				componentsStr += ")\n";
+				const componentsFile = tool.outputConfigDirectory + tool.slash + "xs_idf_components.txt";
+				if ((tool.isDirectoryOrFile(componentsFile) != 1) || (tool.readFileString(componentsFile) != componentsStr))
+					tool.writeFileString(componentsFile, componentsStr);
+			}
 
 			let cmakeTweakFile = tool.outputConfigDirectory + tool.slash + "xs_idf_deps.txt";
 			let tweakStr = "set(ESP_COMPONENTS ";
@@ -2174,7 +2206,8 @@ class ModulesRule extends Rule {
 		else if (parts.extension == ".d.ts")
 			this.appendFile(tool.dtsFiles, target, source, include);
 		else if (parts.extension == ".json") {
-			if (parts.name.startsWith("manifest"))
+			// build and package configuration, never modules. they are matched by wildcards like "$(TYPINGS)/*" and would otherwise be compiled into the application
+			if (parts.name.startsWith("manifest") || parts.name.startsWith("tsconfig") || ("package" == parts.name) || ("package-lock" == parts.name))
 				;
 			else if ("nodered2mcu" === query.transform)
 				this.appendFile(tool.nodered2mcuFiles, target, source, include);
@@ -2611,8 +2644,7 @@ export class Tool extends TOOL {
 		}
 		path = this.environment.MODDABLE + this.slash + "modules" + this.slash + "network" + this.slash + "ble" + this.slash;
 		if ("esp32" == this.platform) {
-			let bluedroid = this.getenv("ESP32_BLUEDROID") === "1";
-			path += bluedroid ? this.platform : "nimble";
+			path += "nimble";		// Bluedroid is legacy; esp32 builds use NimBLE
 /**/			let subclass = this.getenv("ESP32_SUBCLASS");
 /**/			if (undefined === subclass)
 /**/				subclass = "esp32";
@@ -2855,7 +2887,7 @@ export class Tool extends TOOL {
 		manifests.forEach(manifest => {
 			manifest.dependencies?.forEach(dep => {
 				var found = false;
-				for (const cmp in this.manifest.dependency) {
+				for (const cmp of this.manifest.dependency) {
 					if (cmp.namespace != dep.namespace) continue;
 					if (cmp.name != dep.name) continue;
 					if (cmp.idf != dep.idf) continue;
@@ -2953,7 +2985,8 @@ export class Tool extends TOOL {
 		all.errors = this.concatProperty(all.errors, platform.error);
 		all.warnings = this.concatProperty(all.warnings, platform.warning);
 		this.mergeProperties(all.run, platform.run);
-		this.mergeProperties(all.zephyrConfig, platform.zephyrConfig);
+		this.mergeProperties(all.esp32Config, platform.esp32Config, undefined, "esp32Config");
+		this.mergeProperties(all.zephyrConfig, platform.zephyrConfig, undefined, "zephyrConfig");
 		this.mergeProperties(all.zephyrShields, platform.zephyrShields);
 		this.mergeProperties(all.zephyrOverlay, platform.zephyrOverlay);
 		if (platform.typescript) {
@@ -3005,7 +3038,7 @@ export class Tool extends TOOL {
 		}
 		return;
 	}
-	mergeProperties(targets, sources, exclude) {
+	mergeProperties(targets, sources, exclude, what) {
 		if (sources) {
 			for (let name in sources) {
 				if (exclude?.includes(name))
@@ -3013,9 +3046,13 @@ export class Tool extends TOOL {
 				let target = targets[name];
 				let source = sources[name];
 				if (target && source && (typeof target == "object") && (typeof source == "object"))
-					this.mergeProperties(target, source);
-				else
+					this.mergeProperties(target, source, undefined, what);
+				else {
+					// last one wins, but two manifests disagreeing about a build setting is usually a mistake
+					if (what && (undefined !== target) && (target !== source))
+						this.reportWarning(null, 0, `${what}: ${name} set to both "${target}" and "${source}" - using "${source}"`);
 					targets[name] = source;
+				}
 			}
 		}
 	}
@@ -3105,20 +3142,6 @@ export class Tool extends TOOL {
 							manifest.dependencies.push(dep);
 						}
 					}
-					if (platform.components) {
-						var comp;
-						manifest.components = [];
-						for (let i=0; i<platform.components.length; i++) {
-							var comp = platform.components[i];
-							if (undefined === comp.name) {
-								trace(`# bad component name "${comp.name}"\n`);
-								continue;
-							}
-							if (!manifest.components.includes(comp.name))
-								manifest.components.push(comp);
-trace(`# esp32 component "${comp.name}\n`);
-						}
-					}
 				}
 			}
 		}
@@ -3192,6 +3215,7 @@ trace(`# esp32 component "${comp.name}\n`);
 			warnings:[],
 			run:{},
 			typescript: {compiler: "tsc", tsconfig: {compilerOptions: {}}},
+			esp32Config:{},
 			zephyrConfig:{},
 			zephyrShields:{},
 			zephyrOverlay:{},

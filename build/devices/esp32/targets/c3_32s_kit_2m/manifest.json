@@ -6,8 +6,10 @@
 		"PARTITIONS_FILE_FOR_TARGET": "./sdkconfig/partitions.csv"
 	},
 	"include": [
-		"$(MODULES)/drivers/button/manifest.json",
-		"$(MODULES)/drivers/led/manifest.json"
+		"$(MODDABLE)/modules/io/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/led/rgb/manifest.json",
+		"$(MODULES)/drivers/peripherals/led/pwm/manifest.json"
 	],
 	"modules": {
 		"setup/target": "./setup-target"
@@ -18,7 +20,7 @@
 	"config": {
 		"screen": "",
 		"led": {
-			"pin": 19
+			"rainbow": 1
 		}
 	},
 	"creation": {

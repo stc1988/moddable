@@ -1,0 +1,23 @@
+{
+	"include": [
+		"$(MODDABLE)/examples/manifest_base.json",
+		"$(COMMODETTO)/manifest_bitmap.json",
+		"$(COMMODETTO)/manifest_parsebmf.json"
+	],
+	"modules": {
+		"commodetto/Poco": "$(COMMODETTO)/commodettoPoco",
+		"commodetto/PocoCore": "$(COMMODETTO)/commodettoPocoCore",
+		"commodetto/*": "$(COMMODETTO)/commodettoPocoBlit",
+		"commodetto/cfe": "$(COMMODETTO)/cfeBMF",
+		"*": "./main"
+	},
+	"preload": [
+		"commodetto/*"
+	],
+	"resources": {
+		"*-mask": [
+			"$(MODDABLE)/examples/assets/fonts/OpenSans-Regular-24",
+			"$(MODDABLE)/examples/assets/fonts/OpenSans-Semibold-28"
+		]
+	}
+}

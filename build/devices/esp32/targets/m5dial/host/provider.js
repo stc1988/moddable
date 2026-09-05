@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023  Moddable Tech, Inc.
+ * Copyright (c) 2023-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -29,39 +29,11 @@ import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 import RTC from "embedded:RTC/BM8563";
 import Touch from "embedded:sensor/Touch/FT6x06";
+import MFRC522 from "embedded:sensor/RFID/MFRC522";
 
 import Timer from "timer";
-
-//@@ Move Button class to common module
-class Button {
-  #io;
-  #onPush;
-
-  constructor(options) {
-    options = { ...options };
-    if (options.onReadable || options.onWritable || options.onError)
-      throw new Error();
-
-    if (options.target) this.target = options.target;
-
-    const Digital = options.io;
-    if (options.onPush) {
-      this.#onPush = options.onPush;
-      options.onReadable = () => this.#onPush();
-      options.edge = Digital.Rising | Digital.Falling;
-    }
-
-    this.#io = new Digital(options);
-    this.#io.pressed = options.invert ? 0 : 1;
-  }
-  close() {
-    this.#io?.close();
-    this.#io = undefined;
-  }
-  get pressed() {
-    return this.#io.read() === this.#io.pressed ? 1 : 0;
-  }
-}
+import Backlight from "backlight";
+import Button from "button";
 
 //@@ Move Tone class to common module
 const notes = new Map();
@@ -121,26 +93,50 @@ class Tone {
   }
 }
 
+class ButtonA {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.buttonA,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonFlash {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.buttonFlash,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
 const device = {
   I2C: {
     default: {
       io: I2C,
       data: 13,
-      clock: 15,
+      clock: 15
     },
     internal: {
       io: I2C,
       data: 11,
-      clock: 12,
-    },
+      clock: 12
+    }
   },
   SPI: {
     default: {
       io: SPI,
       port: 3,
       clock: 6,
-      out: 5,
-    },
+      out: 5
+    }
   },
   io: {
     Analog,
@@ -151,13 +147,16 @@ const device = {
     PWM,
     Serial,
     SMBus,
-    SPI,
+    SPI
   },
   pin: {
     button: 42,
+    buttonA: 42,
+    buttonFlash: 0,
+	backlight: 9,
     buzzer: 3,
     signal: 41,
-    control: 40,
+    control: 40
   },
   sensor: {
     Touch: class {
@@ -178,30 +177,46 @@ const device = {
         return result;
       }
     },
+    /*
+     * Built-in WS1850S/MFRC522 on internal I2C @ 0x28 (G11 SDA / G12 SCL).
+     * Do not pass reset: RST is shared with LCD_RESET (G8).
+     */
+    RFID: class {
+      constructor(options = {}) {
+        return new MFRC522({
+          ...options,
+          sensor: {
+            ...device.I2C.internal,
+            io: device.io.SMBus,
+            address: 0x28,
+          },
+        });
+      }
+    }
   },
   peripheral: {
-    button: {
-      A: class {
-        constructor(options) {
-          return new Button({
-            ...options,
-            io: Digital,
-            pin: device.pin.button,
-            mode: Digital.InputPullUp,
-            invert: true,
-          });
-        }
-      },
-    },
+	Backlight: class {
+		constructor() {
+			return new Backlight({
+				io: device.io.PWM,
+				pin: device.pin.backlight
+			});
+		}
+	},
+	button: {
+		Default: ButtonFlash,
+		A: ButtonA,
+		Flash: ButtonFlash
+	},
     tone: {
-      Default: Tone,
+      Default: Tone
     },
     RotaryEncoder: class {
       constructor(options) {
         return new PulseCount({
           ...options,
           signal: device.pin.signal,
-          control: device.pin.control,
+          control: device.pin.control
         });
       }
     },
@@ -211,12 +226,12 @@ const device = {
           ...options,
           clock: {
             ...device.I2C.internal,
-            io: SMBus,
-          },
+            io: SMBus
+          }
         });
       }
-    },
-  },
+    }
+  }
 };
 
 export default device;

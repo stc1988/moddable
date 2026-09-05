@@ -39,9 +39,13 @@
 #elif defined(__ets__) && !defined(__ZEPHYR__)
 	static uint32_t gDigitalAvailable[kPinBanks] = {
 		(1 <<  0) |
-		(1 <<  1) |
+#ifndef mxDebug
+		(1 <<  1) |		// UART0 TX - reserved for the debugger in debug builds
+#endif
 		(1 <<  2) |
-		(1 <<  3) |
+#ifndef mxDebug
+		(1 <<  3) |		// UART0 RX - reserved for the debugger in debug builds
+#endif
 		(1 <<  4) |
 		(1 <<  5) |
 		(1 << 12) |

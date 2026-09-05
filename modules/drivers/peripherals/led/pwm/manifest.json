@@ -1,0 +1,6 @@
+{
+	"modules": {
+		"led/pwm": "./pwm"
+	},
+	"preload": "led/pwm"
+}

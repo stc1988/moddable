@@ -22,7 +22,7 @@ class TCP extends Native("xs_tcp_destructor") {
 	constructor(dictionary) { super(); native("xs_tcp_constructor").call(this, dictionary); };
 	close() { return native("xs_tcp_close").call(this); }
 	read() { return native("xs_tcp_read").call(this); }
-	write(byte) { return native("xs_tcp_write").call(this, byte); }
+	write(byte, options) { return native("xs_tcp_write").call(this, byte, options); }
 
 	get remoteAddress() { return native("xs_tcp_get_remoteAddress").call(this); }
 	get remotePort() { return native("xs_tcp_get_remotePort").call(this); }

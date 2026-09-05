@@ -12,7 +12,8 @@
 	"platforms": {
 		"esp32": {
             "dependency": [
-                { "idf": "esp_driver_dac" }
+                { "idf": "esp_driver_dac" },
+                { "idf": "esp_driver_i2s" }
             ]
 		},
 		"pico": {

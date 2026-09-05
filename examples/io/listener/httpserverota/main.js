@@ -12,33 +12,18 @@
  *
  */
 
-import HTTPServer from "embedded:network/http/server"
-import Listener from "embedded:io/socket/listener";
 import OTA from "embedded:update";
 import flash from "embedded:storage/flash";
+import WiFi from "embedded:network/interface/wifi";
 import Timer from "timer";
 import FFI from "mc/ffi";
 const Natives = new FFI;
 
-import WebPage from "embedded:network/http/server/options/webpage";
-
-const port = 80;
 const router = new Map;
-const notFound = {
-	...WebPage,		// STATIC ROUTE
-	data: ArrayBuffer.fromString("Not found\n"),
-};
 
-new HTTPServer({
-	io: Listener,
-	port,
-	onConnect(connection) {
-		connection.accept({
-			onRequest(request) {
-				this.route = router.get(request.path) ?? notFound;
-			},
-		})
-	}
+const server = new device.network.http.server.io({
+	...device.network.http.server,
+	onRoute: request => router.get(request.path)
 });
 
 router.set("/ota", {
@@ -86,3 +71,7 @@ router.set("/ota", {
 		this.updater?.close();
 	}
 });
+
+using wifi = new WiFi({})
+trace("OTA Server ready\n");
+trace(`  curl -T $MODDABLE/build/bin/esp32/moddable_six/debug/balls/xs_esp32.bin http://${wifi.address}:${server.port}/ota\n`);

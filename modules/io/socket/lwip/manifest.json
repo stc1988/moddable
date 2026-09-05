@@ -1,0 +1,13 @@
+{
+	"modules": {
+		"*": "$(MODDABLE)/modules/network/socket/lwip/modLwipSafe",
+		"embedded:io/socket/tcp": "$(MODDABLE)/modules/io/socket/lwip/tcp",
+		"embedded:io/socket/udp": "$(MODDABLE)/modules/io/socket/lwip/udp",
+		"embedded:io/socket/listener": "$(MODDABLE)/modules/io/socket/lwip/listener"
+	},
+	"preload": [
+		"embedded:io/socket/tcp",
+		"embedded:io/socket/udp",
+		"embedded:io/socket/listener"
+	]
+}

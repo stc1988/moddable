@@ -9,37 +9,25 @@
 		"BEFORE_DEBUGGING_MESSAGE": "Press and release the RESET button."
 	},
 	"include": [
-		"$(MODULES)/drivers/button/manifest.json",
-		"$(MODULES)/drivers/neopixel/manifest.json",
+		"$(MODDABLE)/modules/io/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/led/neopixel/manifest.json",
 		"$(MODULES)/drivers/ili9341/manifest.json"
 	],
 	"modules": {
 		"setup/target": "./setup-target"
 	},
 	"preload": [
-		"setup/target",
-		"neopixel"
+		"setup/target"
 	],
 	"config": {
 		"screen": "ili9341",
 		"led": {
 			"power": 38,
 			"pin": 39,
-			"rainbow": true,
+			"rainbow": false,
 			"brightness": 32
 		}
-	},
-	"creation": {
-		"static": 524288,
-		"chunk": {
-			"initial": 131072,
-			"incremental": 512
-		},
-		"heap": {
-			"initial": 8192,
-			"incremental": 64
-		},
-		"stack": 512
 	},
 	"defines": {
 		"i2c": {

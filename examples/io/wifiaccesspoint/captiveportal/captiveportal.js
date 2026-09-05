@@ -1,14 +1,20 @@
 /*
  * Copyright (c) 2026  Moddable Tech, Inc.
  *
- *   This file is part of the Moddable SDK.
- *
- *   This work is licensed under the
- *       Creative Commons Attribution 4.0 International License.
- *   To view a copy of this license, visit
- *       <http://creativecommons.org/licenses/by/4.0>.
- *   or send a letter to Creative Commons, PO Box 1866,
- *   Mountain View, CA 94042, USA.
+ *   This file is part of the Moddable SDK Runtime.
+ * 
+ *   The Moddable SDK Runtime is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU Lesser General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ * 
+ *   The Moddable SDK Runtime is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU Lesser General Public License for more details.
+ * 
+ *   You should have received a copy of the GNU Lesser General Public License
+ *   along with the Moddable SDK Runtime.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -18,11 +24,9 @@ import WiFi from "embedded:network/interface/wifi";
 import UDP from "embedded:io/socket/udp";
 import DNSServer from "embedded:network/dns/server/udp";
 
-import Listener from "embedded:io/socket/listener";
-import HTTPServer from "embedded:network/http/server";
-import WebPage from "embedded:network/http/server/options/webpage";
-import WebSocketHandshake from "embedded:network/http/server/options/websocket";
-import WebSocket from "WebSocket";
+import StaticRoute from "embedded:network/http/server/route/static";
+import WebSocketHandshake from "embedded:network/http/server/route/ws/handshake";
+import WebSocketClient from "embedded:network/websocket/client";
 
 const ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
 function randomText(length) {
@@ -63,12 +67,12 @@ class CaptivePortal {
 	#httpServer;
 	#dnsServer;
 	#ws;
-	#port;
 	#channel;
 	#onPage;
 	#onClose;
 	#onError;
 	#onStatus;
+	#onInfo;
 	#phase = "";
 	#credentials;
 	#ssid;
@@ -76,7 +80,7 @@ class CaptivePortal {
 	#scan;
 
 	constructor(options) {
-		const {onPage} = options;
+		const {onPage, target} = options;
 		if (!onPage)
 			throw new Error("onPage required");
 
@@ -84,10 +88,13 @@ class CaptivePortal {
 		this.#onClose = options.onClose;
 		this.#onError = options.onError;
 		this.#onStatus = options.onStatus;
-		this.#port = options.port ?? 80;
+		this.#onInfo = options.onInfo;
 		this.#channel = options.channel;
 		this.#ssid = options.SSID ?? "Moddable";
 		this.#password = options.password ?? randomText(10);
+
+		if (undefined !==target)
+			this.target = target;
 
 		this.#wifi = new WiFi({
 			onChanged: property => this.#onWiFiChanged(property, this.#wifi[property])
@@ -110,10 +117,9 @@ class CaptivePortal {
 				if (found)
 					this.#scan = Array.from(found.values());
 
-				let SSID;
-				do {
-					SSID = `${this.#ssid}-${randomText(6)}`;
-				} while (found?.has(SSID));
+				let SSID = this.#ssid;
+				while (found?.has(SSID))
+					SSID = `${this.#ssid}-${randomText(4)}`;
 
 				const options = {
 					SSID,
@@ -164,8 +170,10 @@ class CaptivePortal {
 	#onWiFiChanged(property, value) {
 		if ("connection" !== property) return;
 
-		if (value >= 500)
+		if (value >= 500) {
 			this.#setPhase("provisioned", this.#credentials);
+			this.#onInfo?.({event: "credentials", ...this.#credentials})
+		}
 		else if (value >= 300)
 			this.#setPhase("connecting", this.#credentials);
 		else if ((value <= 200) && ("connecting" === this.#phase))
@@ -184,8 +192,12 @@ class CaptivePortal {
 	}
 
 	#sendWS(msg) {
+		if (!this.#ws)
+			return;
+
 		try {
-			this.#ws?.send(JSON.stringify(msg));
+			this.#ws.target.pending.push(new Uint8Array(ArrayBuffer.fromString(JSON.stringify(msg))));
+			this.#flushWS();
 		}
 		catch (e) {
 			this.#fail(e);
@@ -201,72 +213,114 @@ class CaptivePortal {
 
 	#initializeHTTPServer() {
 		const portal = this;
-		return new HTTPServer({
-			io: Listener,
-			port: this.#port,
-			onConnect(connection) {
-				connection.accept({
-					onRequest(request) {
-						if ("/ws" === request.path) {
-							this.route = {
-								...WebSocketHandshake,
-								onDone() {
-									portal.#attachWebSocket(new WebSocket({attach: this.detach()}));
-								}
-							};
-							return;
-						}
+		return new device.network.http.server.io({
+			...device.network.http.server,
+			port: 80,
+			onRoute: request => {
+				if ("GET" !== request.method)
+					return;
 
-						const page = portal.#onPage(request.path);
-						if (page) {
-							this.route = {
-								...WebPage,
-								data: page.content,
-								headers: new Map([
-									["content-type", page.mimeType],
-									["cache-control", "no-store"],
-									["connection", "close"]
-								])
-							};
+				if ("/ws" === request.path) {
+					return {
+						...WebSocketHandshake,
+						onDone() {
+							portal.#attachWebSocket(this.detach());
 						}
-						else {
-							const dest = `http://${portal.#ap.address}`;
-							this.route = {
-								...WebPage,
-								data: ArrayBuffer.fromString(`<HTML><HEAD><META http-equiv="refresh" content="0; URL=${dest}"></HEAD></HTML>`),
-								status: 200,
-								headers: new Map([
-									["location", dest],
-									["content-type", "text/html"],
-									// ["cache-control", "no-store"],
-									["connection", "close"]
-								])
-							};
-						}
-					}
-				});
+					};
+				}
+
+				const page = portal.#onPage(request.path);
+				if (page) {
+					return {
+						...StaticRoute,
+						data: page.content,
+						headers: new Map([
+							["content-type", page.mimeType],
+							["cache-control", "no-store"]
+						])
+					};
+				}
+
+				const dest = `http://${portal.#ap.address}`;
+				return {
+					...StaticRoute,
+					data: `<HTML><HEAD><META http-equiv="refresh" content="0; URL=${dest}"></HEAD></HTML>`,
+					status: 200,
+					headers: new Map([
+						["location", dest],
+						["content-type", "text/html"],
+						["cache-control", "no-store"]
+					])
+				};
 			}
 		});
 	}
 
-	#attachWebSocket(ws) {
-		this.#ws = ws;
-		ws.addEventListener("open", () => this.#sendWS({event: "ws initialize"}));
-		ws.addEventListener("message", event => {
-			try {
-				const msg = JSON.parse(event.data);
-				this.#handleWSMessage(msg);
+	#attachWebSocket(socket) {
+		const portal = this;
+		let message;
+
+		this.#ws = new WebSocketClient({
+			attach: socket,
+			target: {open: false, writable: 0, pending: []},
+			onReadable(count, options) {
+				if (count) {
+					const data = this.read(count);
+					message = message ? message.concat(data) : data;
+				}
+				if (options.more)
+					return;
+
+				const complete = message;
+				message = undefined;
+				if (options.binary || !complete)
+					return;
+
+				try {
+					portal.#handleWSMessage(JSON.parse(String.fromArrayBuffer(complete)));
+				}
+				catch (e) {
+					portal.#fail(e);
+				}
+			},
+			onWritable(count) {
+				const state = this.target;
+				state.writable = count;
+				if (!state.open) {
+					state.open = true;
+					portal.#sendWS({event: "ws initialize"});
+				}
+				portal.#flushWS();
+			},
+			onControl(opcode) {
+				if (WebSocketClient.close === opcode)
+					portal.#ws = null;
+			},
+			onError() {
+				portal.#ws = null;
+				portal.#fail(new Error("WebSocket error"));
 			}
-			catch (e) {
-				this.#fail(e);
-			}
 		});
-		ws.addEventListener("close", () => {
-			this.#ws = null;
-		});
-		ws.addEventListener("error", () => {
-			this.#fail(new Error("WebSocket error"));
-		});
+	}
+
+	#flushWS() {
+		const ws = this.#ws;
+		if (!ws)
+			return;
+
+		const state = ws.target;
+		while (state.pending.length && state.writable) {
+			const pending = state.pending[0];
+			const more = pending.byteLength > state.writable;
+			const data = more ? pending.subarray(0, state.writable) : pending;
+
+			state.writable = ws.write(data, {binary: false, more});
+
+			if (more)
+				state.pending[0] = pending.subarray(data.byteLength);
+			else
+				state.pending.shift();
+		}
 	}
 
 	#handleWSMessage(msg) {
@@ -282,6 +336,9 @@ class CaptivePortal {
 				break;
 			case "terminate":
 				this.#handleTerminate();
+				break;
+			default:
+				this.#onInfo?.(msg);
 				break;
 		}
 	}
@@ -324,6 +381,7 @@ class CaptivePortal {
 		if (msg.secure) options.secure = msg.secure;
 		this.#credentials = options;
 		try {
+			this.#wifi.disconnect();		// ensure connect() is a fresh attempt (not currently connected to the same access point)
 			this.#wifi.connect(options);
 		   this.#setPhase("connecting", options);
 		}

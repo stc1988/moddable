@@ -235,29 +235,41 @@ txSlot* fxGlobalSetProperty(txMachine* the, txSlot* instance, txID id, txIndex i
 
 void fx_decodeURI(txMachine* the)
 {
-	if (mxArgc < 1)
-		mxSyntaxError("no URI parameter");
+	if (mxArgc < 1) {
+		mxResult->value.string = mxUndefinedString.value.string;
+		mxResult->kind = mxUndefinedString.kind;
+		return;
+	}
 	fxDecodeURI(the, (txString)gxURIReservedSet);
 }
 
 void fx_decodeURIComponent(txMachine* the)
 {
-	if (mxArgc < 1)
-		mxSyntaxError("no URI Component parameter");
+	if (mxArgc < 1) {
+		mxResult->value.string = mxUndefinedString.value.string;
+		mxResult->kind = mxUndefinedString.kind;
+		return;
+	}
 	fxDecodeURI(the, (txString)gxURIEmptySet);
 }
 
 void fx_encodeURI(txMachine* the)
 {
-	if (mxArgc < 1)
-		mxSyntaxError("no URI parameter");
+	if (mxArgc < 1) {
+		mxResult->value.string = mxUndefinedString.value.string;
+		mxResult->kind = mxUndefinedString.kind;
+		return;
+	}
 	fxEncodeURI(the, (txString)gxURIReservedAndUnescapedSet);
 }
 
 void fx_encodeURIComponent(txMachine* the)
 {
-	if (mxArgc < 1)
-		mxSyntaxError("no URI Component parameter");
+	if (mxArgc < 1) {
+		mxResult->value.string = mxUndefinedString.value.string;
+		mxResult->kind = mxUndefinedString.kind;
+		return;
+	}
 	fxEncodeURI(the, (txString)gxURIUnescapedSet);
 }
 

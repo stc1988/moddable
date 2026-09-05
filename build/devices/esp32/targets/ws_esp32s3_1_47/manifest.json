@@ -27,8 +27,6 @@
 			"rst_pin": 39,
 			"column_offset": 34,
 			"row_offset": 0,
-			"backlight": 48,
-			"baklight_on" : 1,
 			"spi_port": "SPI3_HOST",
 			"spi_mode": "0"
 		}

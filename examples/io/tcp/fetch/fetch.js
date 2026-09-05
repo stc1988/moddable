@@ -96,8 +96,8 @@ function fetchClientRequest(url, options) {
 		const host = url.hostname;
 		if (protocol == "http:") {
 			const port = url.port || 80;
-			client = new device.network.http.io({ 
-				...device.network.http,
+			client = new device.network.http.client.io({ 
+				...device.network.http.client,
 				host, 
 				port,  
 				onError() {
@@ -108,8 +108,8 @@ function fetchClientRequest(url, options) {
 		}
 		else {
 			const port = url.port || 443;
-			client = new device.network.https.io({ 
-				...device.network.https,
+			client = new device.network.https.client.io({ 
+				...device.network.https.client,
 				host, 
 				port,  
 				onError() {

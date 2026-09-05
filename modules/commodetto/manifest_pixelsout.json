@@ -1,0 +1,6 @@
+{
+	"modules": {
+		"commodetto/PixelsOut": "$(COMMODETTO)/commodettoPixelsOut"
+	},
+	"preload": "commodetto/PixelsOut"
+}

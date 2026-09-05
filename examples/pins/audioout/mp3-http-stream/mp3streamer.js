@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023  Moddable Tech, Inc.
+ * Copyright (c) 2022-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -35,6 +35,7 @@ export default class {
 	#readBuffer;
 	#info = {};
 	#mp3 = new MP3;
+	#meta
 
 	constructor(options) {
 //@@		const bufferDuration = options.bufferDuration ?? 1000;
@@ -47,6 +48,14 @@ export default class {
 			this.#callbacks.onError = options.onError;
 		if (options.onDone)
 			this.#callbacks.onDone = options.onDone;
+		if (options.onMetadata)
+			this.#callbacks.onMetadata = options.onMetadata;
+
+		let headers = options.request?.headers;
+		if (options.onMetadata) {
+			headers = new Map(headers);
+			headers.set("icy-metadata", "1");
+		}
 
 		const o = {
 			...options.http,
@@ -58,6 +67,7 @@ export default class {
 		this.#request = this.#http.request({
 			...options.request,
 			path: options.path,
+			...(headers && {headers}),
 			onHeaders: (status, headers) => {
 				if (2 !== Math.idiv(status, 100)) {
 					this.#callbacks.onError?.call(this, "http request failed, status " + status);
@@ -66,7 +76,15 @@ export default class {
 					return;
 				}
 //@@ could grab content-length here
-				
+
+				const interval = parseInt(headers.get("icy-metaint"));
+				if (interval > 0) {
+					this.#meta = {
+						interval,
+						remaining: interval,
+						pending: 0
+					};
+				}
 			},
 			onReadable: (count) => {
 				if (!this.#readBuffer) {
@@ -129,19 +147,56 @@ export default class {
 		this.#http?.close();
 		this.#http = this.#audio = this.#playing = this.#pending = this.#free = this.#mp3 = undefined;
 	}
+	#extractMetadata() {
+		const readBuffer = this.#readBuffer, meta = this.#meta;
+		let position = readBuffer.position - meta.pending;		// first byte not yet examined
+
+		while (meta.pending) {
+			if (meta.remaining) {			// audio bytes before the next metadata block
+				const use = (meta.pending < meta.remaining) ? meta.pending : meta.remaining;
+				position += use;
+				meta.pending -= use;
+				meta.remaining -= use;
+				continue;
+			}
+
+			// a metadata block begins here: one byte holding its length in 16 byte units, then the block
+			const byteLength = 1 + (readBuffer[position] << 4);
+			if (meta.pending < byteLength)
+				break;						// block incomplete
+
+			if (byteLength > 1) {			// an empty block means the metadata is unchanged
+				let end = readBuffer.indexOf(0, position + 1);		// blocks are null padded to a multiple of 16 bytes
+				if ((end < 0) || (end > (position + byteLength))) end = position + byteLength;
+				this.#callbacks.onMetadata?.call(this, parseMetadata(readBuffer.buffer, position + 1, end - position - 1));
+			}
+
+			readBuffer.copyWithin(position, position + byteLength, readBuffer.position);
+			readBuffer.position -= byteLength;
+			meta.pending -= byteLength;
+			meta.remaining = meta.interval;
+		}
+	}
 	#fillQueue() {
-		const readBuffer = this.#readBuffer;
+		const readBuffer = this.#readBuffer, meta = this.#meta;
 		do {
 			let use = this.#request.readable;
 			let available = readBuffer.length - readBuffer.position;
-			if (use > available) use = available;;
+			if (use > available) use = available;
 			if (use) {
 				this.#request.read(readBuffer.subarray(readBuffer.position, readBuffer.position + use));
 				this.#request.readable -= use;
 				readBuffer.position += use;
+				if (meta) {
+					meta.pending += use;
+					this.#extractMetadata();
+				}
 			}
 
-			if (!readBuffer.position)
+			// audio ends before any incomplete metadata block held at the end of the buffer
+			const end = meta ? (readBuffer.position - meta.pending) : readBuffer.position;
+
+			if (!end)
 				break;		// no data to parse
 
 			if (this.#samplesQueued >= this.#targetSamplesQueued)
@@ -150,8 +205,8 @@ export default class {
 			if (this.#audio.length(this.#stream) < 2)
 				break;		// no free queue elements
 
-			const found = MP3.scan(readBuffer, 0, readBuffer.position, this.#info);
-			if (!found || ((found.position + found.length + MP3.BUFFER_GUARD) > readBuffer.position)) { 
+			const found = MP3.scan(readBuffer, 0, end, this.#info);
+			if (!found || ((found.position + found.length + MP3.BUFFER_GUARD) > end)) {
 				// partial frame, at best
 				if (found) {
 					readBuffer.copyWithin(0, found.position, readBuffer.position);
@@ -159,9 +214,9 @@ export default class {
 				}
 				else {
 					use = 4;
-					if (readBuffer.position < 4) use = readBuffer.position;
-					readBuffer.copyWithin(0, readBuffer.position - use, readBuffer.position);
-					readBuffer.position = use;
+					if (end < 4) use = end;
+					readBuffer.copyWithin(0, end - use, readBuffer.position);
+					readBuffer.position -= (end - use);
 				}
 				if (this.#request.readable)
 					continue;
@@ -205,4 +260,29 @@ export default class {
 			this.#callbacks.onReady?.call(this, true);
 		}
 	}
+}
+
+function parseMetadata(buffer, offset, byteLength) {
+	const metadata = new Map;
+	try {
+		const text = String.fromArrayBuffer(buffer, offset, byteLength);
+		let position = 0;
+		while (position < text.length) {
+			const separator = text.indexOf("='", position);
+			if (separator < 0)
+				break;
+
+			let end = text.indexOf("';", separator + 2);		// a value may contain an apostrophe, but not "';"
+			if (end < 0) {
+				end = text.lastIndexOf("'");					// final field, unterminated
+				if (end <= (separator + 1))
+					break;
+			}
+
+			metadata.set(text.slice(position, separator).trim(), text.slice(separator + 2, end));
+			position = end + 2;
+		}
+	}
+	catch { /* this space intentionally left blank */ }
+	return metadata;
 }

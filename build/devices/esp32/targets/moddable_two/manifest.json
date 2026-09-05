@@ -1,10 +1,11 @@
 {
 	"include": [
-		"$(MODDABLE)/modules/drivers/ili9341/manifest.json",
-		"$(MODDABLE)/modules/drivers/ft6206/manifest.json",
-		"$(MODULES)/pins/pwm/manifest.json",
-		"$(MODULES)/drivers/button/manifest.json",
-		"$(MODULES)/drivers/led/manifest.json"
+		"$(MODULES)/io/manifest.json",
+		"$(MODULES)/drivers/ili9341/manifest.json",
+		"$(MODULES)/drivers/peripherals/backlight/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/drivers/peripherals/led/pwm/manifest.json",
+		"$(MODULES)/drivers/sensors/ft6206/manifest.json"
 	],
 	"modules": {
 		"setup/target": "./setup-target"
@@ -12,7 +13,6 @@
 	"preload": "setup/target",
 	"config": {
 		"screen": "ili9341",
-		"touch": "ft6206",
 		"format": "RGB565BE",
 		"backlight": 18
 	},

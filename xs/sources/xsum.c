@@ -105,12 +105,10 @@
 /* SET UP DEBUG FLAG.  It's a variable if debuging is enabled, and a
    constant if disabled (so that no code will be generated then). */
 
-int xsum_debug = 0;
-
-#ifndef DEBUG
 # define xsum_debug 0
-#endif
-
+# pragma push_macro("c_printf")
+# undef c_printf
+# define c_printf(...) do {} while(0)
 
 /* SET UP INLINE / NOINLINE MACROS. */
 
@@ -2528,3 +2526,5 @@ int xsum_large_chunks_used (xsum_large_accumulator *restrict lacc)
   }
   return c;
 }
+
+# pragma pop_macro("c_printf")

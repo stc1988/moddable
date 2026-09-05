@@ -29,7 +29,7 @@ function B2H(b)
 let sha1 = new Digest("SHA1");
 sha1.write("dGhlIHNhbXBsZSBub25jZQ==");
 sha1.write("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-let result = (new Uint8Array(sha1.gclose())).toBase64();
+let result = (new Uint8Array(sha1.close())).toBase64();
 
 trace(`Calculated hash: ${result}\n`);
 

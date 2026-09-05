@@ -1,7 +1,8 @@
 {
 	"include": [
 		"$(MODDABLE)/modules/data/url/manifest.json",
-		"$(MODDABLE)/examples/io/tcp/mqttsclient/manifest_mqttsclient.json"
+		"$(MODDABLE)/examples/io/tcp/mqttsclient/manifest_mqttsclient.json",
+		"$(MODDABLE)/examples/io/udp/dns/manifest_dns.json"
 	],
 	"modules": {
 		"mqtt/js": "./mqtt"

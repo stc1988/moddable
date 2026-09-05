@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2025  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -390,7 +390,7 @@ void fxBuildString(txMachine* the)
 
 	mxPush(mxIteratorPrototype);
 	slot = fxLastProperty(the, fxNewObjectInstance(the));
-	slot = fxNextHostFunctionProperty(the, slot, mxCallback(fx_String_prototype_iterator_next), 0, mxID(_next), XS_DONT_DELETE_FLAG | XS_DONT_ENUM_FLAG);
+	slot = fxNextHostFunctionProperty(the, slot, mxCallback(fx_String_prototype_iterator_next), 0, mxID(_next), XS_NO_FLAG);
 	slot = fxNextStringXProperty(the, slot, "String Iterator", mxID(_Symbol_toStringTag), XS_DONT_ENUM_FLAG | XS_DONT_SET_FLAG);
 	mxPull(mxStringIteratorPrototype);
 }
@@ -776,7 +776,7 @@ void fx_String_raw(txMachine* the)
 {
 	txInteger argCount = mxArgc;
 	txSlot* raw;
-	txInteger rawCount;
+	txNumber rawCount;
 	if (argCount > 0)
 		fxToInstance(the, mxArgv(0));
 	else
@@ -786,7 +786,7 @@ void fx_String_raw(txMachine* the)
 	raw = the->stack;
 	mxPushSlot(raw);
 	mxGetID(mxID(_length));
-	rawCount = fxToInteger(the, the->stack);
+	rawCount = fxToLength(the, the->stack);
 	mxPop();
 	if (rawCount <= 0) {
 		mxResult->value = mxEmptyString.value;
@@ -821,7 +821,7 @@ void fx_String_raw(txMachine* the)
 		item = list->next;
 		while (item) {
 			item->value.key.sum = mxStringLength(item->value.string);
-			size += item->value.key.sum;
+			size = fxAddChunkSizes(the, size, item->value.key.sum);
 			item = item->next;
 		}
 		size++;
@@ -2003,10 +2003,21 @@ txInteger fxArgToPosition(txMachine* the, txInteger argi, txInteger index, txInt
 	return index;
 }
 
+#if __has_builtin(__builtin_add_overflow)
+	#define mxAddSize(a, b) \
+		if (__builtin_add_overflow(a, b, &a)) \
+			fxAbort(the, XS_NOT_ENOUGH_MEMORY_EXIT)
+#else
+	#define mxAddSize(a, b) \
+		if ((txInteger)((txU4)a + (txU4)b) < a) \
+			fxAbort(the, XS_NOT_ENOUGH_MEMORY_EXIT); \
+		else \
+			a = (txInteger)((txU4)a + (txU4)b)
+#endif
+
 void fxPushSubstitutionString(txMachine* the, txSlot* string, txInteger size, txInteger offset, txSlot* match, txInteger length, txInteger count, txSlot* captures, txSlot* groups, txSlot* replace)
 {
 	txString r;
-	txInteger m;
 	txInteger l;
 	txBoolean flag;
 	txByte c, d;
@@ -2014,31 +2025,28 @@ void fxPushSubstitutionString(txMachine* the, txSlot* string, txInteger size, tx
 	txSlot* capture;
 	txString s;
 	r = replace->value.string;
-	m = 0;
 	l = 0;
 	flag = 0;
 	while ((c = c_read8(r++))) {
-		if (m <= l)
-			m = l;
-		else
-			fxAbort(the, XS_NOT_ENOUGH_MEMORY_EXIT);
+		txInteger delta = 1;
 		if (c == '$') {
 			c = c_read8(r++);
 			switch (c) {
 			case '$':
-				l++;
 				flag = 1;
 				break;
 			case '&':
-				l += length;
+				delta = length;
 				flag = 1;
 				break;
 			case '`':
-				l += offset;
+				delta = offset;
 				flag = 1;
 				break;
 			case '\'':
-				l += size - (offset + length);
+				delta = size - offset - length;
+				if (delta < 0)
+					delta = 0;
 				flag = 1;
 				break;
 			case '<':
@@ -2051,18 +2059,19 @@ void fxPushSubstitutionString(txMachine* the, txSlot* string, txInteger size, tx
 					}
 					if (d) {
 						txInteger n = mxPtrDiff(r - t);
-						txID name;
-						if (n > 255)
-							fxJump(the);
-						c_memcpy(the->nameBuffer, t, n);
-						the->nameBuffer[n] = 0;
-						name = fxFindName(the, the->nameBuffer);
+						txID name = XS_NO_ID;
+						if ((size_t)(n + 1) <= sizeof(the->nameBuffer)) {
+							c_memcpy(the->nameBuffer, t, n);
+							the->nameBuffer[n] = 0;
+							name = fxFindName(the, the->nameBuffer);
+						}
+						delta = 0;
 						if (name) {
  							mxPushSlot(groups);
 							mxGetID(name);
 							if (!mxIsUndefined(the->stack)) {
 								fxToString(the, the->stack);
-								l = fxAddChunkSizes(the, l, mxStringLength(the->stack->value.string));
+								delta = mxStringLength(the->stack->value.string);
 							}
 							mxPop();
 						}
@@ -2071,11 +2080,11 @@ void fxPushSubstitutionString(txMachine* the, txSlot* string, txInteger size, tx
 					}
 					else {
 						r = t;
-						l += 2;
+						delta = 2;
 					}
 				}
 				else {
-					l += 2;
+					delta = 2;
 				}
 				break;
 			default:
@@ -2095,32 +2104,25 @@ void fxPushSubstitutionString(txMachine* the, txSlot* string, txInteger size, tx
 						d = 0;
 					if ((0 < i) && (i <= count)) {
 						capture = (captures + count - i);
+						delta = 0;
 						if (capture->kind != XS_UNDEFINED_KIND)
-							l = fxAddChunkSizes(the, l, mxStringLength(capture->value.string));
+							delta = mxStringLength(capture->value.string);
 						flag = 1;
 					}
-					else {
-						l++;
-						l++;
-						if (d)
-							l++;
-					}
+					else
+						delta = d ? 3 : 2;
 				}
 				else {
-					l++;
 					if (c)
-						l++;
+						delta = 2;
+					else
+						r--;
 				}
 				break;
 			}
-			if (!c)
-				break;
 		}
-		else
-			l++;
+		mxAddSize(l, delta);
 	}
-	if (m > l)
-		fxAbort(the, XS_NOT_ENOUGH_MEMORY_EXIT);
 	if (flag) {
 		mxPushUndefined();
 		the->stack->value.string = (txString)fxNewChunk(the, fxAddChunkSizes(the, l, 1));
@@ -2145,7 +2147,7 @@ void fxPushSubstitutionString(txMachine* the, txSlot* string, txInteger size, tx
 					s += l;
 					break;
 				case '\'':
-					l = size - (offset + length);
+					l = size - offset - length;
                     if (l > 0) {
                         c_memcpy(s, string->value.string + offset + length, l);
                         s += l;
@@ -2161,12 +2163,12 @@ void fxPushSubstitutionString(txMachine* the, txSlot* string, txInteger size, tx
 						}
 						if (d) {
 							txInteger n = mxPtrDiff(r - t);
-							txID name;
-							if (n > 255)
-								fxJump(the);
-							c_memcpy(the->nameBuffer, t, n);
-							the->nameBuffer[n] = 0;
-							name = fxFindName(the, the->nameBuffer);
+							txID name = XS_NO_ID;
+							if ((size_t)(n + 1) <= sizeof(the->nameBuffer)) {
+								c_memcpy(the->nameBuffer, t, n);
+								the->nameBuffer[n] = 0;
+								name = fxFindName(the, the->nameBuffer);
+							}
 							if (name) {
 								mxPushSlot(groups);
 								mxGetID(name);

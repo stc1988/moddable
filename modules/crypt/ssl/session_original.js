@@ -151,6 +151,7 @@ class SSLSession {
 				delete this.cacheManager;
 			}
 			// remove to instance variables that are no longer necessary
+			this.handshakeDigests = null;
 			delete this.handshakeMessages;
 			delete this.clientSessionID;
 			delete this.serverSessionID;

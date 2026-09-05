@@ -1,4 +1,7 @@
 {
+	"build": {
+		"NAME": "poll-lis3dh"
+	},
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/modules/drivers/sensors/lis3dh/manifest.json"

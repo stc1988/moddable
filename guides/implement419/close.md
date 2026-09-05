@@ -1,14 +1,14 @@
 ---
-name: `close()` and `[Symbol.dispose]`
+name: close() and [Symbol.dispose]
 SPDX-FileCopyrightText: Copyright (c) 2026 Moddable Tech, Inc.
-updated: 2026-08-04
+updated: 2026-08-07
 ---
 
 The `close()` method is responsible for releasing all resources held by the instance. Callers expect the resources to be released immediately so that they can be reused by another instance.
 
 ---
 
-`close()` is defined by ECMA-419 to be safe to call more than once. That means that if `close()` is called more than once, all executions beyond the first should do nothing. A simple way to achieve this is to set any resources to `undefined` in `close()` and then use [optional chaining](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Optional_chaining) to check if they are `undefined`.
+`close()` is defined by ECMA-419 to be safe to call more than once. That means that if `close()` is called more than once, all executions beyond the first should do nothing. A simple way to achieve this is to set any resources to `undefined` in `close()` and use [optional chaining](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Optional_chaining) to check if they are `undefined`.
 
 ```js
 class ExampleSensor {
@@ -53,28 +53,34 @@ class ExampleSensor {
 
 ---
 
-After `close()` is called, the instance may not invoke any callbacks. That means no callbacks from within `close()` or any later time. If you use a timer to invoke a callback, clear the timer from `close()`. This requirement can sometimes be more difficult to implement from C code where native callbacks cannot be canceled once they are in flight.
+After `close()` is called, an instance may not invoke any callbacks. That means no callbacks from within `close()` or any later time.
+
+This example binds a callback to the `onReadable()` notification of a [Digital](https://419.ecma-international.org/#io-classes-digital) interrupt. The `close()` method releases the Digital instance, canceling any pending callbacks.
+
+If you use a timer to invoke a callback, clear the timer in `close()`.
 
 This rule does not apply to [asynchronous `close()`](https://419.ecma-international.org/#base-class-pattern-close-method). Most `close()` methods defined by ECMA-419 are synchronous.
 
-```js
-import Timer from "timer";
+This requirement can be difficult to implement in C code for native callbacks that cannot be canceled once in flight.
 
+```js
 class ExampleSensor {
-	#onSample;
-	#value;
-	#timer;
+	#interrupt;
 
 	constructor(options) {
-		this.#onSample = options.onSample;
-		this.#timer = Timer.repeat(() => {
-			this.#value = {temperature: 20};
-			this.#onSample?.();
-		}, 1000);
+		const {interrupt, onSample} = options;
+
+		if (interrupt && onSample) {
+			this.#interrupt = new interrupt.io({
+				...interrupt,
+				edge: interrupt.io.Rising,
+				onReadable: onSample.bind(this)
+			});
+		}
 	}
 	close() {
-		Timer.clear(this.#timer);
-		this.#timer = undefined;
+		this.#interrupt?.close();
+		this.#interrupt = undefined;
 	}
 }
 ```

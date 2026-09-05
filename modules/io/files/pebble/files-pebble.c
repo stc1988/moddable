@@ -211,7 +211,10 @@ void xs_filepfs_write(xsMachine *the)
 
 	// write
 	throwIf(pfs_seek(fd, position, FSeekSet));
-	throwIf(pfs_write(fd, buffer, length));
+	int result = pfs_write(fd, buffer, length);
+	throwIf(result);
+	if ((xsUnsignedValue)result != length)
+		xsUnknownError("partial write");
 }
 
 void xs_filepfs_status(xsMachine *the)

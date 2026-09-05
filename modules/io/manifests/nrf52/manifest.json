@@ -9,18 +9,18 @@
 		"$(IO)/pulsecount/manifest.json",
 		"$(IO)/pwm/manifest.json",
 		"$(IO)/serial/manifest.json",
-		"$(IO)/spi/manifest.json"
+		"$(IO)/spi/manifest.json",
+		"$(COMMODETTO)/manifest_bitmap.json"
 	],
 	"modules": {
 		"*": [
-			"$(IO)/common/builtinCommon"
+			"$(IO)/common/builtinCommon",
+			"$(MODULES)/pins/digital/nrf52/modGPIO"
 		],
-		"commodetto/Bitmap": "$(COMMODETTO)/commodettoBitmap",
 
 		"system": "$(IO)/system/*"
 	},
 	"preload": [
-		"embedded:*",
 		"system"
 	],
 	"platforms": {

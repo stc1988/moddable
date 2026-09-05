@@ -2,12 +2,12 @@ import { ReadableStream, WritableStream } from "streams";
 
 export function IOReadableStreamMixin(Base) {
 	return class extends ReadableStream {  
-		constructor(dictionary) {
+		constructor(options) {
 	 		super({
 				start(controller) {
 					trace(`start readable\n`);
 					this.io = new Base({
-						...dictionary,
+						...options,
 						onReadable() {
 							controller.enqueue(this.read());
 						}
@@ -20,12 +20,12 @@ export function IOReadableStreamMixin(Base) {
 
 export function IOWritableStreamMixin(Base) {
 	return class extends WritableStream {  
-		constructor(dictionary) {
+		constructor(options) {
 	 		super({
-				start(controller) {
-					trace(`start readable\n`);
+				start(/* controller */) {
+					trace(`start writable\n`);
 					this.io = new Base({
-						...dictionary
+						...options
 					});
 				},
 				write(chunk) {

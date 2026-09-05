@@ -247,6 +247,7 @@ extern void PiuFontListNew(xsMachine* the);
 extern PiuDimension PiuFontGetAscent(PiuFont* self);
 extern PiuDimension PiuFontGetHeight(PiuFont* self);
 extern PiuDimension PiuFontGetWidth(PiuFont* self, xsSlot* string, xsIntegerValue offset, xsIntegerValue length);
+extern PiuDimension PiuFontMeasure(PiuFont* self, xsSlot* string, xsIntegerValue offset, xsIntegerValue length, PiuCoordinate* inkLeft, PiuCoordinate* inkRight, PiuCoordinate* inkTop, PiuCoordinate* inkBottom);
 extern void PiuStyleLookupFont(PiuStyle* self);
 #ifdef piuPC
 extern double PiuFontGetWidthSubPixel(PiuFont* self, xsSlot* slot, xsIntegerValue offset, xsIntegerValue length);
@@ -517,6 +518,7 @@ extern void PiuContentDictionary(xsMachine* the, void* it);
 extern void PiuContentDraw(void* it, PiuView* view, PiuRectangle area);
 extern void PiuContentFitHorizontally(void* it);
 extern void PiuContentFitVertically(void* it);
+extern void PiuContentFromApplicationCoordinates(void* it, PiuCoordinate x0, PiuCoordinate y0, PiuCoordinate *x1, PiuCoordinate *y1);
 extern void* PiuContentHit(void* it, PiuCoordinate x, PiuCoordinate y);
 extern void PiuContentIdle(void* it, PiuInterval interval);
 extern void PiuContentInvalidate(void* it, PiuRectangle area);
@@ -547,6 +549,10 @@ struct PiuLabelStruct {
 	PiuContentPart;
 	xsSlot* string;
 	PiuStyle* computedStyle;
+	PiuCoordinate inkLeft;			// how far the ink falls outside the bounds, so moving repaints all of it
+	PiuCoordinate inkRight;
+	PiuCoordinate inkTop;
+	PiuCoordinate inkBottom;
 };
 
 // PiuPort.c
@@ -590,6 +596,10 @@ struct PiuTextStruct {
 	PiuTextOffset textOffset;
 	PiuDimension textWidth;
 	PiuDimension textHeight;
+	PiuCoordinate inkLeft;			// how far the ink falls outside the bounds, so moving repaints all of it
+	PiuCoordinate inkRight;
+	PiuCoordinate inkTop;
+	PiuCoordinate inkBottom;
 };
 
 extern void PiuTextBufferAppend(xsMachine *the, PiuTextBuffer* buffer, void* data, size_t size);

@@ -1,0 +1,9 @@
+{
+	"include": [
+		"$(COMMODETTO)/manifest_bitmap.json"
+	],
+	"modules": {
+		"commodetto/parseNFNT": "$(COMMODETTO)/commodettoParseNFNT"
+	},
+	"preload": "commodetto/parseNFNT"
+}

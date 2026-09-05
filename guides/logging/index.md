@@ -43,4 +43,4 @@ When building with `mcpack`, the `console` global is automatically installed if 
 	- [Console](../../modules/web/console/console.js) in Moddable SDK
 - TypeScript Declarations
 	- [`console`](../../typings/web/console.d.ts) in Moddable SDK
-	- [`xs.d.ts`](../../xs/includes/xs.d.ts) in Moddable SDK — declares `trace()`
+	- [`xs.d.ts`](../../typings/xs.d.ts) in Moddable SDK — declares `trace()`

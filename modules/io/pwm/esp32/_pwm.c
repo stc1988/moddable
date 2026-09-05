@@ -239,11 +239,11 @@ void xs_pwm_destructor_(void *data)
 	if (!pwm) return;
 
 	ledc_stop(kSpeedMode, pwm->ledc, 0);
+	gpio_reset_pin(pwm->pin);		// disconnect from ledc, return pin to power-on state
 	gLEDC |= 1 << pwm->ledc;
 
 	gTimers[pwm->timerIndex].useCount -= 1;
 	if (0 == gTimers[pwm->timerIndex].useCount) {
-		gpio_set_direction(pwm->pin, GPIO_MODE_OUTPUT);		// this seems to disconnect pin from ledc / timer
 		gTimers[pwm->timerIndex].resolution = 0;
 		gTimers[pwm->timerIndex].hz = 0;
 

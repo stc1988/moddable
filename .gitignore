@@ -28,3 +28,4 @@ tools/test-examples/report.json
 **/package-manifest.json
 **/node_modules/**
 **/dist/**
+**/tsconfig.tsbuildinfo

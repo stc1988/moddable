@@ -1,15 +1,16 @@
 {
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
-		"$(MODDABLE)/modules/io/manifest.json"
+		"$(MODDABLE)/modules/io/manifest.json",
+		"$(COMMODETTO)/manifest_bitmap.json",
+		"$(COMMODETTO)/manifest_parsebmf.json",
+		"$(COMMODETTO)/manifest_parsebmp.json",
+		"$(COMMODETTO)/manifest_parserle.json"
 	],
 	"modules": {
 		"embedded:display/LCD/ILI9341": "./display",
-		"commodetto/parseBMF": "$(COMMODETTO)/commodettoParseBMF",
-		"commodetto/parseBMP": "$(COMMODETTO)/commodettoParseBMP",
-		"commodetto/parseRLE": "$(COMMODETTO)/commodettoParseRLE",
-		"commodetto/Bitmap": "$(COMMODETTO)/commodettoBitmap",
 		"commodetto/Poco": "$(COMMODETTO)/commodettoPoco",
+		"commodetto/PocoCore": "$(COMMODETTO)/commodettoPocoCore",
 		"commodetto/*": "$(COMMODETTO)/commodettoPocoBlit",
 		"commodetto/cfe": "$(COMMODETTO)/cfeBMF",
 		"piu/*": "$(PIU)/All/piu*",

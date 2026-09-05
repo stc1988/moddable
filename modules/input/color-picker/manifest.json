@@ -1,13 +1,13 @@
 {
     "include": [
         "$(MODDABLE)/examples/manifest_piu.json",
-        "$(MODDABLE)/examples/manifest_commodetto.json"
+        "$(MODDABLE)/examples/manifest_commodetto.json",
+		"$(COMMODETTO)/manifest_bufferout.json",
+		"$(COMMODETTO)/manifest_convert.json",
+		"$(COMMODETTO)/manifest_pixelsout.json"
     ],
     "modules": {
-        "color-picker": "./color-picker",
-        "commodetto/BufferOut": "$(COMMODETTO)/commodettoBufferOut",
-        "commodetto/PixelsOut": "$(COMMODETTO)/commodettoPixelsOut",
-        "commodetto/Convert": "$(COMMODETTO)/commodettoConvert"
+        "color-picker": "./color-picker"
     },
     "resources": {
         "*-color": [

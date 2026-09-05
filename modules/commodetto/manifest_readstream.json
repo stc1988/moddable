@@ -1,0 +1,6 @@
+{
+	"modules": {
+		"commodetto/readStream": "$(COMMODETTO)/commodettoReadStream"
+	},
+	"preload": "commodetto/readStream"
+}

@@ -1221,7 +1221,7 @@ void fx_Array_from(txMachine* the)
 		}
 	}
 	else {
-		fxCreateArray(the, 1, 0);
+		mxTypeError("cannot coerce undefined to object");
 	}
 	mxPushUnsigned(length);
 	mxPushSlot(mxResult);

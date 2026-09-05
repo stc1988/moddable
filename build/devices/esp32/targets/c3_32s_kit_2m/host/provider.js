@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022  Moddable Tech, Inc.
+ * Copyright (c) 2022-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -27,6 +27,22 @@ import PWM from "embedded:io/pwm";
 import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
+
+import Button from "button";
+import LED from "led/pwm";
+import LEDrgb from "led/rgb";
+
+class ButtonFlash {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonA,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
 
 const device = {
 	I2C: {
@@ -62,8 +78,52 @@ const device = {
 	},
 	io: { Analog, Digital, DigitalBank, I2C, PWM, Serial, SMBus, SPI },
 	pin: {
-		button: 0,
-		led: 19
+		button: 9,
+		buttonA: 9,
+		led: 18,
+		led_2: 19,
+		led_w: 19,
+		led_r: 3,
+		led_g: 4,
+		led_b: 5
+	},
+	peripheral: {
+		button: {
+			Default: ButtonFlash,
+			Flash: ButtonFlash
+		},
+		led: {
+			Default: class {
+				constructor(options) {
+					return new LED({
+						...options,
+						io: device.io.PWM,
+						pin: device.pin.led,
+						invert: 1
+					});
+				}
+			},
+			ledB: class {
+				constructor(options) {
+					return new LED({
+						...options,
+						io: device.io.PWM,
+						pin: device.pin.led_2,
+						invert: 1
+					});
+				}
+			},
+			RGB: class {
+				constructor(options) {
+					return new LEDrgb({
+						...options,
+						io: device.io.PWM,
+						pin: { r: device.pin.led_r, g: device.pin.led_g, b: device.pin.led_b },
+						invert: 1
+					});
+				}
+			}
+		}
 	}
 };
 

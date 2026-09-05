@@ -30,43 +30,64 @@ class Connection {
 	#writePosition;
 	#pendingWrite;
 	#line = "";
+	#lineBuffer = new Uint8Array(new ArrayBuffer(64, {maxByteLength: 8192}));
 	#state = "receiveRequest";
 	#remaining;
 	#chunk;
-	#options = {};
+	#notify;
+	#callbacks;
+	#registered;
 	#route;
+	#current;
 	#timer;
+	#timeout;
+	#keepAlive;
+	#idle;
 
-	constructor(from, done) {
+	constructor(from, done, keepAlive) {
 		this.#from = from;
-		this.#options.done = done;			
+		this.#notify = done;
+		this.#timeout = keepAlive ?? 0;
+		this.#lineBuffer.position = 0;
 	}
 	close() {
-		this.#options?.done?.(this);
-		this.#options = undefined;
+		this.#notify?.(this);
+		this.#notify = this.#callbacks = this.#registered = undefined;
 		this.#socket?.close();
-		this.#socket = undefined; 
+		this.#socket = undefined;
 		this.#from?.close();
 		this.#from = undefined;
-		Timer.clear(this.#timer); 
+		Timer.clear(this.#timer);
 		this.#timer = undefined;
+		Timer.clear(this.#idle);
+		this.#idle = undefined;
 	}
 	accept(options) {
 		const from = this.#from;
-		this.#options.onRequest = options.onRequest; 
-		this.#options.onReadable = options.onReadable; 
-		this.#options.onResponse = options.onResponse; 
-		this.#options.onWritable = options.onWritable; 
-		this.#options.onDone = options.onDone 
-		this.#options.onError = options.onError; 
-		
+		this.#registered = this.#callbacks = {
+			onRequest: options.onRequest,
+			onReadable: options.onReadable,
+			onResponse: options.onResponse,
+			onWritable: options.onWritable,
+			onDone: options.onDone,
+			onError: options.onError
+		};
+
 		this.#socket = new from.constructor({
 			from,
 			onReadable: count => this.#onReadable(count),
 			onWritable: count => this.#onWritable(count),
-			onError: error => this.#onError(error)
+			onError: () => this.#onError("socket error")
 		});
 		this.#from = undefined;
+
+		this.#armIdle();
+	}
+	#armIdle() {
+		if (this.#timeout) {
+			this.#idle ??= Timer.set(() => this.close(), this.#timeout);
+			Timer.schedule(this.#idle, this.#timeout);
+		}
 	}
 	detach() {
 		const result = this.#socket ?? this.#from;
@@ -74,15 +95,15 @@ class Connection {
 			throw new Error;
 		this.#socket = this.#from = undefined;
 
-		this.#options?.done(this);
-		delete this.#options.done;
+		this.#notify?.(this);
+		this.#notify = undefined;
 
 		return new result.constructor({from: result});
 	}
 	read(count) {
 		if ("receiveBody" !== this.#state)
-			return;
-					
+			throw new Error("bad state");
+
 		const available = Math.min(this.#readable, (undefined === this.#chunk) ? this.#remaining : this.#chunk);
 		if ((count > available) || (undefined === count))
 			count = available;
@@ -98,7 +119,7 @@ class Connection {
 		const result = this.#socket.read(count);
 
 		if (0 === this.#chunk) {
-			this.#line = "";
+			this.#resetLine();
 			if (this.#readable) {
 				this.#timer = Timer.set(() => {
 					this.#timer = undefined;
@@ -119,15 +140,22 @@ class Connection {
 			if ("number" === typeof this.#remaining)
 				throw new Error("bad data");
 
-//@@ this may not be always correct... if last chunk has already flushed and onWritable called, this will never go out
 			this.#pendingWrite = ArrayBuffer.fromString("0\r\n\r\n");
+			this.#writePosition = 0;
 			this.#remaining = 0;
-			this.#timer = Timer.set(() => {
-				this.#timer = undefined;
-				if (this.#writable)
-					this.#onWritable(this.#writable);
-			});
-			return 0; 
+			if (this.#writable >= this.#pendingWrite.byteLength) {
+				this.#writable = this.#socket.write(this.#pendingWrite);
+				this.#pendingWrite = undefined;
+				this.#done();
+			}
+			else {
+				this.#timer = Timer.set(() => {
+					this.#timer = undefined;
+					if (this.#writable)
+						this.#onWritable(this.#writable);
+				});
+			}
+			return 0;
 		}
 
 		const byteLength = data.byteLength;
@@ -159,19 +187,33 @@ class Connection {
 	#onReadable(count) {
 		this.#readable = count;
 
+		if (!this.#state.startsWith("receive")) {
+			Timer.clear(this.#idle);
+			this.#idle = undefined;
+			return;
+		}
+		this.#armIdle();
+
 		while (this.#readable) {
 			if (undefined !== this.#line) {
 				this.#socket.format = "number";
+				let lineBuffer = this.#lineBuffer, position = lineBuffer.position, length = lineBuffer.length;
 				while (this.#readable--) {
 					const c = this.#socket.read();
-					this.#line += String.fromCharCode(c);
+					if (position === length)
+						lineBuffer.buffer.resize(length << 1);
+					lineBuffer[position++] = c;
 					if (10 === c)
 						break;
 				}
+				lineBuffer.position = position;
 				this.#socket.format = "buffer";
 
-				if (!this.#line.endsWith("\r\n"))
+				if ((13 !== lineBuffer[position - 2]) || (10 !== lineBuffer[position - 1])) {
+					this.#readable = 0;
 					return;
+				}
+				this.#line = String.fromArrayBuffer(lineBuffer.buffer, 0, position);
 			}
 
 			switch (this.#state) {
@@ -182,72 +224,98 @@ class Connection {
 						return;
 					}
 
-					this.#options.method = status[0];
-					this.#options.path = status[1];
-					this.#line = "";
+					this.#current = {
+						method: status[0],
+						headers: new Map
+					};
+					const query = status[1].indexOf("?");
+					if (query < 0) {
+						this.#current.path = status[1];
+						this.#current.query = "";
+					}
+					else {
+						this.#current.path = status[1].slice(0, query);
+						this.#current.query = status[1].slice(query + 1);
+					}
+					this.#resetLine();
 					this.#state = "receiveHeader";
-					this.#options.headers = new Map;
 					} break;
 
 				case "receiveHeader":
 					if ("\r\n" !== this.#line) {
 						const position = this.#line.indexOf(":");
-						const name = this.#line.substring(0, position).trim().toLowerCase();
-						let data = this.#line.substring(position + 1).trim();
-						this.#options.headers.set(name, data);
+						if (position < 0)
+							return void this.#onError("badly formed");
+						const name = this.#line.slice(0, position).trim().toLowerCase();
+						let data = this.#line.slice(position + 1).trim();
+						this.#current.headers.set(name, data);
 
-						if ("content-length" === name)
+						if ("content-length" === name) {
 							this.#remaining = parseInt(data);
+							if (!(this.#remaining >= 0))
+								return void this.#onError("badly formed");
+						}
 						else if ("transfer-encoding" === name) {
 							data = data.toLowerCase();
 							if ("chunked" === data)
 								this.#chunk = 0;
 						}
 
-						this.#line = "";
+						this.#resetLine();
 					}
-					else {					
+					else {
 						if (undefined !== this.#chunk)
 							this.#remaining = undefined;		// ignore content-length if chunked
-							
-						this.#options.onRequest?.call(this, {
-							method: this.#options.method,
-							path: this.#options.path,
-							headers: this.#options.headers							
-						});
+
+						this.#keepAlive = ("close" === this.#current.headers.get("connection")?.toLowerCase()) ? false : this.#timeout;
+
+						this.#callbacks.onRequest?.call(this, this.#current);
 						if (!this.#socket)
 							return;
-						delete this.#options.headers;
-						delete this.#options.path;
-						delete this.#options.method;
+						this.#current = undefined;
 
-						if (!this.#remaining && (undefined == this.#chunk))
+						if (!this.#remaining && (undefined == this.#chunk)) {
+							this.#resetLine();
 							this.#reply();
-						else {
-							this.#state = "receiveBody";
-							this.#line = (undefined == this.#chunk) ? undefined : "";
+							return;
 						}
+
+						this.#state = "receiveBody";
+						if (undefined == this.#chunk)
+							this.#line = undefined;
+						else
+							this.#resetLine();
 					}
 					break;
 
-				case "receiveBody":
+				case "receiveBody": {
+					let count = this.#remaining;
 					if (undefined !== this.#chunk) {
 						if (0 === this.#chunk) {
 							if ("\r\n" === this.#line)
 								continue;
 							this.#chunk = parseInt(this.#line.trim(), 16);
+							if (!(this.#chunk >= 0))
+								return void this.#onError("badly formed");
 							this.#line = undefined;
-							
+
 							if (0 === this.#chunk) {
 								this.#state = "receiveChunkTrailer";
-								this.#line = "";
+								this.#resetLine();
 								continue;
 							}
 						}
-						this.#options.onReadable?.call(this, Math.min(this.#readable, this.#chunk));
+						count = this.#chunk;
+					}
+
+					if (this.#callbacks.onReadable) {
+						count = Math.min(this.#readable, count);
+						if (count)
+							this.#callbacks.onReadable.call(this, count);
 					}
 					else
-						this.#options.onReadable?.call(this, Math.min(this.#readable, this.#remaining));
+						this.read();
+					}
 					return;
 
 				case "receiveChunkTrailer":
@@ -265,7 +333,7 @@ class Connection {
 	}
 	#onWritable(count) {
 		this.#writable = count;
-		
+
 		if (this.#state.startsWith("receive"))
 			return;		// initial on-writable
 
@@ -281,28 +349,23 @@ class Connection {
 			}
 
 			switch (this.#state) {
-				case "sendResponse":
-					this.#pendingWrite = `HTTP/1.1 ${this.#options.status} ${reason(this.#options.status)}\r\n`;
-					this.#pendingWrite = ArrayBuffer.fromString(this.#pendingWrite);
-					this.#writePosition = 0;
-
-					this.#state = "sendResponseHeader";
-					break;
-
 				case "sendResponseHeader": {
-					const item = this.#options.headers.next();
+					const item = this.#current.iterator.next();
 					if (item.done) {
 						this.#pendingWrite = "\r\n";
 						this.#state = "sendResponseBody";
-						if (101 === this.#options.status)	// 101 Switching Protocols "...the empty line which terminates the 101 response"
+						if (101 === this.#current.status)
 							this.#remaining = 0;
-						delete this.#options.headers;
+						this.#current = undefined;		// the response headers have been sent
 					}
 					else {
 						const name = item.value[0];
 						this.#pendingWrite = name + ": " + item.value[1] + "\r\n";
-						if ("content-length" === name)
+						if ("content-length" === name) {
 							this.#remaining = parseInt(item.value[1]);
+							if (!(this.#remaining >= 0))
+								return void this.#onError("badly formed");
+						}
 						else if ("transfer-encoding" === name) {
 							if ("chunked" === item.value[1])
 								this.#remaining = true;
@@ -326,7 +389,7 @@ class Connection {
 					}
 					else if ((undefined !== this.#remaining) && (writable > this.#remaining))
 						writable = this.#remaining;
-					this.#options.onWritable?.call(this, writable);
+					this.#callbacks.onWritable?.call(this, writable);
 					return;
 					}
 
@@ -341,7 +404,7 @@ class Connection {
 		}
 	}
 	#onError(msg) {
-		const onError = this.#options.onError; 
+		const onError = this.#callbacks?.onError;
 		this.#state = "error";
 		this.close();
 		onError?.call(this, msg);
@@ -349,31 +412,69 @@ class Connection {
 	#done() {
 		this.#state = "done";
 		try {
-			this.#options.onDone?.call(this);
+			this.#callbacks?.onDone?.call(this);
 		}
 		catch {
 			/* this space intentionally left blank */
 		}
-		this.close();
+		if (this.#keepAlive && this.#socket)
+			this.#next();
+		else
+			this.close();
+	}
+	#next() {
+		this.#route = undefined;
+		this.#callbacks = this.#registered;
+		this.#current = undefined;
+		this.#state = "receiveRequest";
+		this.#resetLine();
+		this.#remaining = this.#chunk = undefined;
+		this.#pendingWrite = this.#writePosition = undefined;
+		Timer.clear(this.#timer);
+		this.#timer = undefined;
+		if (this.#readable) {
+			this.#timer = Timer.set(() => {
+				this.#timer = undefined;
+				this.#onReadable(this.#readable);
+			});
+		}
+		else
+			this.#armIdle();
 	}
 	#reply() {		// request headers & request body received. time to reply.
 		this.#timer = undefined;
+		Timer.clear(this.#idle);
+		this.#idle = undefined;
 		this.#state = "waitResponse";
 
 		const response = {
 			headers: new Map,
 			status: 200
 		};
-		if (this.#options.onResponse)
-			this.#options.onResponse.call(this, response);
+		const onResponse = this.#callbacks.onResponse;
+		if (onResponse)
+			onResponse.call(this, response);
 		else
 			this.respond(response);
 	}
 	respond(response) {
-		this.#state = "sendResponse";
+		this.#state = "sendResponseHeader";
 
-		this.#options.status = response.status;
-		this.#options.headers = response.headers.entries();
+		const connection = response.headers.get("connection");
+		if (this.#keepAlive) {
+			if (("close" === connection) || (101 === response.status) ||
+				!(response.headers.has("content-length") || ("chunked" === response.headers.get("transfer-encoding"))))
+				this.#keepAlive = false;
+		}
+
+		let pendingWrite = `HTTP/1.1 ${response.status} ${reason(response.status)}\r\n`;
+		if (!connection && !this.#keepAlive)
+			pendingWrite += "connection: close\r\n";
+		this.#pendingWrite = ArrayBuffer.fromString(pendingWrite);
+		this.#writePosition = 0;
+
+		response.iterator = response.headers.entries();
+		this.#current = response;
 		this.#remaining = undefined;
 
 		this.#onWritable(this.#writable);
@@ -382,23 +483,26 @@ class Connection {
 		return this.#route;
 	}
 	set route(route) {
+		if ("receiveHeader" !== this.#state)
+			throw new Error("bad state");
+
 		this.#route = route;
-		this.#options.onRequest = route.onRequest;
-		this.#options.onReadable = route.onReadable;
-		this.#options.onResponse = route.onResponse;
-		this.#options.onWritable = route.onWritable;
-		this.#options.onDone = route.onDone
-		this.#options.onError = route.onError;
-		if (this.#state === "receiveHeader") {
-			this.#options.onRequest?.call(this, {
-				method: this.#options.method,
-				path: this.#options.path,
-				headers: this.#options.headers
-			});
-		}
-		else {
-			// error?
-		}
+		this.#callbacks = {
+			onRequest: route?.onRequest,
+			onReadable: route?.onReadable,
+			onResponse: route?.onResponse,
+			onWritable: route?.onWritable,
+			onDone: route?.onDone,
+			onError: route?.onError
+		};
+
+		this.#callbacks.onRequest?.call(this, this.#current);
+		this.#current = undefined;
+	}
+	#resetLine() {
+		this.#line = "";
+		this.#lineBuffer.buffer.resize(64);
+		this.#lineBuffer.position = 0;
 	}
 
 	static {
@@ -410,21 +514,55 @@ class HTTPServer {
 	#onConnect;
 	#listener;
 	#connections = new Set;
+	#onRoute;
+	#keepAlive;
 
 	constructor(options) {
 		this.#onConnect = options.onConnect;
+		this.#onRoute = options.onRoute;
+		this.#keepAlive = options.keepAlive ?? 10_000;
+		if (!this.#onConnect === !this.#onRoute)
+			throw new Error("invalid");
 
-		this.#listener = new options.io({
+		this.#listener = new options.socket.io({
+			...options.socket,
 			port: options.port ?? 80,
 			target: this,
-			onReadable(count) {
-				while (count--) {
-					try {
-						const connection = new Connection(this.read(), connection => this.target.#connections?.delete(connection));
-						this.target.#onConnect(connection);
+			onReadable() {
+				let from;
+				while ((from = this.read())) {
+					const connection = new Connection(from, connection => this.target.#connections?.delete(connection), this.target.#keepAlive);
+					this.target.#connections.add(connection);
+					if (this.target.#onRoute) {
+						try {
+							connection.accept({
+								onRequest: request => {
+									try {
+										connection.route = this.target.#onRoute.call(this.target, request) || {
+											onResponse(response) {
+												response.status = 404;
+												response.headers.set("content-length", 0);
+												this.respond(response);
+											}
+										};
+									}
+									catch {
+										connection.close();
+									}
+								}
+							});
+						}
+						catch {
+							connection.close();		// the connection was reset before it could be accepted
+						}
 					}
-					catch {
-						trace("igoring error!");
+					else {
+						try {
+							this.target.#onConnect(connection);
+						}
+						catch {
+							connection.close();
+						}
 					}
 				}
 			}
@@ -445,9 +583,7 @@ class HTTPServer {
 	}
 }
 
-function reason(status)
-{
-	const message = `
+const message = `
 100 Continue
 101 Switching Protocols
 200 OK
@@ -489,9 +625,13 @@ function reason(status)
 503 Service Unavailable
 504 Gateway Timeout
 505 HTTP Version Not Supported
+507 Insufficient Storage
 `;
+
+function reason(status)
+{
 	const index = message.indexOf(`\n${status} `);
-	if (index < 0) return "OK";
+	if (index < 0) return "";
 	return message.slice(index + 5, message.indexOf("\n", index + 1));
 }
 

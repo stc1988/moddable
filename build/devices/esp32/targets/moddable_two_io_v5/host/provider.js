@@ -28,6 +28,7 @@ import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 import Touch from "embedded:sensor/Touch/FT6x06";
+import Button from "button";
 // import PulseWidth from "embedded:io/pulsewidth";
 
 class Backlight {
@@ -80,34 +81,15 @@ class LED {
 	}
 }
 
-class Button {
-	#io;
-	#onPush;
-
+class ButtonFlash {
 	constructor(options) {
-		options = {...options};
-		if (options.onReadable || options.onWritable || options.onError)
-			throw new Error;
-
-		if (options.target)
-			this.target = options.target;
-
-		const Digital = options.io;
-		if (options.onPush) {
-			this.#onPush = options.onPush; 
-			options.onReadable = () => this.#onPush();
-			options.edge = Digital.Rising | Digital.Falling;
-		}
-
-		this.#io = new Digital(options);
-		this.#io.pressed = options.invert ? 0 : 1;
-	}
-	close() {
-		this.#io?.close();
-		this.#io = undefined;
-	}
-	get pressed() {
-		return (this.#io.read() === this.#io.pressed) ? 1 : 0;
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.button,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
 	}
 }
 
@@ -172,17 +154,8 @@ const device = {
 			}
 		},
 		button: {
-			Flash: class {
-				constructor(options) {
-					return new Button({
-						...options,
-						io: Digital,
-						pin: device.pin.button,
-						mode: Digital.InputPullUp,
-						invert: true
-					});
-				}
-			}
+			Default: ButtonFlash,
+			Flash: ButtonFlash
 		},
 		led: {
 			Default: class {

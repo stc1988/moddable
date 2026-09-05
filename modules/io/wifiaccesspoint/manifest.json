@@ -15,6 +15,15 @@
 		"zephyr": {
 			"include": "./zephyr/manifest.json"
 		},
+		"mac": {
+			"include": "./sim/manifest.json"
+		},
+		"lin": {
+			"include": "./sim/manifest.json"
+		},
+		"win": {
+			"include": "./sim/manifest.json"
+		},
 		"...": {
 			"error": "ECMA-419 Wi-Fi access point unsupported target"
 		}

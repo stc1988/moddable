@@ -5,17 +5,16 @@
 		}
 	},
 	"preload": [
-		"dotstar",
-		"commodetto/Bitmap"
+		"dotstar"
 	],
 	"platforms": {
 		"esp": {
 			"include": [
-				"$(MODULES)/pins/spi/manifest.json"
+				"$(MODULES)/pins/spi/manifest.json",
+				"$(COMMODETTO)/manifest_bitmap.json"
 			],
 			"modules": {
-				"*": "$(MODULES)/drivers/dotstar/*",
-				"commodetto/Bitmap": "$(COMMODETTO)/commodettoBitmap"
+				"*": "$(MODULES)/drivers/dotstar/*"
 			},
 			"defines": {
 				"dotstar": {
@@ -25,11 +24,11 @@
 		},
 		"esp32": {
 			"include": [
-				"$(MODULES)/pins/spi/manifest.json"
+				"$(MODULES)/pins/spi/manifest.json",
+				"$(COMMODETTO)/manifest_bitmap.json"
 			],
 			"modules": {
-				"*": "$(MODULES)/drivers/dotstar/*",
-				"commodetto/Bitmap": "$(COMMODETTO)/commodettoBitmap"
+				"*": "$(MODULES)/drivers/dotstar/*"
 			},
 			"defines": {
 				"dotstar": {

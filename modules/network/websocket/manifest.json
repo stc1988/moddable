@@ -2,12 +2,14 @@
 	"include": [
 		"$(MODDABLE)/examples/manifest_net.json",
 		"$(MODULES)/data/logical/manifest.json",
-		"$(MODULES)/crypt/digest/manifest.json"
+		"$(MODULES)/crypt/digest/manifest.json",
+		"$(MODDABLE)/modules/network/socket/manifest.json"
 	],
 	"modules": {
 		"*": [
 			"./websocket"
 		]
 	},
-	"preload": "websocket"
+	"preload": "websocket",
+	"warning": "** ECMA-419 WebSocket Client recommended over classic 'websocket' module **"
 }

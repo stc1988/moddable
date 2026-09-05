@@ -1,12 +1,15 @@
 {
+	"build": {
+		"NAME": "websocketclient-websocket"
+	},
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
-		"$(MODDABLE)/examples/manifest_net.json"
+		"$(MODDABLE)/examples/manifest_net.json",
+		"$(MODDABLE)/modules/network/websocket/manifest.json"
 	],
 	"modules": {
 		"*": [
 			"./main",
-			"$(MODULES)/network/websocket/*",
 			"$(MODULES)/data/base64/*",
 			"$(MODULES)/data/logical/*",
 			"$(MODULES)/crypt/digest/*",
@@ -14,7 +17,6 @@
 		]
 	},
 	"preload": [
-		"websocket",
 		"base64",
 		"digest",
 		"logical"

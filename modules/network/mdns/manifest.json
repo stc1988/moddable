@@ -1,17 +1,14 @@
 {
+	"include": [
+		"$(MODULES)/network/dns/manifest.json",
+		"$(MODDABLE)/modules/network/net/manifest.json",
+		"$(MODDABLE)/modules/network/socket/manifest.json"
+	],
 	"modules": {
 		"*": [
-			"$(MODULES)/network/mdns/*",
-			"$(MODULES)/network/dns/moddnsparser",
-			"$(MODULES)/network/dns/dns"
-		],
-		"dns/parser": "$(MODULES)/network/dns/dnsparser",
-		"dns/serializer": "$(MODULES)/network/dns/dnsserializer"
+			"$(MODULES)/network/mdns/*"
+		]
 	},
-	"preload": [
-		"mdns",
-		"dns",
-		"dnsparser",
-		"dnsserializer"
-	]
+	"preload": "mdns",
+	"warning": "** ECMA-419 DNS-SD recommended over classic 'mdns' module **"
 }

@@ -81,8 +81,8 @@ export default class ElevenLabsAgentModel extends ChatWebSocketWorker {
 			this.body.conversation_config.tts.voice_id = message.voiceID;
 	}
 	connect(message) {
-		const client = new device.network.https.io({ 
-			...device.network.https,
+		const client = new device.network.https.client.io({
+			...device.network.https.client,
 			host: this.host
 		});
 		const headers = this.headers

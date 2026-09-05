@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023  Moddable Tech, Inc.
+ * Copyright (c) 2023-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -18,26 +18,6 @@
  *
  */
 
-import Button from "button";
-
-class Flash {
-	constructor(options) {
-		return new Button({
-			...options,
-			pin: 0,
-			invert: true
-		});
-	}
-}
-
-globalThis.Host = Object.freeze({
-	Button: {
-		Default: Flash,
-		Flash
-	}
-}, true);
-
 export default function (done) {
 	done();
 }
-

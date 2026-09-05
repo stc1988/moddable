@@ -14,9 +14,9 @@
 
 import Timer from "timer";
 
-if (!globalThis.lights || !device.sensor.IMU || !globalThis.button)
+if (!device.sensor.IMU || !device.peripheral.button.A || !device.peripheral.neopixel?.Default)
 	throw new Error("this M5 example requires lights, accelerometer, and a button");
-
+let lights = new device.peripheral.neopixel.Default();
 let accelerometer = new device.sensor.IMU({});
 let random = false;
 
@@ -25,20 +25,22 @@ let brightness = 126;
 lights.brightness = brightness;
 
 let buttonPressed = false;
+let button = new device.peripheral.button.A({
+	onPush: () => {
+		buttonPressed = button.pressed
+		if (!buttonPressed)
+			return;
+
+		const now = Date.now();
+		if ((now - last) < 500)
+			random = !random;
+
+		last = now;
+	}
+});
 
 // double click of button toggles random lights
 let last = 0;
-button.a.onChanged = function() {
-	buttonPressed = !button.a.read();
-	if (!buttonPressed)
-		return;
-
-	const now = Date.now();
-	if ((now - last) < 500)
-		random = !random;
-
-	last = now;
-}
 
 Timer.repeat(() => {
 	let sample = accelerometer.sample();

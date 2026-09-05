@@ -1,0 +1,6 @@
+{
+	"modules": {
+		"commodetto/parseRLE": "$(COMMODETTO)/commodettoParseRLE"
+	},
+	"preload": "commodetto/parseRLE"
+}

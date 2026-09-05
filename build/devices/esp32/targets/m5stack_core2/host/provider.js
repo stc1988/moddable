@@ -106,6 +106,23 @@ const device = {
 		}
 	},
 	peripheral: {
+		// Core2Power.brightness is percent 0–100
+		Backlight: class {
+			#value = 1;
+			set brightness(value) {
+				if (value <= 0)
+					value = 0;
+				else if (value >= 1)
+					value = 1;
+				this.#value = value;
+				if (undefined !== globalThis.power)
+					globalThis.power.brightness = value * 100;
+			}
+			get brightness() {
+				return this.#value;
+			}
+			close() {}
+		},
 		Power: class {
 			constructor(options) {
 				return new Core2Power({

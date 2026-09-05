@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023  Moddable Tech, Inc.
+ * Copyright (c) 2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -117,6 +117,9 @@ function sync(buffer, position, end, info)
 					length += (3 === layerVersion) ? 4 : 1;
 			}
 			info.length = length;		// will be 0 if unable to calculate it here... for LFR may be too big... that's OK too
+			info.sampleRate = sampleRate;
+			// info.channels = (3 === ((buffer[position + 3] >> 6) & 3)) ? 1 : 2;
+			info.channels = 1;		// decoder always outputs 1, even for stereo stream
 		}
 		
 		return position;

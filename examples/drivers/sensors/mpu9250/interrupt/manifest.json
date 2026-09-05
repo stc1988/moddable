@@ -1,4 +1,7 @@
 {
+	"build": {
+		"NAME": "interrupt-mpu9250"
+	},
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/modules/io/manifest.json",

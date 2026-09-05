@@ -1,4 +1,5 @@
 {
+	"warning": "** ECMA-419 Analog recommended over classic 'pins/analog' module **",
 	"modules": {
 		"pins/analog": "$(MODULES)/pins/analog/analog"
 	},
@@ -12,7 +13,10 @@
 		"esp32": {
 			"modules": {
 				"*": "$(MODULES)/pins/analog/esp32/*"
-			}
+			},
+			"dependency": [
+				{ "idf": "esp_adc" }
+			]
 		},
 		"nrf52": {
 			"modules": {

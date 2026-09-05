@@ -4,8 +4,8 @@
 		"UF2_VOLUME_NAME": "MODDABLEnRF"
 	},
 	"include": [
-		"$(MODULES)/drivers/button/manifest.json",
-		"$(MODULES)/drivers/led/manifest.json"
+		"$(MODDABLE)/modules/io/manifest.json",
+		"$(MODULES)/drivers/peripherals/led/rgb/manifest.json"
 	],
 	"modules": {
 		"setup/target": "./setup-target"
@@ -16,7 +16,8 @@
 	"config": {
 		"led1_pin": 26,
 		"led2_pin": 30,
-		"led3_pin": 6
+		"led3_pin": 6,
+		"led" : { "rainbow": true }
 	},
 	"defines": {
 		"xdebugger": {

@@ -121,7 +121,7 @@ void fxBuildMapSet(txMachine* the)
 	
 	mxPush(mxIteratorPrototype);
 	slot = fxLastProperty(the, fxNewObjectInstance(the));
-	slot = fxNextHostFunctionProperty(the, slot, mxCallback(fx_MapIterator_prototype_next), 0, mxID(_next), XS_DONT_DELETE_FLAG | XS_DONT_ENUM_FLAG);
+	slot = fxNextHostFunctionProperty(the, slot, mxCallback(fx_MapIterator_prototype_next), 0, mxID(_next), XS_NO_FLAG);
 	slot = fxNextStringXProperty(the, slot, "Map Iterator", mxID(_Symbol_toStringTag), XS_DONT_ENUM_FLAG | XS_DONT_SET_FLAG);
 	mxPull(mxMapIteratorPrototype);
 	
@@ -157,7 +157,7 @@ void fxBuildMapSet(txMachine* the)
 	
 	mxPush(mxIteratorPrototype);
 	slot = fxLastProperty(the, fxNewObjectInstance(the));
-	slot = fxNextHostFunctionProperty(the, slot, mxCallback(fx_SetIterator_prototype_next), 0, mxID(_next), XS_DONT_DELETE_FLAG | XS_DONT_ENUM_FLAG);
+	slot = fxNextHostFunctionProperty(the, slot, mxCallback(fx_SetIterator_prototype_next), 0, mxID(_next), XS_NO_FLAG);
 	slot = fxNextStringXProperty(the, slot, "Set Iterator", mxID(_Symbol_toStringTag), XS_DONT_ENUM_FLAG | XS_DONT_SET_FLAG);
 	mxPull(mxSetIteratorPrototype);
 
@@ -233,8 +233,7 @@ txSlot* fxCheckMapKey(txMachine* the)
 		txSlot* slot = mxArgv(0);
 		return slot;
 	}
-	mxTypeError("no key");
-	return C_NULL;
+	return &mxUndefined;
 }
 
 txSlot* fxNewMapInstance(txMachine* the)
@@ -569,8 +568,7 @@ txSlot* fxCheckSetValue(txMachine* the)
 		txSlot* slot = mxArgv(0);
 		return slot;
 	}
-	mxTypeError("no value");
-	return C_NULL;
+	return &mxUndefined;
 }
 
 txSlot* fxCheckSetRecord(txMachine* the, txInteger* otherSize, txSlot** otherHas, txSlot** otherKeys)

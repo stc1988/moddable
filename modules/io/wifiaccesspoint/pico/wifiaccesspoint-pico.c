@@ -93,7 +93,6 @@ static void formatMAC(const uint8_t *mac, char *str)
 static uint32_t stringToAuthMode(const char *str)
 {
 	if (0 == c_strcmp(str, "none")) return CYW43_AUTH_OPEN;
-	if (0 == c_strcmp(str, "wpa_psk")) return CYW43_AUTH_WPA_TKIP_PSK;
 	if (0 == c_strcmp(str, "wpa2_psk")) return CYW43_AUTH_WPA2_AES_PSK;
 	if (0 == c_strcmp(str, "wpa_wpa2_psk")) return CYW43_AUTH_WPA2_MIXED_PSK;
 	if (0 == c_strcmp(str, "wpa3_psk")) return CYW43_AUTH_WPA3_SAE_AES_PSK;
@@ -465,7 +464,6 @@ void xs_wifiaccesspoint_close(xsMachine *the)
 void xs_wifiaccesspoint_configure(xsMachine *the)
 {
 	xsmcGetHostDataValidate(xsThis, (void *)&xsAPHooks);
-	xsUnknownError("configure requires restart");
 }
 
 void xs_wifiaccesspoint_connection_get(xsMachine *the)

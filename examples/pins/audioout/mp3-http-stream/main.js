@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023  Moddable Tech, Inc.
+ * Copyright (c) 2022-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK.
  * 
@@ -25,7 +25,7 @@ const audio = new AudioOut({
 // audio.enqueue(0, AudioOut.Volume, 64);
 
 new MP3Streamer({
-	http: device.network.http,
+	http: device.network.http.client,
 	host: "ice4.somafm.com",
 	path: "/indiepop-128-mp3",
 	audio: {
@@ -35,6 +35,11 @@ new MP3Streamer({
 	onPlayed(buffer) {
 		const power = calculatePower(buffer);
 		trace(`MP3 power ${Math.round(power)}\n`);
+	},
+	onMetadata(metadata) {
+		const title = metadata.get("StreamTitle");
+		if (title)
+			trace(`MP3 Now playing: ${title}\n`);
 	},
 	onReady(state) {
 		trace(`MP3 Ready: ${state}\n`);

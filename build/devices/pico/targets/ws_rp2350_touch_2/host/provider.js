@@ -28,31 +28,8 @@ import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 
 import Touch from "embedded:sensor/Touch/CST816S";
+import Backlight from "backlight";
 import QMI8658 from "embedded:sensor/Accelerometer-Gyroscope/QMI8658";
-
-class Backlight {
-	#io;
-
-	constructor(options) {
-		this.#io = new PWM(options);
-	}
-	close() {
-		this.#io?.close();
-		this.#io = undefined;
-	}
-	set brightness(value) {
-		if (value <= 0)
-			value = 0;
-		else if (value >= 1)
-			value = 1023;
-		else 
-			value *= 1023;
-		this.#io.write(value);
-	}
-	write(value) {		// compatibility
-		this.brightness = value / 100;
-	}
-}
 
 const device = {
 	I2C: {
@@ -81,11 +58,14 @@ const device = {
 	pin: {
 		backlight: 15,
 		imu_int: 14
-	} ,
+	},
 	peripheral: {
 		Backlight: class {
 			constructor() {
-				return new Backlight({pin: device.pin.backlight });
+				return new Backlight({
+					io: device.io.PWM,
+					pin: device.pin.backlight
+				});
 			}
 		}
 	},

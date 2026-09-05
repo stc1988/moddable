@@ -8,7 +8,8 @@
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/examples/manifest_net.json",
 		"$(MODDABLE)/examples/manifest_piu.json",
-		"$(MODDABLE)/modules/crypt/tls.json"
+		"$(MODDABLE)/modules/crypt/tls.json",
+		"$(MODDABLE)/modules/network/http/manifest.json"
 	],
 	"creation": {
 		"static": 98304
@@ -16,13 +17,9 @@
 	"modules": {
 		"*": [
 			"./main",
-			"./directions",
-			"$(MODULES)/network/http/*"
+			"./directions"
 		]
 	},
-	"preload": [
-		"http"
-	],
 	"resources":{
 		"*-mask": [
 			"./assets/masks/*"

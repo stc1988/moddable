@@ -1,64 +1,23 @@
-// WAVESHARE  - Pico LCD 1.3
-// https://www.waveshare.com/wiki/Pico-LCD-1.3
-
-import Button from "button";
-
-class A {
-  constructor(options) {
-    return new Button({ ...options, invert: true, pin: 15 });
-  }
-}
-
-globalThis.Host = Object.freeze(
-  {
-    Button: {
-      Default: A,
-      A,
-      B: class {
-        constructor(options) {
-          return new Button({ ...options, invert: true, pin: 17 });
-        }
-      },
-      X: class {
-        constructor(options) {
-          return new Button({ ...options, invert: true, pin: 19 });
-        }
-      },
-      Y: class {
-        constructor(options) {
-          return new Button({ ...options, invert: true, pin: 21 });
-        }
-      },
-      UP: class {
-        constructor(options) {
-          return new Button({ ...options, invert: true, pin: 2 });
-        }
-      },
-      DOWN: class {
-        constructor(options) {
-          return new Button({ ...options, invert: true, pin: 18 });
-        }
-      },
-      LEFT: class {
-        constructor(options) {
-          return new Button({ ...options, invert: true, pin: 16 });
-        }
-      },
-      RIGHT: class {
-        constructor(options) {
-          return new Button({ ...options, invert: true, pin: 20 });
-        }
-      },
-      CTRL: class {
-        constructor(options) {
-          return new Button({ ...options, invert: true, pin: 3 });
-        }
-      },
-    },
-  },
-  true
-);
+/*
+ * Copyright (c) 2018-2026  Moddable Tech, Inc.
+ *
+ *   This file is part of the Moddable SDK Runtime.
+ *
+ *   The Moddable SDK Runtime is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU Lesser General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   The Moddable SDK Runtime is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public License
+ *   along with the Moddable SDK Runtime.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 
 export default function (done) {
-  done();
+	done?.();
 }

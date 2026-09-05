@@ -227,10 +227,6 @@ SECTIONS
         __end__ = .;
         end = __end__;
         KEEP(*(.heap*))
-        /* historically on GCC sbrk was growing past __HeapLimit to __StackLimit, however
-           to be more compatible, we now set __HeapLimit explicitly to where the end of the heap is */
-        . = ORIGIN(RAM) + LENGTH(RAM);
-        __HeapLimit = .;
     } > RAM
 
     /* Start and end symbols must be word-aligned */
@@ -261,12 +257,13 @@ SECTIONS
      */
     .stack1_dummy (NOLOAD):
     {
-        *(.stack1*)
+        KEEP(*(.stack1*))
     } > SCRATCH_X
+    /* core 0 stack lives at the top of main RAM - see __StackTop below */
     .stack_dummy (NOLOAD):
     {
         KEEP(*(.stack*))
-    } > SCRATCH_Y
+    } > RAM
 
     .flash_end : {
         KEEP(*(.embedded_end_block*))
@@ -291,13 +288,19 @@ SECTIONS
 	PROVIDE(_MODPREF_start	= 0x101F8000);
 	PROVIDE(_MODDABLE_start	= __flash_binary_start);
 
-    /* stack limit is poorly named, but historically is maximum heap ptr */
-    __StackLimit = ORIGIN(RAM) + LENGTH(RAM);
     __StackOneTop = ORIGIN(SCRATCH_X) + LENGTH(SCRATCH_X);
-    __StackTop = ORIGIN(SCRATCH_Y) + LENGTH(SCRATCH_Y);
     __StackOneBottom = __StackOneTop - SIZEOF(.stack1_dummy);
+
+    /* core 0 stack at the top of main RAM - SCRATCH_Y is only 4KB.
+       stack limit is poorly named, but historically is maximum heap ptr;
+       the heap (sbrk) now ends where the stack begins */
+    __StackTop = ORIGIN(RAM) + LENGTH(RAM);
     __StackBottom = __StackTop - SIZEOF(.stack_dummy);
+    __StackLimit = __StackBottom;
     PROVIDE(__stack = __StackTop);
+
+    /* the heap (sbrk) ends where the stack begins */
+    __HeapLimit = __StackLimit;
 
     /* picolibc and LLVM */
     PROVIDE (__heap_start = __end__);

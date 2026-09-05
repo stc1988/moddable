@@ -18,9 +18,6 @@
  *
  */
  
-import HTTPServer from "embedded:network/http/server"
-import Listener from "embedded:io/socket/listener";
-
 import Headers from "headers";
 import URL from "url";
 
@@ -141,8 +138,9 @@ async function* listen(options) {
 	const promiseQueue = [];
 	const port = options?.port ?? 80;
 	const base = "http://localhost:" + port;
-	new HTTPServer({ 
-		io: Listener,
+
+	new device.network.http.server.io({
+		...device.network.http.server,
 		port,
 		onConnect(_connection_) {
 			let requestPromise = new Promise((resolveRequest, rejectRequest) => {

@@ -1,6 +1,7 @@
 {
 	"include": [
-		"$(MODDABLE)/examples/manifest_net.json"
+		"$(MODDABLE)/examples/manifest_net.json",
+		"$(MODDABLE)/modules/network/socket/manifest.json"
 	],
 	"modules": {
 		"*": [
@@ -9,5 +10,6 @@
 	},
 	"preload": [
 		"http"
-	]
+	],
+	"warning": "** ECMA-419 HTTP Client and Server recommended over classic 'http' module **"
 }

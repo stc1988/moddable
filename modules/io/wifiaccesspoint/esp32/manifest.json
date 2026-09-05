@@ -9,7 +9,11 @@
 			],
 			"dependency": [
 				{ "idf": "esp_wifi" }
-			]
+			],
+			"esp32Config": {
+				"CONFIG_ESP_WIFI_SOFTAP_SUPPORT": "y",
+				"CONFIG_LWIP_DHCPS": "y"
+			}
 		}
 	}
 }

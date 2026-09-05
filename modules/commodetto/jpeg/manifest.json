@@ -1,4 +1,9 @@
 {
+	"include": [
+		"$(COMMODETTO)/manifest_bitmap.json",
+		"$(COMMODETTO)/manifest_bufferout.json",
+		"$(COMMODETTO)/manifest_pixelsout.json"
+	],
 	"platforms": {
 		"esp32": {
 			"modules": {
@@ -18,14 +23,10 @@
 		},
 		"...": {
 			"modules": {
-				"commodetto/BufferOut": "$(COMMODETTO)/commodettoBufferOut",
-				"commodetto/PixelsOut": "$(COMMODETTO)/commodettoPixelsOut",
 				"commodetto/readJPEG": "$(COMMODETTO)/commodettoReadJPEG",
 				"commodetto/loadJPEG": "$(COMMODETTO)/commodettoLoadJPEG"
 			},
 			"preload": [
-				"commodetto/BufferOut",
-				"commodetto/PixelsOut",
 				"commodetto/readJPEG",
 				"commodetto/loadJPEG"
 			]

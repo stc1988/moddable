@@ -3,9 +3,11 @@
 		"PICO_BOARD": "pico"
 	},
 	"include": [
+		"$(MODDABLE)/modules/io/manifest.json",
 		"$(MODDABLE)/modules/drivers/st7789/manifest.json",
-		"$(MODULES)/drivers/led/manifest.json",
-		"$(MODULES)/drivers/button/manifest.json"
+		"$(MODULES)/drivers/peripherals/led/rgb/manifest.json",
+		"$(MODULES)/drivers/peripherals/backlight/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json"
 	],
 	"modules": {
 		"setup/target": "./setup-target"
@@ -41,8 +43,6 @@
 			"cs_pin": 17,
 			"dc_pin": 16,
 			"spi_port": 0,
-			"backlight_pin": 20,
-			"backlight_on": 1,
 			"column_offset": 52,
 			"row_offset": 40,
 			"registers": [

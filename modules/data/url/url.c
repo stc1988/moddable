@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022  Moddable Tech, Inc.
+ * Copyright (c) 2021-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -1025,18 +1025,18 @@ txBoolean fx_parseURLHostIPv4(txMachine* the, txStringStream* src, txInteger fro
 	dst->offset = 0;
 	dst->slot->value.string[0] = 0;
 	for (pieceIndex = 0; pieceIndex < 4; pieceIndex++) {
-		value = pieces[pieceIndex];
-		if (value >= 100) {
-			fx_parseURLEncode(the, '0' + ((txInteger)value / 100), dst);
-			value %= 100;
-			fx_parseURLEncode(the, '0' + ((txInteger)value / 10), dst);
-			value %= 10;
+		txInteger value32 = (txInteger)pieces[pieceIndex];
+		if (value32 >= 100) {
+			fx_parseURLEncode(the, '0' + (value32 / 100), dst);
+			value32 %= 100;
+			fx_parseURLEncode(the, '0' + (value32 / 10), dst);
+			value32 %= 10;
 		}
-		else if (value >= 10)  {
-			fx_parseURLEncode(the, '0' + ((txInteger)value / 10), dst);
-			value %= 10;
+		else if (value32 >= 10)  {
+			fx_parseURLEncode(the, '0' + (value32 / 10), dst);
+			value32 %= 10;
 		}
-		fx_parseURLEncode(the, '0' + (txInteger)value, dst);
+		fx_parseURLEncode(the, '0' + value32, dst);
 		if (pieceIndex < 3)
 			fx_parseURLEncode(the, '.', dst);
 	}

@@ -1,0 +1,27 @@
+{
+	"include": [
+		"$(MODDABLE)/examples/manifest_base.json",
+		"$(MODDABLE)/modules/io/manifest.json",
+		"$(MODDABLE)/examples/manifest_piu.json",
+		"$(MODDABLE)/modules/piu/MC/outline/manifest.json",
+		"$(COMMODETTO)/manifest_cfeft.json"
+	],
+	"modules": {
+		"*": [
+			"./main"
+		]
+	},
+	"config": {
+		"led": {
+			"rainbow": false
+		},
+		"startupSound": false
+	},
+    "data": {
+    	"*": [
+			"$(MODDABLE)/examples/assets/scalablefonts/OpenSans/OpenSans-Regular",
+			"$(MODDABLE)/examples/assets/scalablefonts/Radley/Radley-Italic",
+			"$(MODDABLE)/examples/assets/scalablefonts/SourceCodePro/SourceCodePro-Regular.ttf"
+    	]
+    }
+}

@@ -21,7 +21,7 @@ if [[ -f ${CACHED_DIR}/UPLOAD_PORT ]]; then
 fi
 
 >&2 echo "Please wait - probing for device"
-IGNORED=`esptool.py --connect-attempts 1 flash_id > ${CACHED_DIR}/DEVICE_SCAN`
+IGNORED=`esptool --connect-attempts 1 flash-id > ${CACHED_DIR}/DEVICE_SCAN`
 UPLOAD_PORT=`grep "Serial port" ${CACHED_DIR}/DEVICE_SCAN | awk 'END{print substr($3, 1, length($3)-1)}' | tee ${CACHED_DIR}/UPLOAD_PORT`
 VALID=`grep "Detected flash" ${CACHED_DIR}/DEVICE_SCAN`
 

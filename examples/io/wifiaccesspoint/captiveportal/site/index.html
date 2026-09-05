@@ -1,41 +1,284 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wi-Fi Setup</title>
+<style>
+	body {
+		font-family: system-ui, -apple-system, sans-serif;
+		color: #222;
+		background: #fff;
+		max-width: 30em;
+		margin: 0 auto;
+		padding: 1.5em 1em;
+	}
+	section { display: none; }
+	section.active { display: block; }
+	h1 { font-size: 1.4em; margin: 0 0 0.5em; }
+	p { line-height: 1.4; }
+	.note { color: #666; }
+	.error { color: #b00020; }
+	button {
+		font: inherit;
+		padding: 0.7em 1.2em;
+		border: 1px solid #888;
+		border-radius: 0.5em;
+		background: #f4f4f4;
+		color: inherit;
+	}
+	button:disabled { opacity: 0.5; }
+	button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+	.row { display: flex; gap: 0.5em; margin-top: 1em; }
+	.row button { flex: 1; }
+	input[type=text] {
+		font: inherit;
+		width: 100%;
+		box-sizing: border-box;
+		padding: 0.7em;
+		margin: 0.4em 0 0.8em;
+		border: 1px solid #888;
+		border-radius: 0.5em;
+	}
+	label { display: block; }
+	ul.networks { list-style: none; padding: 0; margin: 0 0 1em; border-top: 1px solid #ddd; }
+	ul.networks button {
+		display: flex;
+		align-items: center;
+		gap: 0.6em;
+		width: 100%;
+		padding: 0.9em 0.4em;
+		border: 0;
+		border-bottom: 1px solid #ddd;
+		border-radius: 0;
+		background: none;
+		text-align: left;
+	}
+	ul.networks .ssid { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.signal { display: inline-flex; align-items: flex-end; gap: 2px; height: 1em; }
+	.signal i { width: 4px; background: #ccc; }
+	.signal i.on { background: #222; }
+	.spinner {
+		display: inline-block;
+		width: 1em;
+		height: 1em;
+		border: 2px solid #ccc;
+		border-top-color: #222;
+		border-radius: 50%;
+		vertical-align: -0.15em;
+		margin-right: 0.4em;
+		animation: spin 0.8s linear infinite;
+	}
+	@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
 <body>
-<header>Welcome to provisioning!</header>
 
-<pre id="log"></pre>
+<section id="welcome" class="active">
+	<h1>You're connected</h1>
+	<p><span class="spinner"></span>Looking for Wi-Fi networks…</p>
+</section>
+
+<section id="networks">
+	<h1>Choose a network</h1>
+	<p class="error" id="networks-error" hidden></p>
+	<p class="note">Select a Wi-Fi network for the device to join.</p>
+	<ul class="networks" id="networks-list"></ul>
+	<button id="rescan">Scan again</button>
+</section>
+
+<section id="password">
+	<h1 id="password-title"></h1>
+	<form id="password-form">
+		<label for="password-input">Password</label>
+		<!-- deliberately not a secure field: iOS offers to create a strong password
+		     for any masked field (type="password" or CSS text-security), and no
+		     markup suppresses that. A visible password is fine while provisioning. -->
+		<input type="text" id="password-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+		<div class="row">
+			<button type="button" id="password-cancel">Back</button>
+			<button type="submit" class="primary">Connect</button>
+		</div>
+	</form>
+</section>
+
+<section id="connecting">
+	<h1>Connecting</h1>
+	<p><span class="spinner"></span><span id="connecting-status"></span></p>
+	<p class="note">This takes a few seconds.</p>
+</section>
+
+<section id="done">
+	<h1>All set</h1>
+	<p id="done-status"></p>
+	<p class="note">The device has turned off its setup network. Once you close this page, you'll reconnect to your usual network.</p>
+</section>
+
+<section id="disconnected">
+	<h1>Lost contact with the device</h1>
+	<p class="note">Rejoin the device's Wi-Fi network, then reload this page.</p>
+	<button class="primary" id="reload">Reload</button>
+</section>
 
 <script>
-function log(...args) {
-	document.getElementById("log").textContent += args.join(" ") + "\n";
+/*
+	The page is a single document with one <section> per step. show() switches
+	between them, so the WebSocket to the device stays open for the whole flow.
+
+	Messages to the device:
+		{event: "scan"}                               request a list of nearby networks
+		{event: "connect", SSID, password}            connect to a network (password omitted for open networks)
+		{event: "terminate"}                          provisioning is complete; close the portal
+		{event: "time", ...}, {event: "language"} optional hints the device may use, delivered to onInfo()
+
+	Messages from the device:
+		{event: "scan", scan: [{SSID, RSSI, channel, security}, ...]}
+		{event: "status", phase}                      phase is "connecting", "failed", or "provisioned" (others are ignored here)
+*/
+
+const $ = id => document.getElementById(id);
+
+let networks = [];		// the most recent scan results
+let selected;			// the network the user chose
+let finished = false;	// set once provisioned, so closing the socket afterwards is expected
+
+function show(id) {
+	for (const section of document.querySelectorAll("section"))
+		section.classList.toggle("active", section.id === id);
 }
-const socket = new WebSocket("ws://" + location.host + "/ws");
-log("WebSocket Created");
+
+function send(msg) {
+	socket.send(JSON.stringify(msg));
+}
+
+const socket = new WebSocket(`ws://${location.host}/ws`);
+
 socket.addEventListener("open", () => {
-	log("Connected");
-	socket.send(JSON.stringify({event: "scan"}));
+	send({event: "scan"});
+	send({event: "time", time: Date.now(), ...getTimeZoneOffsets()});
+	send({event: "language", language: navigator.language});
 });
+
 socket.addEventListener("message", event => {
 	const msg = JSON.parse(event.data);
-	log("Received:", JSON.stringify(msg, undefined, "  "));
-	if ("scan" === msg.event) {
-		socket.send(JSON.stringify({
-			event: "connect",
-			SSID: "MY SSID",
-			password: "MY PASSWORD"
-		}));
+	switch (msg.event) {
+		case "scan":
+			networks = msg.scan.sort((a, b) => b.RSSI - a.RSSI);
+			renderNetworks();
+			show("networks");
+			break;
+
+		case "status":
+			switch (msg.phase) {
+				case "connecting":
+					$("connecting-status").textContent = `Joining "${selected.SSID}"…`;
+					show("connecting");
+					break;
+
+				case "failed":
+					showError(`Couldn't connect to "${selected.SSID}". Check the password and try again.`);
+					show("networks");
+					break;
+
+				case "provisioned":
+					finished = true;
+					$("done-status").textContent = `The device is connected to "${selected.SSID}".`;
+					show("done");
+					send({event: "terminate"});
+					break;
+			}
+			break;
 	}
-	else if (("status" === msg.event) && ("provisioned" === msg.phase)) {
-		log("Provisioning complete!");
-		socket.send(JSON.stringify({event: "terminate"}));
+});
+
+socket.addEventListener("close", () => {
+	if (!finished)
+		show("disconnected");
+});
+
+function renderNetworks() {
+	const list = $("networks-list");
+	list.textContent = "";
+	for (const network of networks) {
+		const button = document.createElement("button");
+		button.type = "button";
+
+		const signal = document.createElement("span");
+		signal.className = "signal";
+		const bars = (network.RSSI >= -55) ? 4 : (network.RSSI >= -65) ? 3 : (network.RSSI >= -75) ? 2 : 1;
+		for (let i = 1; i <= 4; i++) {
+			const bar = document.createElement("i");
+			bar.style.height = `${i * 25}%`;
+			if (i <= bars) bar.className = "on";
+			signal.append(bar);
+		}
+
+		const ssid = document.createElement("span");
+		ssid.className = "ssid";
+		ssid.textContent = network.SSID;
+
+		button.append(signal, ssid);
+		if ("none" !== network.security)
+			button.append("🔒");
+		button.addEventListener("click", () => select(network));
+
+		const item = document.createElement("li");
+		item.append(button);
+		list.append(item);
 	}
+	$("rescan").disabled = false;
+}
+
+function showError(text) {
+	const error = $("networks-error");
+	error.textContent = text;
+	error.hidden = !text;
+}
+
+function select(network) {
+	selected = network;
+	if ("none" === network.security) {
+		send({event: "connect", SSID: network.SSID});
+		return;
+	}
+
+	$("password-title").textContent = `Connect to "${network.SSID}"`;
+	$("password-input").value = "";
+	show("password");
+	$("password-input").focus();
+}
+
+$("rescan").addEventListener("click", () => {
+	showError();
+	$("rescan").disabled = true;
+	$("networks-list").textContent = "";
+	send({event: "scan"});
 });
-socket.addEventListener("close", event => {
-	log("Disconnected:", event.code);
+
+$("password-form").addEventListener("submit", event => {
+	event.preventDefault();
+	send({event: "connect", SSID: selected.SSID, password: $("password-input").value});
 });
-socket.addEventListener("error", event => {
-	log("Error:", event.type);
+
+$("password-cancel").addEventListener("click", () => {
+	selected = undefined;
+	show("networks");
 });
+
+$("reload").addEventListener("click", () => location.reload());
+
+// The device may not have a clock, so give it the phone's time and zone.
+function getTimeZoneOffsets(now = new Date()) {
+	const year = now.getFullYear();
+	const standard = Math.max(
+		(new Date(year, 0, 1)).getTimezoneOffset(),
+		(new Date(year, 6, 1)).getTimezoneOffset()
+	);
+	return {
+		timezone: -standard * 60,
+		dst: (standard - now.getTimezoneOffset()) * 60
+	};
+}
 </script>
 </body>
 </html>

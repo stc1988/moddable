@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2022  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Tools.
  *
@@ -23,6 +23,9 @@
 #include "mc.defines.h"
 
 #include "ws2812.pio.h"
+#if MODDEF_ECMA419_ENABLED
+	#include "builtinCommon.h"
+#endif
 
 typedef struct {
 	uint8_t		redShift;
@@ -62,6 +65,9 @@ void xs_neopixel_destructor(void *data)
 		c_memset(np->pixels, 0, np->length * 4);
 		np_show(np);
 		np_deinit(np);
+#if MODDEF_ECMA419_ENABLED
+		builtinFreePin(np->pin);
+#endif
 	}
 }
 
@@ -127,6 +133,10 @@ void xs_neopixel(xsMachine *the)
 	xsmcGet(xsVar(0), xsArg(0), xsID_pin);
 	pin = xsmcToInteger(xsVar(0));
 #endif
+#if MODDEF_ECMA419_ENABLED
+	if (!builtinIsPinFree(pin))
+		xsUnknownError("in use");
+#endif
 
 #ifdef MODDEF_NEOPIXEL_ORDER
 	order = MODDEF_NEOPIXEL_ORDER;
@@ -176,6 +186,9 @@ void xs_neopixel(xsMachine *the)
 
 	np->nbits = (1 == wstype) ? 32 : 24;
 	np->pin = pin;
+#if MODDEF_ECMA419_ENABLED
+	builtinUsePin(pin);
+#endif
 	np->pio = pio0;		//@@ make configurable
 	np->sm = pio_claim_unused_sm(np->pio, false);
 	if (np->sm < 0) {

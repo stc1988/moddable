@@ -1,0 +1,18 @@
+{
+	"modules": {
+		"*": [
+			"./include/*",
+			"./include/freetype/*",
+			"./include/freetype/config/*",
+			"./include/freetype/internal/*",
+			"./include/freetype/internal/services/*",
+			"./src/base/ftcalc",
+			"./src/base/ftdebug",
+			"./src/base/ftoutln",
+			"./src/base/ftstroke",
+			"./src/base/fttrigon",
+			"./src/base/ftutil",
+			"./src/smooth/ftgrays"
+		]
+	}
+}

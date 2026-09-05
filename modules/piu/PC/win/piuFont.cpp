@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -48,6 +48,17 @@ PiuDimension PiuFontGetAscent(PiuFont* self)
 PiuDimension PiuFontGetHeight(PiuFont* self)
 {
 	return (PiuDimension)c_ceil((*self)->height);
+}
+
+PiuDimension PiuFontMeasure(PiuFont* self, xsSlot* slot, xsIntegerValue offset, xsIntegerValue length, PiuCoordinate* inkLeft, PiuCoordinate* inkRight, PiuCoordinate* inkTop, PiuCoordinate* inkBottom)
+{
+	if (inkLeft) {
+		*inkLeft = 0;
+		*inkRight = 0;
+		*inkTop = 0;
+		*inkBottom = 0;
+	}
+	return PiuFontGetWidth(self, slot, offset, length);
 }
 
 PiuDimension PiuFontGetWidth(PiuFont* self, xsSlot* slot, xsIntegerValue offset, xsIntegerValue length)

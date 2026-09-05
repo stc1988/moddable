@@ -4,7 +4,10 @@
 			"include": "../../flash/manifest.json",
 			"modules": {
 				"embedded:update": "./update-esp32"
-			}
+			},
+			"dependency": [
+				{ "idf": "app_update" }
+			]
 		}
 	},
 	"preload": [

@@ -249,7 +249,10 @@ void xs_filelittlefs_write(xsMachine *the)
 	xsmcGetBufferWritable(xsArg(0), &buffer, &length);
 
 	throwIf(lfs_file_seek(&gLFS->lfs, file, position, LFS_SEEK_SET));
-	throwIf(lfs_file_write(&gLFS->lfs, file, buffer, length));
+	lfs_ssize_t result = lfs_file_write(&gLFS->lfs, file, buffer, length);
+	throwIf(result);
+	if ((xsUnsignedValue)result != length)
+		xsUnknownError("partial write");
 }
 
 void xs_filelittlefs_status(xsMachine *the)

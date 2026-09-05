@@ -1,0 +1,13 @@
+{
+	"build": {
+		"NAME": "scan-io-wifi"
+	},
+	"include": [
+		"$(MODDABLE)/examples/manifest_base.json",
+		"$(MODDABLE)/examples/manifest_net.json",
+		"$(MODULES)/io/wifi/manifest.json"
+	],
+	"modules": {
+		"*": "./main"
+	}
+}

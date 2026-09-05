@@ -29,6 +29,33 @@ import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 import MPU6886 from "embedded:sensor/Accelerometer-Gyroscope/MPU6886";
 
+import Backlight from "backlight";
+import Button from "button";
+
+class ButtonA {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.buttonA,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonFlash {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.buttonFlash,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
 const device = {
 	I2C: {
 		default: {
@@ -59,9 +86,27 @@ const device = {
 	io: {Analog, Digital, DigitalBank, I2C, PulseCount, PWM, Serial, SMBus, SPI},
 	pin: {
 		button: 41,
+		buttonA: 41,
+		buttonFlash: 0,
 		backlight: 16,
 		displayDC: 33,
-		displaySelect: 15
+		displaySelect: 15,
+		IRTX: 4
+	},
+	peripheral: {
+		Backlight: class {
+			constructor() {
+				return new Backlight({
+					io: device.io.PWM,
+					pin: device.pin.backlight
+				});
+			}
+		},
+		button: {
+			Default: ButtonFlash,
+			A: ButtonA,
+			Flash: ButtonFlash
+		},
 	},
 	sensor: {
 		IMU: class extends MPU6886 {

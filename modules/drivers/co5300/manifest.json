@@ -1,5 +1,8 @@
 {
-  "include": ["$(MODULES)/pins/digital/manifest.json"],
+  "include": [
+    "$(MODULES)/pins/digital/manifest.json",
+    "$(COMMODETTO)/manifest_bitmap.json"
+  ],
   "defines": {
     "co5300": {
       "width": 410,
@@ -13,10 +16,9 @@
     }
   },
   "modules": {
-    "*": "./*",
-    "commodetto/Bitmap": "$(COMMODETTO)/commodettoBitmap"
+    "*": "./*"
   },
-  "preload": ["co5300", "commodetto/Bitmap"],
+  "preload": ["co5300"],
   "platforms": {
     "esp32": {
       "dependency": [

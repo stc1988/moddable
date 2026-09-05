@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025  Moddable Tech, Inc.
+ * Copyright (c) 2022-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -28,6 +28,8 @@ import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 
+import LEDrgb from "led/rgb";
+
 const device = {
 	I2C: {
 		default: {
@@ -50,7 +52,7 @@ const device = {
 			clock: 6,
 			in: 4,
 			out: 7,
-			port 0
+			port: 0
 		}
 	},
 	Analog: {
@@ -59,15 +61,26 @@ const device = {
 			pin: 26
 		}
 	},
-	io: { Analog, Digital, DigitalBank, I2C, PulseCount, PWM, Serial, SMBus },
+	io: { Analog, Digital, DigitalBank, I2C, PulseCount, PWM, Serial, SMBus, SPI },
 	pin: {
-		button: 23,
 		led: 18,
 		led_r: 18,
 		led_g: 19,
 		led_b: 20
+	},
+	peripheral: {
+		led: {
+			Default: class {
+				constructor(options) {
+					return new LEDrgb({
+						...options,
+						io: device.io.PWM,
+						pin: { r: device.pin.led_r, g: device.pin.led_g, b: device.pin.led_b }
+					});
+				}
+			}
+		}
 	}
 };
 
 export default device;
-

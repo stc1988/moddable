@@ -1,0 +1,6 @@
+{
+	"modules": {
+		"led/digital": "./digital"
+	},
+	"preload": "led/digital"
+}

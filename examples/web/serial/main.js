@@ -14,7 +14,6 @@
 
 import {serial} from "web/serial";
 import TextDecoder from "text/decoder";
-import TextEncoder from "text/encoder";
 import Timer from "timer";
 
 trace("started\n");

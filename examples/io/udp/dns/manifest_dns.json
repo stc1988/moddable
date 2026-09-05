@@ -1,20 +1,15 @@
 {
 	"include": [
-		"$(MODDABLE)/modules/io/manifest.json"
+		"$(MODDABLE)/modules/io/manifest.json",
+		"$(MODDABLE)/modules/network/dns/manifest.json",
+		"$(MODDABLE)/modules/io/socket/manifest.json"
 	],
 	"modules": {
-		"*": [
-			"$(MODULES)/network/dns/moddnsparser"
-		],
 		"embedded:network/dns/resolver/udp": "./dns",
-		"dns/parser": "$(MODULES)/network/dns/dnsparser",
-		"dns/serializer": "$(MODULES)/network/dns/dnsserializer",
-		"dns": "$(MODULES)/network/dns/dns"
+		"dns/config": "./config"
 	},
 	"preload": [
 		"embedded:network/dns/resolver/udp",
-		"dns/parser",
-		"dns/serializer",
-		"dns"
+		"dns/config"
 	]
 }

@@ -1,0 +1,21 @@
+{
+	"include": [
+		"$(COMMODETTO)/manifest_cfeft.json"
+	],
+	"defines": {
+		"cfe": {
+			"ft": {
+				"cff": 1
+			}
+		}
+	},
+	"modules": {
+		"*": [
+			"$(COMMODETTO)/freetype/src/base/ftpsprop",
+			"$(COMMODETTO)/freetype/src/cff/cff",
+			"$(COMMODETTO)/freetype/src/psaux/psaux",
+			"$(COMMODETTO)/freetype/src/pshinter/pshinter",
+			"$(COMMODETTO)/freetype/src/psnames/psnames"
+		]
+	}
+}

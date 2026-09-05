@@ -1,4 +1,7 @@
 {
+	"build": {
+		"NAME": "text-piu"
+	},
 	"defines": {
 		"cfe": { "kern": true }
 	},

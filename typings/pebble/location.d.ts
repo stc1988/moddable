@@ -30,8 +30,8 @@ interface LocationSample {
 }
 
 interface LocationOptions {
-  onSample?: () => void;
-  onError?: (error: Error) => void;
+  onSample?: (this: Location) => void;
+  onError?: (this: Location, error: Error) => void;
 }
 
 interface LocationConfiguration {

@@ -32,6 +32,54 @@ import AXP192 from "embedded:peripheral/Power/axp192";
 import SH200Q from "embedded:sensor/Accelerometer-Gyroscope/SH200Q";
 import MPU6886 from "embedded:sensor/Accelerometer-Gyroscope/MPU6886";
 import RTC from "embedded:RTC/BM8563";
+import Button from "button";
+import LED from "led/pwm";
+
+/**
+ * LCD backlight via AXP192 LDO2 (Power.brightness 0–100).
+ * brightness 0–1 matches shared PWM Backlight / piu setup path.
+ */
+class Backlight {
+	#value = 1;
+	set brightness(value) {
+		if (value <= 0)
+			value = 0;
+		else if (value >= 1)
+			value = 1;
+		this.#value = value;
+		if (undefined !== globalThis.power)
+			globalThis.power.brightness = value * 100;
+	}
+	get brightness() {
+		return this.#value;
+	}
+	close() {
+	}
+}
+
+class ButtonA {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.buttonA,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonB {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.buttonB,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
 
 const device = {
 	I2C: {
@@ -76,6 +124,8 @@ const device = {
 	io: { Analog, Digital, DigitalBank, I2C, PulseCount, PWM, Serial, SMBus, SPI, PulseWidth },
 	pin: {
 		button: 37,
+		buttonA: 37,
+		buttonB: 39,
 		led: 10,
 		displayDC: 23,
 		displaySelect: 5
@@ -121,7 +171,27 @@ const device = {
 		}
 	},
 	peripheral: {
+		Backlight,
+		button: {
+			Default: ButtonA,
+			A: ButtonA,
+			B: ButtonB
+		},
+		led: {
+			Default: class {
+				constructor(options) {
+					return new LED({
+						...options,
+						io: device.io.PWM,
+						pin: device.pin.led,
+						invert: true		// active-low red LED
+					});
+				}
+			}
+		},
 		Power: class extends AXP192 {
+			#brightness = 100;
+
 			constructor(options) {
 				super({
 					...options,
@@ -130,26 +200,41 @@ const device = {
 						io: device.io.SMBus
 					}
 				});
-				this.writeByte(0x10, 0xff); // OLED VPP Enable
-				this.writeByte(0x28, 0xff); // Enable LDO2&LDO3, LED&TFT 3.3V
-				this.writeByte(0x82, 0xff); // Enable all the ADCs
-				this.writeByte(0x33, 0xc0); // Enable Charging, 100mA, 4.2V End at 0.9
-				this.writeByte(0xb8, 0x80); // Enable Colume Counter
-				this.writeByte(0x12, 0x4d); // Enable DC-DC1, OLED VDD, 5B V EXT
-				this.writeByte(0x36, 0x5c); // 128ms power on, 4s power off
-				this.writeByte(0x42, 0x03); // Enable PekIRQ
-				this.writeByte(0x91, 0xA0); // Set MIC voltage to 2.8V
-				this.writeByte(0x90, 0x02); // gpio0
+				this.writeUint8(0x10, 0xff); // OLED VPP Enable
+				this.writeUint8(0x28, 0xff); // Enable LDO2&LDO3, LED&TFT 3.3V
+				this.writeUint8(0x82, 0xff); // Enable all the ADCs
+				this.writeUint8(0x33, 0xc0); // Enable Charging, 100mA, 4.2V End at 0.9
+				this.writeUint8(0xb8, 0x80); // Enable Colume Counter
+				this.writeUint8(0x12, 0x4d); // Enable DC-DC1, OLED VDD, 5B V EXT
+				this.writeUint8(0x36, 0x5c); // 128ms power on, 4s power off
+				this.writeUint8(0x42, 0x03); // Enable PekIRQ
+				this.writeUint8(0x91, 0xA0); // Set MIC voltage to 2.8V
+				this.writeUint8(0x90, 0x02); // gpio0
+				this.brightness = 100;
 			}
-			// value 0 - 100 %
+
+			/**
+			 * LCD backlight level, 0–100.
+			 * Hardware: AXP192 LDO2 voltage nibble (reg 0x28 bits 7–4), codes 7–15.
+			 */
 			set brightness(value) {
 				if (value <= 0)
-					value = 7;
+					value = 0;
 				else if (value >= 100)
-					value = 15;
+					value = 100;
+				this.#brightness = value;
+
+				let code;
+				if (value <= 0)
+					code = 7;
+				else if (value >= 100)
+					code = 15;
 				else
-					value = (value / 100) * 8 + 7;
-				this.writeByte(0x28, (this.readByte(0x28) & 0x0F) | (value << 4));
+					code = (value / 100) * 8 + 7;
+				this.writeUint8(0x28, (this.readUint8(0x28) & 0x0F) | (code << 4));
+			}
+			get brightness() {
+				return this.#brightness;
 			}
 		},
 		RTC: class {

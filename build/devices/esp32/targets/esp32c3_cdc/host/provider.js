@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022  Moddable Tech, Inc.
+ * Copyright (c) 2022-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -23,10 +23,26 @@ import Digital from "embedded:io/digital";
 import DigitalBank from "embedded:io/digitalbank";
 import I2C from "embedded:io/i2c";
 // import PulseCount from "embedded:io/pulsecount";
-// import PWM from "embedded:io/pwm";
+import PWM from "embedded:io/pwm";
 import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
-// import SPI from "embedded:io/spi";
+import SPI from "embedded:io/spi";
+
+import Button from "button";
+import LEDneopixel from "led/neopixel";
+import NeoPixel from "neopixel";
+
+class ButtonFlash {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonA,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
 
 const device = {
 	I2C: {
@@ -45,16 +61,48 @@ const device = {
 			transmit: 5
 		}
 	},
+	SPI: {
+		default: {
+			io: SPI,
+			port: 2,
+			clock: 8,
+			in: 6,
+			out: 7
+		}
+	},
 	Analog: {
 		default: {
 			io: Analog,
 			pin: 1
 		}
 	},
-	io: { Analog, Digital, DigitalBank, I2C, Serial, SMBus },
+	io: { Analog, Digital, DigitalBank, I2C, PWM, Serial, SMBus, SPI },
 	pin: {
-		button: 0,
-		led: 10
+		button: 9,
+		buttonA: 9,
+		led: 8
+	},
+	peripheral: {
+		button: {
+			Default: ButtonFlash,
+			Flash: ButtonFlash
+		},
+		led: {
+			Default: class {
+				constructor(options) {
+					return new LEDneopixel({
+						...options,
+						neopixels: {
+							io: NeoPixel,
+							length: 1,
+							pin: device.pin.led,
+							order: "GRB",
+							brightness: 32
+						}
+					});
+				}
+			}
+		}
 	}
 };
 

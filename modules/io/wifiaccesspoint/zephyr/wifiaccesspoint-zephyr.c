@@ -83,7 +83,6 @@ static enum wifi_security_type stringToSecurity(const char *str, uint8_t *ok)
 {
 	*ok = 1;
 	if (0 == c_strcmp(str, "none")) return WIFI_SECURITY_TYPE_NONE;
-	if (0 == c_strcmp(str, "wpa_psk")) return WIFI_SECURITY_TYPE_WPA_PSK;
 	if (0 == c_strcmp(str, "wpa2_psk")) return WIFI_SECURITY_TYPE_PSK;
 	if (0 == c_strcmp(str, "wpa3_psk")) return WIFI_SECURITY_TYPE_SAE;
 	if (0 == c_strcmp(str, "wpa2_wpa3_psk")) return WIFI_SECURITY_TYPE_WPA_AUTO_PERSONAL;

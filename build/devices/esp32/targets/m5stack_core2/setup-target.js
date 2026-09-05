@@ -18,23 +18,10 @@
  *
  */
 
-import AudioOut from "pins/audioout";
+import AudioOut from "embedded:io/audio/out";
 import Resource from "Resource";
 import Timer from "timer";
 import config from "mc/config";
-
-globalThis.Host = {
-  Backlight: class {
-    constructor(brightness = 100) {
-      this.write(brightness);
-    }
-    write(value) {
-      if (undefined !== globalThis.power)
-        globalThis.power.brightness = value;
-    }
-    close() { }
-  }
-}
 
 class M5Core2Button {		// M5StackCoreTouch calls write when button changes 
   #value = 0;
@@ -50,7 +37,7 @@ class M5Core2Button {		// M5StackCoreTouch calls write when button changes
 }
 
 export default function (done) {
-  // buttons
+  // Soft touch-bar buttons (driven by M5StackCoreTouch)
   globalThis.button = {
     a: new M5Core2Button,
     b: new M5Core2Button,
@@ -74,17 +61,30 @@ export default function (done) {
 
   // start-up sound
   if (config.startupSound) {
-    const speaker = new AudioOut({ streams: 1 });
-    speaker.callback = function () {
+    const buf = new Resource(config.startupSound);
+    let playing = new Uint8Array(buf, 0, buf.byteLength);
+    playing.position = 0;
+    const speaker = new AudioOut({
+      onWritable(size) {
+        do {
+          let use = playing.byteLength - playing.position;
+          if (use) {
+            if (use > size) use = size;
+            this.write(playing.subarray(playing.position, playing.position + use));
+            playing.position += use;
+          }
+          if (playing.position === playing.byteLength) {
       this.stop();
       this.close();
       Timer.set(this.done);
-    };
+            break;
+          }
+          size -= use;
+        } while (size);
+      }
+    });
     speaker.done = done;
     done = undefined;
-
-    speaker.enqueue(0, AudioOut.Samples, new Resource(config.startupSound));
-    speaker.enqueue(0, AudioOut.Callback, 0);
     speaker.start();
   }
 

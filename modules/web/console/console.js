@@ -22,7 +22,7 @@ const prefixes = Object.freeze({
 	none: "",
 	warn: "<warn>",
 	error: "<error>",
-	trace: "<info>",
+	info: "<info>",
 });
 
 const state = {

@@ -1,0 +1,15 @@
+{
+	"modules": {
+		"*": [
+			"./moddnsparser.c"
+		],
+		"dns": "$(MODULES)/network/dns/dns",
+		"dns/parser": "$(MODULES)/network/dns/dnsparser",
+		"dns/serializer": "$(MODULES)/network/dns/dnsserializer"
+	},
+	"preload": [
+		"dns",
+		"dns/parser",
+		"dns/serializer"
+	]
+}

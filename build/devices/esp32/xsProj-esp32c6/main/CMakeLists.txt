@@ -23,8 +23,24 @@ file(TO_CMAKE_PATH "$ENV{MODDABLE}" ENV_MODDABLE)
 file(TO_CMAKE_PATH "$ENV{IDF_PATH}" ENV_IDF_PATH)
 file(TO_CMAKE_PATH "${TMP_DIR}" C_TMP_DIR)
 
+# Place the parts of the image that change on nearly every build (heap snapshot, resources)
+# at the end of flash, each on a sector boundary, so esptool's differential flashing rewrites
+# only the sectors that changed. The object names are set in tools/mcconfig/make.esp32.mk.
+file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/xs.lf CONTENT
+"[mapping:xs_moddable]
+archive: xs_${ESP32_SUBCLASS}.a
+entries:
+    * (default);
+        text -> flash_text ALIGN(4)
+    mc_resources (default);
+        rodata -> flash_rodata ALIGN(4096, pre)
+    mc_xs (default);
+        rodata -> flash_rodata ALIGN(4096, post)
+")
+
 idf_component_register(
 			SRCS "main.c"
+			LDFRAGMENTS ${CMAKE_CURRENT_BINARY_DIR}/xs.lf
 			INCLUDE_DIRS "." ${ENV_MODDABLE}/xs/platforms/esp  ${ENV_MODDABLE}/xs/platforms/mc ${ENV_MODDABLE}/xs/includes ${ENV_MODDABLE}/modules/base/instrumentation ${ENV_MODDABLE}/modules/io ${ENV_MODDABLE}/modules/base/timer ${C_TMP_DIR}
 			)
 

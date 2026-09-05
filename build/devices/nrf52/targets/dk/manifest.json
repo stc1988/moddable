@@ -4,8 +4,9 @@
 		"UF2_VOLUME_NAME": "MODDABLEnRF"
 	},
 	"include": [
-		"$(MODULES)/drivers/button/manifest.json",
-		"$(MODULES)/drivers/led/manifest.json"
+		"$(MODULES)/drivers/peripherals/led/digital/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/io/manifest.json"
 	],
 	"modules": {
 		"setup/target": "./setup-target"
@@ -18,7 +19,6 @@
 		"led2_pin": 14,
 		"led3_pin": 15,
 		"led4_pin": 16,
-
 		"button1_pin": 11,
 		"button2_pin": 12,
 		"button3_pin": 24,

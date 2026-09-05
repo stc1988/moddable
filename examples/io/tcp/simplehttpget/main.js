@@ -21,6 +21,7 @@ class HTTPGet {
 	#socket;
 	#onData;
 	#onError;
+	#dns;
 	constructor(options) {
 		this.#host = options.host;
 		this.#path = options.path;
@@ -32,20 +33,22 @@ class HTTPGet {
 		if (!this.#onData || !this.#path)
 			throw new Error("parameter error");
 
-		System.resolve(this.#host, (host, address) => {
-			if (!address) {
-				this.#onError?.();
-				return;
-			}
-
-			this.#socket = new TCP({
-				target: this,
-				address,
-				port: this.#port,
-				onReadable: this.readable,
-				onWritable: this.writeable,
-				onError: this.error,
-			});
+		this.#dns = new device.network.dns.resolver.io({
+			...device.network.dns.resolver
+		});
+		this.#dns.resolve({
+			host: this.#host,
+			onResolved: (host, address) => {
+				this.#socket = new TCP({
+					target: this,
+					address,
+					port: this.#port,
+					onReadable: this.readable,
+					onWritable: this.writeable,
+					onError: this.error,
+				});
+			},
+			onError: () => this.#onError?.()
 		});
 	}
 	readable(byteLength) {
@@ -73,6 +76,8 @@ class HTTPGet {
 		target.#onError?.();
 		target.#socket.close();
 		target.#socket = undefined;
+		target.#dns?.close();
+		target.#dns = undefined;
 	}
 }
 

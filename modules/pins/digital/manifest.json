@@ -1,4 +1,5 @@
 {
+	"warning": "** ECMA-419 Digital recommended over classic 'pins/digital' module **",
 	"modules": {
 		"pins/digital": "$(MODULES)/pins/digital/digital"
 	},

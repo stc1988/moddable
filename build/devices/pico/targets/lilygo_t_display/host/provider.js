@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025  Moddable Tech, Inc.
+ * Copyright (c) 2022-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -27,6 +27,34 @@ import PWM from "embedded:io/pwm";
 import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
+
+import Backlight from "backlight";
+import Button from "button";
+import LED from "led/pwm";
+
+class ButtonA {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.button,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonB {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: device.io.Digital,
+			pin: device.pin.buttonB,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
 
 const device = {
 	I2C: {
@@ -64,7 +92,45 @@ const device = {
 		button: 6,
 		buttonA: 6,
 		buttonB: 7,
-		led: 25
+		led: 25,
+		backlight: 4,
+		lcdPower: 22
+	},
+	peripheral: {
+		Backlight: class {
+			constructor() {
+				return new Backlight({
+					io: device.io.PWM,
+					pin: device.pin.backlight
+				});
+			}
+		},
+		button: {
+			Default: ButtonA,
+			A: ButtonA,
+			B: ButtonB
+		},
+		led: {
+			Default: class {
+				constructor(options) {
+					return new LED({
+						...options,
+						io: device.io.PWM,
+						pin: device.pin.led
+					});
+				}
+			}
+		},
+		Power: {
+			LCD: class {
+				constructor() {
+					return new Digital({
+						io: Digital,
+						pin: device.pin.lcdPower,
+						mode: Digital.Output });
+					}
+			}
+		}
 	}
 };
 

@@ -1,4 +1,7 @@
 {
+	"build": {
+		"NAME": "bounce-lsm303dlhc"
+	},
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/examples/manifest_commodetto.json",

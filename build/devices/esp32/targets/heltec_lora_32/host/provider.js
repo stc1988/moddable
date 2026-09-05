@@ -34,34 +34,18 @@ import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 import LoRa from "sx127x";
 
-class Button {
-	#io;
-	#onPush;
+import Button from "button";
+import LED from "led/pwm";
 
+class ButtonFlash {
 	constructor(options) {
-		options = {...options};
-		if (options.onReadable || options.onWritable || options.onError)
-			throw new Error;
-
-		if (options.target)
-			this.target = options.target;
-
-		const Digital = options.io;
-		if (options.onPush) {
-			this.#onPush = options.onPush; 
-			options.onReadable = () => this.#onPush();
-			options.edge = Digital.Rising | Digital.Falling;
-		}
-
-		this.#io = new Digital(options);
-		this.#io.pressed = options.invert ? 0 : 1;
-	}
-	close() {
-		this.#io?.close();
-		this.#io = undefined;
-	}
-	get pressed() {
-		return (this.#io.read() === this.#io.pressed) ? 1 : 0;
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.button,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
 	}
 }
 
@@ -100,25 +84,21 @@ const device = {
 	pin: {
 		button: 0,
 		led: 25,
-		backlight: 18,
 		displayDC: 2,
 		displaySelect: 15
 	},
 	peripheral: {
-		Backlight: class {
-			constructor() {
-				return new Backlight({pin: device.pin.backlight});
-			}
-		},
 		button: {
-			Flash: class {
+			Default: ButtonFlash,
+			Flash: ButtonFlash
+		},
+		led: {
+			Default: class {
 				constructor(options) {
-					return new Button({
+					return new LED({
 						...options,
-						io: Digital,
-						pin: device.pin.button,
-						mode: Digital.InputPullUp,
-						invert: true
+						io: PWM,
+						pin: device.pin.led
 					});
 				}
 			}

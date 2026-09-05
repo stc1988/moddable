@@ -1,11 +1,11 @@
 {
 	"build": {
-		"PICO_SUBCLASS":"rp2350"
+		"PICO_SUBCLASS": "rp2350"
 	},
 	"include": [
-		"$(MODULES)/io/manifest.json",
-		"$(MODULES)/drivers/button/manifest.json",
-		"$(MODULES)/drivers/led/manifest.json"
+		"$(MODULES)/drivers/peripherals/led/pwm/manifest.json",
+		"$(MODULES)/drivers/peripherals/button/manifest.json",
+		"$(MODULES)/io/manifest.json"
 	],
 	"modules": {
 		"setup/target": "./setup-target"

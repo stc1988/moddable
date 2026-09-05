@@ -4,13 +4,14 @@
 		"$(MODDABLE)/examples/manifest_net.json",
 		"$(MODDABLE)/examples/manifest_commodetto.json",
 		"$(MODULES)/network/http/manifest.json",
-		"$(MODDABLE)/modules/io/imagein/camera/manifest.json"
+		"$(MODDABLE)/modules/io/imagein/camera/manifest.json",
+		"$(COMMODETTO)/manifest_bitmap.json",
+		"$(COMMODETTO)/manifest_pixelsout.json",
+		"$(MODDABLE)/modules/network/net/manifest.json"
 	],
 	"modules": {
-		"commodetto/Bitmap": "$(COMMODETTO)/commodettoBitmap",
 		"commodetto/Poco": "$(COMMODETTO)/commodettoPoco",
 		"commodetto/*": "$(COMMODETTO)/commodettoPocoBlit",
-		"commodetto/PixelsOut": "$(COMMODETTO)/commodettoPixelsOut",
 		"*": [
 			"./main",
 			"./bmpSpooler"

@@ -1,4 +1,7 @@
 {
+	"build": {
+		"NAME": "servo-sweep-pins"
+	},
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODULES)/pins/servo/manifest.json"

@@ -57,8 +57,8 @@ class Shape2Behavior extends BallBehavior {
 		const when = Date.now();
 		if (this.when < when) {
 			const angle = (this.angle * Math.PI) / 180;
-			shape.fillOutline = this.fillOutline.clone().rotate(angle, 50, 50);
-			shape.strokeOutline = this.strokeOutline.clone().rotate(angle, 50, 50);
+			shape.fillOutline = this.fillOutline.clone(shape.fillOutline).rotate(angle, 50, 50);
+			shape.strokeOutline = this.strokeOutline.clone(shape.strokeOutline).rotate(angle, 50, 50);
 			this.angle += 5;
 			if (this.angle > 360)
 				this.angle = 0;
@@ -85,7 +85,7 @@ class Shape3Behavior extends BallBehavior {
 		const when = Date.now();
 		if (this.when < when) {
 			const angle = (this.angle * Math.PI) / 180;
-			shape.strokeOutline = this.strokeOutline.clone().rotate(angle, 50, 50);
+			shape.strokeOutline = this.strokeOutline.clone(shape.strokeOutline).rotate(angle, 50, 50);
 			this.angle -= 5;
 			if (this.angle < 0)
 				this.angle = 360;

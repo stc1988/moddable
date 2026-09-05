@@ -1,4 +1,5 @@
 {
+	"warning": "** ECMA-419 PWM recommended over classic 'pins/pwm' module **",
 	"modules": {
 		"pins/pwm": "$(MODULES)/pins/pwm/pwm"
 	},

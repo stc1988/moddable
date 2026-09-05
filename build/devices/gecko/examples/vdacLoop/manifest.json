@@ -4,7 +4,10 @@
 		"$(BUILD)/devices/gecko/vdac/manifest.json",
 		"$(MODULES)/drivers/destm32s/manifest.json",
 		"$(MODULES)/pins/analog/manifest.json",
-		"$(MODULES)/base/sleep/manifest.json"
+		"$(MODULES)/base/sleep/manifest.json",
+		"$(COMMODETTO)/manifest_bitmap.json",
+		"$(COMMODETTO)/manifest_parsebmf.json",
+		"$(COMMODETTO)/manifest_parserle.json"
 	],
 	"config": {
 		"screen": "destm32s",
@@ -16,12 +19,9 @@
 		]
 	},
 	"modules": {
-		"commodetto/Bitmap": "$(COMMODETTO)/commodettoBitmap",
         "commodetto/Poco": "$(COMMODETTO)/commodettoPoco",
         "commodetto/*": "$(COMMODETTO)/commodettoPocoBlit",
         "commodetto/cfe": "$(COMMODETTO)/cfeBMF",
-        "commodetto/parseRLE": "$(COMMODETTO)/commodettoParseRLE",
-        "commodetto/parseBMF": "$(COMMODETTO)/commodettoParseBMF",
         "Resource": "$(MODDABLE)/modules/files/resource/Resource",
 		"*": "./main"
 	},

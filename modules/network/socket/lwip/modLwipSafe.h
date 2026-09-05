@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2019  Moddable Tech, Inc.
+ * Copyright (c) 2016-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -28,22 +28,50 @@
 	#define tcp_bind_safe tcp_bind
 	#define tcp_listen_safe tcp_listen
 	#define tcp_connect_safe(skt, ipaddr, port, connected) tcp_connect(skt, ipaddr, port, connected)
-	// ESP8266 has a sort-of memory leak when using tcp_close without tcp_abort (see https://github.com/esp8266/Arduino/issues/230)
-	#define tcp_close_safe(pb) {if (CLOSED == (pb)->state) tcp_close(pb); else {tcp_close(pb); tcp_abort(pb);}}
+	// ESP8266 has a sort-of memory leak when using tcp_close without tcp_abort (see https://github.com/esp8266/Arduino/issues/230).
+	// tcp_close frees the pcb outright in the CLOSED, LISTEN, and SYN_SENT states, so tcp_abort must not follow in those.
+	#define tcp_close_safe(pb) \
+		{ \
+		enum tcp_state tcpCloseState = (pb)->state; \
+		tcp_close(pb); \
+		if ((CLOSED != tcpCloseState) && (LISTEN != tcpCloseState) && (SYN_SENT != tcpCloseState)) \
+			tcp_abort(pb); \
+		}
 	// single-threaded here, so no marshaling needed
 	#define tcp_clear_callbacks_safe(pb) {tcp_arg(pb, NULL); tcp_recv(pb, NULL); tcp_sent(pb, NULL); tcp_err(pb, NULL);}
+	#define tcp_handoff_safe(pb, cbarg, recvfn, sentfn, errfn) {tcp_arg(pb, cbarg); tcp_recv(pb, recvfn); tcp_sent(pb, sentfn); tcp_err(pb, errfn);}
+	#define tcp_handoff_checked_safe(pfrom, pto, cbarg, recvfn, sentfn, errfn) \
+		((*(pfrom)) ? (*(pto) = *(pfrom), *(pfrom) = NULL, \
+			tcp_arg(*(pto), cbarg), tcp_recv(*(pto), recvfn), tcp_sent(*(pto), sentfn), tcp_err(*(pto), errfn), \
+			ERR_OK) : ERR_CONN)
+	#define tcp_teardown_safe(pskt) \
+		{ \
+		struct tcp_pcb *tcpTeardownPCB = *(pskt); \
+		if (tcpTeardownPCB) { \
+			*(pskt) = NULL; \
+			tcp_clear_callbacks_safe(tcpTeardownPCB); \
+			tcp_close_safe(tcpTeardownPCB); \
+		} \
+		}
 	#define tcp_output_safe tcp_output
 	#define tcp_write_safe tcp_write
 	#define tcp_recved_safe(skt, len) tcp_recved(skt, len)
+	#define tcp_output_checked_safe(pskt) { if (*(pskt)) tcp_output(*(pskt)); }
+	#define tcp_write_checked_safe(pskt, data, len, flags) (*(pskt) ? tcp_write(*(pskt), data, len, flags) : ERR_CONN)
+	#define tcp_recved_checked_safe(pskt, pclosed, len) { if (*(pskt) && !*(pclosed)) tcp_recved(*(pskt), len); }
 	#define udp_new_safe udp_new
 	#define udp_bind_safe udp_bind
 	#define udp_remove_safe udp_remove
 	#define udp_sendto_safe(skt, data, size, dst, port, err) \
 		{ \
 		struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, size, PBUF_RAM); \
-		c_memcpy(p->payload, data, size); \
-		*err = udp_sendto(skt, p, dst, port); \
-		pbuf_free_safe(p); \
+		if (!p) \
+			*err = ERR_MEM; \
+		else { \
+			c_memcpy(p->payload, data, size); \
+			*err = udp_sendto(skt, p, dst, port); \
+			pbuf_free_safe(p); \
+		} \
 		}
 	#define pbuf_free_safe pbuf_free
 	#define dns_gethostbyname_safe dns_gethostbyname
@@ -55,6 +83,9 @@
 
 	struct tcp_pcb *tcp_new_safe(void);
 	void tcp_clear_callbacks_safe(struct tcp_pcb *tcpPCB);
+	void tcp_handoff_safe(struct tcp_pcb *tcpPCB, void *callback_arg, tcp_recv_fn recv, tcp_sent_fn sent, tcp_err_fn err);
+	err_t tcp_handoff_checked_safe(struct tcp_pcb **fromPCB, struct tcp_pcb **toPCB, void *callback_arg, tcp_recv_fn recv, tcp_sent_fn sent, tcp_err_fn err);
+	void tcp_teardown_safe(struct tcp_pcb **pskt);
 	err_t tcp_connect_safe(struct tcp_pcb *tcpPCB, const ip_addr_t *ipaddr, u16_t port, tcp_connected_fn connected);
 	u8_t pbuf_free_safe(struct pbuf *p);
 	err_t tcp_bind_safe(struct tcp_pcb *tcpPCB, const ip_addr_t *ipaddr, u16_t port);
@@ -62,6 +93,9 @@
 	void tcp_output_safe(struct tcp_pcb *tcpPCB);
 	err_t tcp_write_safe(struct tcp_pcb *tcpPCB, const void *data, u16_t len, u8_t flags);
 	void tcp_recved_safe(struct tcp_pcb *tcpPCB, u16_t len);
+	void tcp_output_checked_safe(struct tcp_pcb **pskt);
+	err_t tcp_write_checked_safe(struct tcp_pcb **pskt, const void *data, u16_t len, u8_t flags);
+	void tcp_recved_checked_safe(struct tcp_pcb **pskt, uint8_t *pclosed, u16_t len);
 	struct tcp_pcb * tcp_listen_safe(struct tcp_pcb *pcb);
 	struct udp_pcb *udp_new_safe(void);
 	err_t udp_bind_safe(struct udp_pcb *udpPCB, const ip_addr_t *ipaddr, u16_t port);

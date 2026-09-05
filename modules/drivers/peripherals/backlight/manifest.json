@@ -1,0 +1,6 @@
+{
+	"modules": {
+		"backlight": "./backlight"
+	},
+	"preload": "backlight"
+}

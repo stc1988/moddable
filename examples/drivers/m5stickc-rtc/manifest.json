@@ -5,20 +5,17 @@
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/examples/manifest_net.json",
-		"$(MODDABLE)/examples/manifest_commodetto.json"
+		"$(MODDABLE)/examples/manifest_commodetto.json",
+		"$(MODDABLE)/modules/network/sntp/manifest.json"
 	],
 	"modules": {
 		"*": [
-			"$(MODULES)/network/sntp/*",
 			"./main"
 		]
 	},
 	"resources": {
 		"*-mask": "$(MODDABLE)/examples/assets/fonts/OpenSans-Semibold-16"
 	},
-	"preload": [
-		"sntp"
-	],
 	"platforms": {
 		"esp32/m5stick_c" :{
 			"config": {

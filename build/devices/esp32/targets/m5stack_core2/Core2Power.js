@@ -25,10 +25,10 @@ import Timer from "timer";
 class PowerAXP192 extends AXP192 {
     constructor(options) {
         super(options);
-        this.writeByte(0x30, (this.readByte(0x30) & 0x04) | 0x02); //AXP192 30H
-        this.writeByte(0x92, this.readByte(0x92) & 0xf8); //AXP192 GPIO1:OD OUTPUT
-        this.writeByte(0x93, this.readByte(0x93) & 0xf8); //AXP192 GPIO2:OD OUTPUT
-        this.writeByte(0x35, (this.readByte(0x35) & 0x1c) | 0xa3); //AXP192 RTC CHG
+        this.writeUint8(0x30, (this.readUint8(0x30) & 0x04) | 0x02); //AXP192 30H
+        this.writeUint8(0x92, this.readUint8(0x92) & 0xf8); //AXP192 GPIO1:OD OUTPUT
+        this.writeUint8(0x93, this.readUint8(0x93) & 0xf8); //AXP192 GPIO2:OD OUTPUT
+        this.writeUint8(0x35, (this.readUint8(0x35) & 0x1c) | 0xa3); //AXP192 RTC CHG
     
         // main power line
         this._dcdc1.voltage = 3350;
@@ -50,9 +50,9 @@ class PowerAXP192 extends AXP192 {
         this.speaker = this._gpio2;
     
         // AXP192 GPIO4
-        this.writeByte(0x95, (this.readByte(0x95) & 0x72) | 0x84);
-        this.writeByte(0x36, 0x4c);
-        this.writeByte(0x82, 0xff);
+        this.writeUint8(0x95, (this.readUint8(0x95) & 0x72) | 0x84);
+        this.writeUint8(0x36, 0x4c);
+        this.writeUint8(0x82, 0xff);
         // reset LCD
         this._gpio4.enable = false
         Timer.delay(20);
@@ -62,12 +62,12 @@ class PowerAXP192 extends AXP192 {
     }
     set busPowerMode(mode) {
         if (mode === 0) {
-            this.writeByte(0x91, (this.readByte(0x91) & 0x0f) | 0xf0);
-            this.writeByte(0x90, (this.readByte(0x90) & 0xf8) | 0x02); //set GPIO0 to LDO OUTPUT , pullup N_VBUSEN to disable supply from BUS_5V
-            this.writeByte(0x12, this.readByte(0x12) | 0x40); //set EXTEN to enable 5v boost
+            this.writeUint8(0x91, (this.readUint8(0x91) & 0x0f) | 0xf0);
+            this.writeUint8(0x90, (this.readUint8(0x90) & 0xf8) | 0x02); //set GPIO0 to LDO OUTPUT , pullup N_VBUSEN to disable supply from BUS_5V
+            this.writeUint8(0x12, this.readUint8(0x12) | 0x40); //set EXTEN to enable 5v boost
         } else {
-            this.writeByte(0x12, this.readByte(0x12) & 0xbf); //set EXTEN to disable 5v boost
-            this.writeByte(0x90, (this.readByte(0x90) & 0xf8) | 0x01); //set GPIO0 to float , using enternal pulldown resistor to enable supply from BUS_5VS
+            this.writeUint8(0x12, this.readUint8(0x12) & 0xbf); //set EXTEN to disable 5v boost
+            this.writeUint8(0x90, (this.readUint8(0x90) & 0xf8) | 0x01); //set GPIO0 to float , using enternal pulldown resistor to enable supply from BUS_5VS
         }
     }
   
@@ -90,15 +90,15 @@ class PowerAXP192 extends AXP192 {
 class PowerAXP2101 extends AXP2101 {
     constructor(options) {
         super(options);
-        this.writeByte(0x27, 0x00); // PowerKey Hold=1sec / PowerOff=4sec
-        this.writeByte(0x10, 0x30); // PMU common config (internal off-discharge enable)
-        this.writeByte(0x12, 0x00); // BATFET disable
-        this.writeByte(0x68, 0x01); // Battery detection enabled.
-        this.writeByte(0x69, 0x13); // CHGLED setting
-        this.writeByte(0x99, 0x00); // DLDO1 set 0.5v (vibration motor)
+        this.writeUint8(0x27, 0x00); // PowerKey Hold=1sec / PowerOff=4sec
+        this.writeUint8(0x10, 0x30); // PMU common config (internal off-discharge enable)
+        this.writeUint8(0x12, 0x00); // BATFET disable
+        this.writeUint8(0x68, 0x01); // Battery detection enabled.
+        this.writeUint8(0x69, 0x13); // CHGLED setting
+        this.writeUint8(0x99, 0x00); // DLDO1 set 0.5v (vibration motor)
     
         // DCDC1&3  Enable
-        this.writeByte(0x80, this.readByte(0x00) | 0x04);
+        this.writeUint8(0x80, this.readUint8(0x00) | 0x04);
     
         // main power line
         this._dcdc1.voltage = 3350;
@@ -151,7 +151,7 @@ export default class Core2Power {
             address: 0x34,
              hz: 400_000
         });
-        const powerICID = s.readByte(0x03);
+        const powerICID = s.readUint8(0x03);
         s.close();
         return powerICID === 0x03 ? new PowerAXP192(options) : new PowerAXP2101(options)
     }

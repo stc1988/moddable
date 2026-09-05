@@ -1,7 +1,8 @@
 {
 	"include": [
 		"$(MODULES)/pins/digital/manifest.json",
-		"$(MODULES)/pins/spi/manifest.json"
+		"$(MODULES)/pins/spi/manifest.json",
+		"$(COMMODETTO)/manifest_bitmap.json"
 	],
 	"defines": {
 		"ili9341": {
@@ -11,11 +12,9 @@
 		}
 	},
 	"modules": {
-		"*": "$(MODULES)/drivers/ili9341/*",
-		"commodetto/Bitmap": "$(COMMODETTO)/commodettoBitmap"
+		"*": "$(MODULES)/drivers/ili9341/*"
 	},
 	"preload": [
-		"ili9341",
-		"commodetto/Bitmap"
+		"ili9341"
 	]
 }

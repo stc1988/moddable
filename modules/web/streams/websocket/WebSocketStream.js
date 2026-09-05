@@ -20,7 +20,6 @@
 
 import { ReadableStream, WritableStream } from "web/streams";
 
-import Timer from "timer"
 import URL from "url";
 
 class WebSocketStream {
@@ -50,11 +49,11 @@ class WebSocketStream {
 		let scheme = url.protocol;
 		let port, config;
 		if (scheme == "ws:") {
-			port = url.port || 80;
+			port = url.port ?? 80;
 			config = {...(options?.ws ?? device.network.ws)};
 		}
 		else if (scheme == "wss:") {
-			port = url.port || 443;
+			port = url.port ?? 443;
 			config = {...(options?.wss ?? device.network.wss)};
 		}
 		else
@@ -68,13 +67,15 @@ class WebSocketStream {
 		this.#url = href;
 		
 		protocol = options?.protocols;
+		if (Array.isArray(protocol))
+			protocol = protocol.join();
 		signal = options?.signal;
 			
 		this.#closed = Promise.withResolvers();
 		this.#opened = Promise.withResolvers();
 		
 		options = { ...config, host, port, path, protocol }
-		this.#client = new device.network.ws.io({
+		this.#client = new config.io({
 			...options,
 			onControl: (opcode, data) => {
 				switch (opcode) {

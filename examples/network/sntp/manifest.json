@@ -1,15 +1,15 @@
 {
+	"build": {
+		"NAME": "sntp-network"
+	},
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
-		"$(MODDABLE)/examples/manifest_net.json"
+		"$(MODDABLE)/examples/manifest_net.json",
+		"$(MODDABLE)/modules/network/sntp/manifest.json"
 	],
 	"modules": {
 		"*": [
-			"./main",
-			"$(MODULES)/network/sntp/*"
+			"./main"
 		]
-	},
-	"preload": [
-		"sntp"
-	]
+	}
 }

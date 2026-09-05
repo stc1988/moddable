@@ -2,7 +2,10 @@
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/examples/manifest_commodetto.json",
-		"$(MODDABLE)/examples/manifest_piu.json"
+		"$(MODDABLE)/examples/manifest_piu.json",
+		"$(COMMODETTO)/manifest_bufferout.json",
+		"$(COMMODETTO)/manifest_convert.json",
+		"$(COMMODETTO)/manifest_pixelsout.json"
 	],
 	"creation": {
 		"stack": 350
@@ -12,10 +15,7 @@
 			"./main",
 			"./assets",
 			"./screens"
-		],
-        "commodetto/BufferOut": "$(COMMODETTO)/commodettoBufferOut",
-        "commodetto/PixelsOut": "$(COMMODETTO)/commodettoPixelsOut",
-        "commodetto/Convert": "$(COMMODETTO)/commodettoConvert"
+		]
 	},
 	"preload": [
 		"main",

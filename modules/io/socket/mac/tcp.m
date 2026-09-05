@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025  Moddable Tech, Inc.
+ * Copyright (c) 2022-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  * 
@@ -30,6 +30,7 @@
 #include <net/if_types.h>
 #include <net/if_dl.h>
 
+#include <errno.h>
 #include <signal.h>
 #include <termios.h>
 #include <sys/ioctl.h>
@@ -287,6 +288,7 @@ void doClose(xsMachine *the, xsSlot *instance)
 		if (tcp->cfTriggeredTimer) {
 			CFRunLoopTimerInvalidate(tcp->cfTriggeredTimer);
 			tcp->cfTriggeredTimer = NULL;
+			tcpRelease(tcp);
 		}
 
 		xsmcSetHostData(*instance, NULL);
@@ -379,10 +381,16 @@ void xs_tcp_write(xsMachine *the)
 	CFSocketEnableCallBacks(tcp->cfSkt, kCFSocketReadCallBack | kCFSocketWriteCallBack);
 	int ret = write(tcp->skt, buffer, needed);
 	if (ret < 0) {
-		xsTrace("write failed");
+		if ((EAGAIN == errno) || (EWOULDBLOCK == errno)) {
+			tcp->bytesWritable += needed;
+			xsUnknownError("would block");
+		}
+		xsTrace("write failed\n");
 		tcpTrigger(tcp, kTCPError);
 		return;
 	}
+	if (ret != (int)needed)
+		xsUnknownError("incomplete write");
 
 	modInstrumentationAdjust(NetworkBytesWritten, needed);
 
@@ -481,17 +489,21 @@ void socketCallback(CFSocketRef s, CFSocketCallBackType cbType, CFDataRef addr, 
 		if (bytesRead > 0) {
 			tcp->bytesReadable += bytesRead;
 			tcpTrigger(tcp, kTCPReadable);
+
+			modInstrumentationAdjust(NetworkBytesRead, bytesRead);
+
+			if (tcp->bytesReadable == kBufferSize)
+				CFSocketDisableCallBacks(tcp->cfSkt, kCFSocketReadCallBack);
 		}
-		else {		// bytes read 0 indicates connection closed
+		else if ((bytesRead < 0) && ((EAGAIN == errno) || (EWOULDBLOCK == errno) || (EINTR == errno))) {
+			;	// wait
+		}
+		else {
 			tcp->error = 1;
 			if (0 == tcp->bytesReadable)
 				tcpTrigger(tcp, kTCPError);
 			goto done;
 		}
-		modInstrumentationAdjust(NetworkBytesRead, bytesRead);
-
-		if (tcp->bytesReadable == kBufferSize)
-			CFSocketDisableCallBacks(tcp->cfSkt, kCFSocketReadCallBack);
 	}
 
 	if (cbType & kCFSocketWriteCallBack) {
@@ -722,10 +734,9 @@ void xs_listener_read(xsMachine *the)
 	if (!pending)
 		return;
 
-	listener->pending = pending->next;
-
-	xsResult = xsArg(0);
+	xsResult = xsNewFunction0(xsArg(0));
 	tcp = xsmcGetHostDataValidate(xsResult, (void *)&xsTCPHooks);
+	listener->pending = pending->next;
 
 	tcp->cfSkt = pending->cfSkt;
 	tcp->skt = CFSocketGetNative(tcp->cfSkt);

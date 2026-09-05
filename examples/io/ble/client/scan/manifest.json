@@ -1,4 +1,7 @@
 {
+	"build": {
+		"NAME": "scan-client"
+	},
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/modules/io/ble/client/manifest.json"

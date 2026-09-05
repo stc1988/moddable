@@ -2,12 +2,13 @@
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/examples/manifest_net.json",
-		"$(MODDABLE)/examples/manifest_commodetto.json"
+		"$(MODDABLE)/examples/manifest_commodetto.json",
+		"$(MODDABLE)/modules/network/net/manifest.json",
+		"$(MODDABLE)/modules/network/telnet/manifest.json"
 	],
 	"modules": {
 		"*": [
-			"./main",
-			"$(MODULES)/network/telnet/*"
+			"./main"
 		],
 		"cli": "$(MODULES)/base/cli/cli",
 		"cli/pixelsout": "$(MODULES)/base/cli/commands/pixelsout",
@@ -15,7 +16,6 @@
 	},
 	"preload": [
 		"main",
-		"telnet",
 		"cli/*"
 	],
 	"platforms": {
@@ -31,7 +31,8 @@
 			"include": [
 				"$(MODDABLE)/modules/files/file/manifest.json",
 				"$(MODULES)/pins/digital/manifest.json",
-				"$(MODDABLE)/modules/pins/i2c/manifest.json"
+				"$(MODDABLE)/modules/pins/i2c/manifest.json",
+				"$(MODDABLE)/modules/network/wifi/manifest.json"
 			],
 			"modules": {
 				"pins/digital": "$(MODULES)/pins/digital/digital",
@@ -50,7 +51,8 @@
 			"include": [
 				"$(MODDABLE)/modules/files/file/manifest.json",
 				"$(MODULES)/pins/digital/manifest.json",
-				"$(MODDABLE)/modules/pins/i2c/manifest.json"
+				"$(MODDABLE)/modules/pins/i2c/manifest.json",
+				"$(MODDABLE)/modules/network/wifi/manifest.json"
 			],
 			"modules": {
 				"pins/digital": "$(MODULES)/pins/digital/digital",

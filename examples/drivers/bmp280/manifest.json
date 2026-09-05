@@ -1,4 +1,7 @@
 {
+	"build": {
+		"NAME": "bmp280-drivers"
+	},
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODULES)/drivers/bmp280/manifest.json"

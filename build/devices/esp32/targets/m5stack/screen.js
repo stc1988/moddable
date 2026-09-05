@@ -1,11 +1,19 @@
 import ILI9341 from "ili9341";
-import Digital from "pins/digital";
+import Digital from "embedded:io/digital";
 
 export default class extends ILI9341 {
 	constructor(dictionary) {
-		let pin33 = new Digital(33, Digital.InputPullDown);	// TFT_RST
-		let isIps = pin33.read();	// Ips LCD version is pullup externally 
-		pin33.mode(Digital.Output);	// change digital output mode
+		// Detect IPS LCD (externally pulled up) vs TN on TFT_RST (GPIO 33)
+		let pin33 = new Digital({
+			pin: 33,
+			mode: Digital.InputPullDown
+		});
+		const isIps = pin33.read();
+		pin33.close();
+		pin33 = new Digital({
+			pin: 33,
+			mode: Digital.Output
+		});
 		pin33.write(1);
 		super(dictionary);
 		if (isIps)

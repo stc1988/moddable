@@ -2,12 +2,12 @@
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/examples/manifest_commodetto.json",
-		"$(COMMODETTO)/jpeg/manifest.json"
+		"$(COMMODETTO)/jpeg/manifest.json",
+		"$(COMMODETTO)/manifest_bufferout.json",
+		"$(COMMODETTO)/manifest_pixelsout.json"
 	],
 	"modules": {
-		"*": "./main",
-		"commodetto/BufferOut": "$(COMMODETTO)/commodettoBufferOut",
-		"commodetto/PixelsOut": "$(COMMODETTO)/commodettoPixelsOut"
+		"*": "./main"
 	},
 	"resources": {
 		"*": [

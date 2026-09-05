@@ -38,21 +38,21 @@ const device = {
     default: {
       io: I2C,
       data: 2,
-      clock: 1,
+      clock: 1
     },
     internal: {
       io: I2C,
       data: 12,
-      clock: 11,
-    },
+      clock: 11
+    }
   },
   Serial: {
     default: {
       io: Serial,
       port: 1,
       receive: 44,
-      transmit: 43,
-    },
+      transmit: 43
+    }
   },
   SPI: {
     default: {
@@ -60,14 +60,14 @@ const device = {
       clock: 36,
       in: 35,
       out: 37,
-      port: 1,
-    },
+      port: 1
+    }
   },
   Analog: {
     default: {
       io: Analog,
-      pin: 10,
-    },
+      pin: 10
+    }
   },
   io: {
     Analog,
@@ -79,13 +79,31 @@ const device = {
     PWM,
     Serial,
     SMBus,
-    SPI,
+    SPI
   },
   pin: {
     displayDC: 15,
-    displaySelect: 5,
+    displaySelect: 5
   },
   peripheral: {
+		// Power.brightness is percent 0–100 (AXP2101 DLDO1)
+		Backlight: class {
+			#value = 1;
+			set brightness(value) {
+				if (value <= 0)
+					value = 0;
+				else if (value >= 1)
+					value = 1;
+				this.#value = value;
+				if (undefined !== globalThis.power)
+					globalThis.power.brightness = value * 100;
+			}
+			get brightness() {
+				return this.#value;
+			}
+			close() {
+			}
+		},
 		RTC: class {
 			constructor(options) {
 				return new RTC({

@@ -2,22 +2,25 @@
 	"include": [
 		"$(MODDABLE)/modules/io/manifest.json",
 		"$(MODDABLE)/modules/crypt/digest/manifest.json",
-		"$(MODDABLE)/modules/data/text/encoder/manifest.json"
+		"$(MODDABLE)/modules/data/text/encoder/manifest.json",
+		"$(MODDABLE)/modules/io/socket/manifest.json"
 	],
 	"modules": {
 		"*": [ 
 			"$(MODULES)/network/dns/moddnsparser"
 		],
 		"embedded:network/http/server": "./httpserver",
-		"embedded:network/http/server/options/serversendevents": "./options/serversendevents",
-		"embedded:network/http/server/options/webpage": "./options/webpage",
-		"embedded:network/http/server/options/websocket": "./options/websocket"
+		"httpserver/config": "./config",
+		"embedded:network/http/server/route/serversentevents": "./options/serversentevents",
+		"embedded:network/http/server/route/static": "./options/static",
+		"embedded:network/http/server/route/ws/handshake": "./options/websocket"
 	},
 	"preload": [
 		"embedded:network/http/server",
-		"embedded:network/http/server/options/serversendevents",
-		"embedded:network/http/server/options/webpage",
-		"embedded:network/http/server/options/websocket"
+		"httpserver/config",
+		"embedded:network/http/server/route/serversentevents",
+		"embedded:network/http/server/route/static",
+		"embedded:network/http/server/route/ws/handshake"
 	],
 	"mcpack": true
 }

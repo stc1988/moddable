@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025  Moddable Tech, Inc.
+ * Copyright (c) 2025-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -28,83 +28,135 @@ import Serial from "embedded:io/serial";
 import SMBus from "embedded:io/smbus";
 import SPI from "embedded:io/spi";
 import Timer from "timer";
+import IMU from "embedded:sensor/Accelerometer-Gyroscope-Magnetometer/BMI270";
+
+import Button from "button";
 
 class Backlight {
-  #io;
+	#io;
 
-  constructor(options) {
-    const io = this.#io = new SMBus({
-      ...device.I2C.internal,
-      hz: 400_000,
-      address:48,
-    });
+	constructor(options) {
+		const io = this.#io = new SMBus({
+			...device.I2C.internal,
+			hz: 400_000,
+			address: 48
+		});
 
-	io.writeUint8(0x00, 0b01000000)
-	Timer.delay(1)
-	io.writeUint8(0x08, 0b00000001)
-	io.writeUint8(0x70, 0b00000000)
-  }
-  close() {
-    this.#io?.close();
-    this.#io = undefined;
-  }
-  set brightness(value) {
-    if (value <= 0) value = 0;
-    else if (value >= 1) value = 255;
-    else value *= 255;
-	this.#io.writeUint8(0x0e, value)
-  }
+		io.writeUint8(0x00, 0b01000000);
+		Timer.delay(1);
+		io.writeUint8(0x08, 0b00000001);
+		io.writeUint8(0x70, 0b00000000);
+	}
+	close() {
+		this.#io?.close();
+		this.#io = undefined;
+	}
+	set brightness(value) {
+		if (value <= 0)
+			value = 0;
+		else if (value >= 1)
+			value = 255;
+		else
+			value *= 255;
+		this.#io.writeUint8(0x0e, value);
+	}
+}
+
+class ButtonA {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.buttonA,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
+}
+
+class ButtonFlash {
+	constructor(options) {
+		return new Button({
+			...options,
+			io: Digital,
+			pin: device.pin.buttonFlash,
+			mode: Digital.InputPullUp,
+			activeLow: true
+		});
+	}
 }
 
 const device = {
-  I2C: {
-    default: {
-      io: I2C,
-      data: 2,
-      clock: 1,
-    },
-    internal: {
-      io: I2C,
-      data: 45,
-      clock: 0,
-    },
-  },
-  SPI: {
-    default: {
-      io: SPI,
-      port: 3,
-      clock: 15,
-      out: 21,
-    },
-  },
-  Analog: {
-    default: {
-      io: Analog,
-      pin: 8,
-    },
-  },
-  io: {
-    Analog,
-    Digital,
-    DigitalBank,
-    I2C,
-    PulseCount,
-    PWM,
-    Serial,
-    SMBus,
-    SPI,
-  },
-  pin: {
-    button: 41,
-    displaySelect: 14,
-  },
-  peripheral: {
-    Backlight: class {
-      constructor() {
-        return new Backlight();
-      }
-    },
-  },
+	I2C: {
+		default: {
+			io: I2C,
+			data: 2,
+			clock: 1
+		},
+		internal: {
+			io: I2C,
+			data: 45,
+			clock: 0
+		}
+	},
+	SPI: {
+		default: {
+			io: SPI,
+			port: 3,
+			clock: 15,
+			out: 21
+		}
+	},
+	Analog: {
+		default: {
+			io: Analog,
+			pin: 8
+		}
+	},
+	io: {
+		Analog,
+		Digital,
+		DigitalBank,
+		I2C,
+		PulseCount,
+		PWM,
+		Serial,
+		SMBus,
+		SPI
+	},
+	pin: {
+		button: 41,
+		buttonA: 41,
+		buttonFlash: 0,
+		displaySelect: 14,
+		IRTX: 47
+	},
+	peripheral: {
+		Backlight: class {
+			constructor() {
+				return new Backlight();
+			}
+		},
+		button: {
+			Default: ButtonFlash,
+			A: ButtonA,
+			Flash: ButtonFlash
+		},
+	},
+	sensor: {
+		IMU: class {
+			constructor(options) {
+				return new IMU({
+					...options,
+					sensor: {
+						...device.I2C.internal,
+						address: 0x69,
+						io: device.io.SMBus
+					}
+				});
+			}
+		}
+	}
 };
 
 export default device;

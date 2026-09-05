@@ -2,8 +2,7 @@
 	"modules": {
 		"*": [
 			"./pocostatic"
-		],
-		"commodetto/PocoCore": "$(COMMODETTO)/commodettoPocoCore"
+		]
 	},
 	"preload": "pocostatic",
 	"typescript": {

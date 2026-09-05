@@ -216,7 +216,7 @@ class WebSocket {
 		return ""; // ??
 	}
 	get protocol() {
-		return this.#protocol;
+		return this.#client.protocol;
 	}
 	get readyState() {
 		return this.#state;

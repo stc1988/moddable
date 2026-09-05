@@ -24,7 +24,9 @@
 		"$(MODDABLE)/modules/io/audioin/manifest.json",
 		"$(MODDABLE)/modules/io/crypt/digest/manifest.json",
 		"$(MODDABLE)/modules/io/update/manifest.json",
-		"$(MODDABLE)/modules/io/flash/manifest.json"
+		"$(MODDABLE)/modules/io/flash/manifest.json",
+		"$(COMMODETTO)/manifest_bitmap.json",
+		"$(COMMODETTO)/manifest_parsebmf.json"
 	],
 	"modules": {
 		"*": [
@@ -36,9 +38,7 @@
 		"~": [
 			"$(MODDABLE)/tools/testmc/commodettoChecksumOut-nop"
 		],
-		"commodetto/Bitmap": "$(MODULES)/commodetto/commodettoBitmap",
 		"commodetto/Poco": "$(MODULES)/commodetto/commodettoPoco",
-		"commodetto/parseBMF": "$(COMMODETTO)/commodettoParseBMF",
 		"commodetto/*": "$(MODULES)/commodetto/commodettoPocoBlit",
 		"commodetto/cfe": "$(MODULES)/commodetto/cfeBMF",
 		"commodetto/checksumOut": "./commodettoChecksumOut",

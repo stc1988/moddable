@@ -1,4 +1,7 @@
 {
+	"build": {
+		"NAME": "clock-commodetto"
+	},
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/examples/manifest_commodetto.json",

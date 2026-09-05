@@ -4,7 +4,10 @@
 			"modules": {
 				"embedded:storage/flash": "./flash-esp32"
 			},
-			"preload": "embedded:storage/flash"
+			"preload": "embedded:storage/flash",
+			"dependency": [
+				{ "idf": "app_update" }
+			]
 		}
 	}
 }

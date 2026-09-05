@@ -1,0 +1,31 @@
+{
+	"platforms": {
+		"mac": {
+			"modules": {
+				"*": "$(MODULES)/io/wifi/sim/hostinterface",
+				"embedded:network/interface/wifi/accesspoint": "./wifiaccesspoint-sim"
+			},
+			"preload": [
+				"embedded:network/interface/wifi/accesspoint"
+			]
+		},
+		"lin": {
+			"modules": {
+				"*": "$(MODULES)/io/wifi/sim/hostinterface",
+				"embedded:network/interface/wifi/accesspoint": "./wifiaccesspoint-sim"
+			},
+			"preload": [
+				"embedded:network/interface/wifi/accesspoint"
+			]
+		},
+		"win": {
+			"modules": {
+				"*": "$(MODULES)/io/wifi/sim/hostinterface",
+				"embedded:network/interface/wifi/accesspoint": "./wifiaccesspoint-sim"
+			},
+			"preload": [
+				"embedded:network/interface/wifi/accesspoint"
+			]
+		}
+	}
+}

@@ -413,7 +413,7 @@ void PiuContentMoveBy(PiuContent* self, PiuCoordinate dx, PiuCoordinate dy)
 	if (dx || dy) {
 		PiuContainer* container = (*self)->container;
 		if (container)
-			PiuContentInvalidate(self, NULL);
+			(*(*self)->dispatch->invalidate)(self, NULL);
 		if (horizontal & piuLeft)
 			(*self)->coordinates.left += dx;
 		else
@@ -436,7 +436,7 @@ void PiuContentPlace(void* it)
 	PiuContent* self = it;
 	if ((*self)->flags & piuPlaced) {
 		(*self)->flags &= ~piuPlaced;
-		PiuContentInvalidate(self, NULL);
+		(*(*self)->dispatch->invalidate)(self, NULL);
 	}
 	if ((*self)->flags & piuDisplaying) {
 		(*self)->flags &= ~piuDisplaying;
@@ -482,7 +482,7 @@ void PiuContentSetCoordinates(void* it, PiuCoordinates coordinates)
 	if (flag) {
 		PiuContainer* container = (*self)->container;
 		if (container)
-			PiuContentInvalidate(self, NULL);
+			(*(*self)->dispatch->invalidate)(self, NULL);
 		(*self)->coordinates = *coordinates;
 		if (container)
 			PiuContentReflow(self, piuSizeChanged);
@@ -538,10 +538,10 @@ void PiuContentShow(PiuContent* self, PiuBoolean showIt)
 			(*(*self)->dispatch->showing)(self, showIt);
 		if (showIt) {
 			(*self)->flags |= piuVisible;
-			PiuContentInvalidate(self, NULL);
+			(*(*self)->dispatch->invalidate)(self, NULL);
 		}
 		else {
-			PiuContentInvalidate(self, NULL);
+			(*(*self)->dispatch->invalidate)(self, NULL);
 			(*self)->flags &= ~piuVisible;
 		}
 		if (flag) 
@@ -552,13 +552,13 @@ void PiuContentShow(PiuContent* self, PiuBoolean showIt)
 void PiuContentShowing(void* it, PiuBoolean showIt) 
 {
 	PiuContent* self = it;
-	PiuContentInvalidate(self, NULL);
+	(*(*self)->dispatch->invalidate)(self, NULL);
 }
 
 void PiuContentShown(void* it, PiuBoolean showIt) 
 {
 	PiuContent* self = it;
-	PiuContentInvalidate(self, NULL);
+	(*(*self)->dispatch->invalidate)(self, NULL);
 }
 
 void PiuContentSizeBy(PiuContent* self, PiuCoordinate dx, PiuCoordinate dy)
@@ -568,7 +568,7 @@ void PiuContentSizeBy(PiuContent* self, PiuCoordinate dx, PiuCoordinate dy)
 	if (dx || dy) {
 		PiuContainer* container = (*self)->container;
 		if (container)
-			PiuContentInvalidate(self, NULL);
+			(*(*self)->dispatch->invalidate)(self, NULL);
 		(*self)->coordinates.width += dx;
 		(*self)->coordinates.height += dy;
 		if (container) {

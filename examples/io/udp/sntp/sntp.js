@@ -12,13 +12,15 @@
  *
  */
 
- import UDP from "embedded:io/socket/udp";
+import UDP from "embedded:io/socket/udp";
+import Timer from "timer";
 
 class SNTP  {
 	#udp;
 	#onTime;
 	#onError;
 	#timer;
+	#dns;
 	constructor(options) {
 		this.#udp = new UDP({
 			target: this,
@@ -31,19 +33,24 @@ class SNTP  {
 
 		this.#onError = options.onError;
 
-		System.resolve(options.host, (name, address) => {
-			if (!address) {
-				this.#onError?.();
-				return;
-			}
-
-			request.call(this.#udp, address);
-			this.#timer = System.setInterval(() => request.call(this.#udp, address), 5 * 1000);
+		this.#dns = new device.network.dns.resolver.io({
+			...device.network.dns.resolver
+		});
+		this.#dns.resolve({
+			host: options.host,
+			onResolved: (name, address) => {
+				request.call(this.#udp, address);
+				this.#timer = Timer.repeat(() => request.call(this.#udp, address), 5 * 1000);
+			},
+			onError: () => this.#onError?.()
 		});
 	}
 	close() {
 		if (this.#timer)
-			System.clearInterval(this.#timer);
+			Timer.clear(this.#timer);
+
+		this.#dns?.close();
+		this.#dns = undefined;
 	}
 	#onReadable(count) {
 		const target = this.target;
@@ -52,7 +59,7 @@ class SNTP  {
 		while (count--)
 			packet = new DataView(this.read());
 
-		System.clearInterval(target.#timer);
+		Timer.clear(target.#timer);
 		target.#timer = undefined;
 
 		target.#onTime((packet.getUint32(40) - 2208988800) * 1000);		// convert from NTP to Unix Epoch time in milliseconds

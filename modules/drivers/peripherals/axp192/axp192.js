@@ -27,13 +27,13 @@ class DCDC {
   }
   set voltage(v) {
     const vdata = v < 700 ? 0 : (v - 700) / 25;
-    this.#parent.writeByte(
+    this.#parent.writeUint8(
       this.#register,
-      (this.#parent.readByte(this.#register) & 0x80) | (vdata & 0x7f)
+      (this.#parent.readUint8(this.#register) & 0x80) | (vdata & 0x7f)
     );
   }
   get voltage() {
-    return (this.#parent.readByte(this.#register) & 0x7f) * 25 + 700;
+    return (this.#parent.readUint8(this.#register) & 0x7f) * 25 + 700;
   }
 }
 
@@ -52,29 +52,29 @@ class LDO {
   set voltage(v) {
     const vdata = v > 3300 ? 15 : v / 100 - 18;
     const mask = ~(0xff << this.#offsetV);
-    this.#parent.writeByte(
+    this.#parent.writeUint8(
       this.#register,
-      (this.#parent.readByte(this.#register) & mask) | (vdata << this.#offsetV)
+      (this.#parent.readUint8(this.#register) & mask) | (vdata << this.#offsetV)
     );
   }
 
   get voltage() {
     return (
-      ((this.#parent.readByte(this.#register) >> this.#offsetV) + 18) * 100
+      ((this.#parent.readUint8(this.#register) >> this.#offsetV) + 18) * 100
     );
   }
 
   set enable(enable) {
     const mask = 0x01 << this.#offsetEn;
     if (enable) {
-      this.#parent.writeByte(0x12, this.#parent.readByte(0x12) | mask);
+      this.#parent.writeUint8(0x12, this.#parent.readUint8(0x12) | mask);
     } else {
-      this.#parent.writeByte(0x12, this.#parent.readByte(0x12) & ~mask);
+      this.#parent.writeUint8(0x12, this.#parent.readUint8(0x12) & ~mask);
     }
   }
 
   get enable() {
-    return Boolean((this.#parent.readByte(0x12) >> this.#offsetEn) & 1);
+    return Boolean((this.#parent.readUint8(0x12) >> this.#offsetEn) & 1);
   }
 }
 
@@ -89,17 +89,17 @@ class GPIO {
   }
 
   get enable() {
-    return Boolean(this.#parent.readByte(this.#register) & this.#mask);
+    return Boolean(this.#parent.readUint8(this.#register) & this.#mask);
   }
 
   set enable(enable) {
-    let data = this.#parent.readByte(this.#register);
+    let data = this.#parent.readUint8(this.#register);
     if (enable) {
       data |= this.#mask;
     } else {
       data &= ~this.#mask;
     }
-    this.#parent.writeByte(this.#register, data);
+    this.#parent.writeUint8(this.#register, data);
   }
 }
 
@@ -134,33 +134,33 @@ export default class AXP192 {
     this._gpio4 = new GPIO({ register: 0x96, parent: this, offset: 1 });
   }
 
-  readByte(address) {
+  readUint8(address) {
     return this.#io.readUint8(address);
   }
 
-  writeByte(address, value) {
+  writeUint8(address, value) {
     return this.#io.writeUint8(address, value);
   }
 
   getPekState() {
-    const state = this.readByte(0x46) & 0x03;
-    if (state) this.writeByte(0x46, state);
+    const state = this.readUint8(0x46) & 0x03;
+    if (state) this.writeUint8(0x46, state);
     return state;
   }
 
   set chargeCurrent(state) {
-    this.writeByte(0x33, (this.readByte(0x33) & 0xf0) | (state & 0x0f));
+    this.writeUint8(0x33, (this.readUint8(0x33) & 0xf0) | (state & 0x0f));
   }
   get batteryVoltage() {
-    let data = this.readByte(0x78) << 4;
-    data |= this.readByte(0x79);
+    let data = this.readUint8(0x78) << 4;
+    data |= this.readUint8(0x79);
     return data * 1.1 / 1000;
   }
   get batteryCurrent() {
-    let currentIn = this.readByte(0x7a) << 5;
-    currentIn |= this.readByte(0x7b);
-    let currentOut = this.readByte(0x7c) << 5;
-    currentOut |= this.readByte(0x7d);
+    let currentIn = this.readUint8(0x7a) << 5;
+    currentIn |= this.readUint8(0x7b);
+    let currentOut = this.readUint8(0x7c) << 5;
+    currentOut |= this.readUint8(0x7d);
 
     return (currentIn - currentOut) * 0.5;
   }

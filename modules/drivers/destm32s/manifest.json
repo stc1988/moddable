@@ -1,11 +1,11 @@
 {
 	"include": [
 		"$(MODULES)/pins/digital/manifest.json",
-		"$(MODULES)/pins/spi/manifest.json"
+		"$(MODULES)/pins/spi/manifest.json",
+		"$(COMMODETTO)/manifest_bitmap.json"
 	],
 	"modules": {
-		"*": "$(MODULES)/drivers/destm32s/*",
-		"commodetto/Bitmap": "$(COMMODETTO)/commodettoBitmap"
+		"*": "$(MODULES)/drivers/destm32s/*"
 	},
 	"defines": {
 		"destm32s": {
@@ -14,8 +14,7 @@
 		}
 	},
 	"preload": [
-		"destm32s",
-		"commodetto/Bitmap"
+		"destm32s"
 	],
 	"platforms": {
 		"esp": {

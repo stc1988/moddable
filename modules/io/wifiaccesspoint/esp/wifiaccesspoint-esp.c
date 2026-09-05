@@ -76,7 +76,6 @@ static void formatMAC(const uint8_t *mac, char *str)
 static AUTH_MODE stringToAuthMode(const char *str)
 {
 	if (0 == c_strcmp(str, "none")) return AUTH_OPEN;
-	if (0 == c_strcmp(str, "wpa_psk")) return AUTH_WPA_PSK;
 	if (0 == c_strcmp(str, "wpa2_psk")) return AUTH_WPA2_PSK;
 	if (0 == c_strcmp(str, "wpa_wpa2_psk")) return AUTH_WPA_WPA2_PSK;
 	return AUTH_MAX;
@@ -436,7 +435,6 @@ void xs_wifiaccesspoint_close(xsMachine *the)
 void xs_wifiaccesspoint_configure(xsMachine *the)
 {
 	xsmcGetHostDataValidate(xsThis, (void *)&xsAPHooks);
-	xsUnknownError("configure requires restart");
 }
 
 void xs_wifiaccesspoint_connection_get(xsMachine *the)

@@ -1,4 +1,7 @@
 {
+	"build": {
+		"NAME": "bounce-qmi8658"
+	},
 	"include": [
 		"$(MODDABLE)/examples/manifest_base.json",
 		"$(MODDABLE)/examples/manifest_commodetto.json",

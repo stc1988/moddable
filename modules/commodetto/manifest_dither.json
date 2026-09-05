@@ -1,0 +1,6 @@
+{
+	"modules": {
+		"commodetto/Dither": "$(COMMODETTO)/commodettoDither"
+	},
+	"preload": "commodetto/Dither"
+}

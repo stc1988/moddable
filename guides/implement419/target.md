@@ -1,10 +1,10 @@
 ---
-name: Constructor Sets `target`
+name: Constructor Sets target
 SPDX-FileCopyrightText: Copyright (c) 2026 Moddable Tech, Inc.
-updated: 2026-08-04
+updated: 2026-08-07
 ---
 
-The [Base Class Pattern ](https://419.ecma-international.org/#base-class-pattern) defines the first argument of every constructor as an options object. If the options object has a `target` property, the constructor must assign that to the instance.
+The [Base Class Pattern ](https://419.ecma-international.org/#base-class-pattern) defines the first argument of every constructor as an options object. If the options object has a `target` property, the constructor must assign that to the instance. Using `target` avoids [`this` aliasing warnings of static analyzers](https://typescript-eslint.io/rules/no-this-alias/).
 
 Note that `target` is set as an ordinary property. It is not necessary to use `Object.defineProperty()`. Because it is an ordinary property the caller may change or delete the property at any time.
 

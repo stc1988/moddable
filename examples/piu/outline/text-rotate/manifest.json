@@ -1,0 +1,14 @@
+{
+	"include": [
+		"$(MODDABLE)/examples/manifest_base.json",
+		"$(MODDABLE)/examples/manifest_piu.json",
+		"$(MODDABLE)/modules/piu/MC/outline/manifest.json",
+		"$(COMMODETTO)/manifest_cfeft.json"
+	],
+	"modules": {
+		"*": "./main"
+	},
+	"data": {
+		"*": "$(MODDABLE)/examples/assets/scalablefonts/OpenSans/OpenSans-Regular"
+	}
+}

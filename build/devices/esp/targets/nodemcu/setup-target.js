@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020  Moddable Tech, Inc.
+ * Copyright (c) 2018-2026  Moddable Tech, Inc.
  *
  *   This file is part of the Moddable SDK Runtime.
  *
@@ -18,45 +18,6 @@
  *
  */
 
-import Button from "button";
-import LED from "led";
-
-class A  {
-	constructor(options) {
-		return new LED({
-			...options,
-			pin: 16,
-			invert: true
-		});
-	}
-};
-
-class B {
-	constructor(options) {
-		return new LED({
-			...options,
-			pin: 2,
-			invert: true
-		});
-	}
-};
-
-globalThis.Host = {
-	LED: {
-		Default: A,
-		A,
-		B,
-	},
-	Button: {
-		Default: class {
-			constructor(options) {
-				return new Button({
-					...options,
-					pin: 0,
-					invert: true
-				});
-			}
-		}
-	}
-};
-Object.freeze(Host, true);
+export default function (done) {
+	done?.();
+}

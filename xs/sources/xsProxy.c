@@ -578,6 +578,8 @@ void fxProxyOwnKeys(txMachine* the, txSlot* instance, txFlag flag, txSlot* list)
 		mxPushSlot(target);
 		mxRunCount(1);
 		reference = the->stack;
+		if (!mxIsReference(reference))
+			mxTypeError("(proxy).ownKeys: not an object");
 		mxPushSlot(reference);
 		mxGetID(mxID(_length));
 		length = fxToInteger(the, the->stack++);
@@ -898,10 +900,13 @@ void fx_Reflect_deleteProperty(txMachine* the)
 	if ((mxArgc < 1) || (mxArgv(0)->kind != XS_REFERENCE_KIND))
 		mxTypeError("target: not an object");
 	if (mxArgc < 2)
-		mxTypeError("no key");
-	at = fxAt(the, mxArgv(1));
+		mxPushUndefined();
+	else
+		mxPushSlot(mxArgv(1));
+	at = fxAt(the, the->stack);
 	mxResult->value.boolean = mxBehaviorDeleteProperty(the, mxArgv(0)->value.reference, at->value.at.id, at->value.at.index);
 	mxResult->kind = XS_BOOLEAN_KIND;
+	mxPop();
 }
 
 void fx_Reflect_get(txMachine* the)
@@ -910,9 +915,12 @@ void fx_Reflect_get(txMachine* the)
 	if ((mxArgc < 1) || (mxArgv(0)->kind != XS_REFERENCE_KIND))
 		mxTypeError("target: not an object");
 	if (mxArgc < 2)
-		mxTypeError("no key");
-	at = fxAt(the, mxArgv(1));
-	mxBehaviorGetPropertyValue(the, 	mxArgv(0)->value.reference, at->value.at.id, at->value.at.index, mxArgc < 3 ? mxArgv(0) : mxArgv(2), mxResult);
+		mxPushUndefined();
+	else
+		mxPushSlot(mxArgv(1));
+	at = fxAt(the, the->stack);
+	mxBehaviorGetPropertyValue(the, mxArgv(0)->value.reference, at->value.at.id, at->value.at.index, mxArgc < 3 ? mxArgv(0) : mxArgv(2), mxResult);
+	mxPop();
 }
 
 void fx_Reflect_getOwnPropertyDescriptor(txMachine* the)
@@ -921,15 +929,19 @@ void fx_Reflect_getOwnPropertyDescriptor(txMachine* the)
 	if ((mxArgc < 1) || (mxArgv(0)->kind != XS_REFERENCE_KIND))
 		mxTypeError("target: not an object");
 	if (mxArgc < 2)
-		mxTypeError("no key");
-	at = fxAt(the, mxArgv(1));
+		mxPushUndefined();
+	else
+		mxPushSlot(mxArgv(1));
+	at = fxAt(the, the->stack);
 	mxPushUndefined();
 	if (mxBehaviorGetOwnProperty(the, mxArgv(0)->value.reference, at->value.at.id, at->value.at.index, the->stack)) {
 		fxDescribeProperty(the, the->stack, XS_GET_ONLY);
 		mxPullSlot(mxResult);
 	}
 	mxPop();
+	mxPop();
 }
+
 
 void fx_Reflect_getPrototypeOf(txMachine* the)
 {
@@ -944,10 +956,13 @@ void fx_Reflect_has(txMachine* the)
 	if ((mxArgc < 1) || (mxArgv(0)->kind != XS_REFERENCE_KIND))
 		mxTypeError("target: not an object");
 	if (mxArgc < 2)
-		mxTypeError("no key");
-	at = fxAt(the, mxArgv(1));
+		mxPushUndefined();
+	else
+		mxPushSlot(mxArgv(1));
+	at = fxAt(the, the->stack);
 	mxResult->value.boolean = mxBehaviorHasProperty(the, mxArgv(0)->value.reference, at->value.at.id, at->value.at.index);
 	mxResult->kind = XS_BOOLEAN_KIND;
+	mxPop();
 }
 
 void fx_Reflect_isExtensible(txMachine* the)
@@ -992,14 +1007,17 @@ void fx_Reflect_set(txMachine* the)
 	if ((mxArgc < 1) || (mxArgv(0)->kind != XS_REFERENCE_KIND))
 		mxTypeError("target: not an object");
 	if (mxArgc < 2)
-		mxTypeError("no key");
-	at = fxAt(the, mxArgv(1));
+		mxPushUndefined();
+	else
+		mxPushSlot(mxArgv(1));
+	at = fxAt(the, the->stack);
 	if (mxArgc < 3)
 		mxPushUndefined();
 	else
 		mxPushSlot(mxArgv(2));
 	mxResult->value.boolean = mxBehaviorSetPropertyValue(the, mxArgv(0)->value.reference, at->value.at.id, at->value.at.index, the->stack, mxArgc < 4 ? mxArgv(0) : mxArgv(3));
 	mxResult->kind = XS_BOOLEAN_KIND;
+	mxPop();
 	mxPop();
 }
 
