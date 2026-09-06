@@ -19,62 +19,12 @@
  */
 
 import config from "mc/config";
-import NeoPixel from "neopixel";
-import Button from "button";
-import LED from "led";
-import Digital from "pins/digital";
-
-class NeoPixelLED extends NeoPixel {
-	constructor(options) {
-		return new NeoPixel({
-			...options,
-			pin: config.led.rgb.data_pin,
-			length: 1,
-			order: "GRB",
-		});
-	}
-}
-
-class BlueLED {
-	constructor(options) {
-		return new LED({
-			...options,
-			pin: config.led.blue.pin,
-		});
-	}
-}
-
-class buttonA {
-	constructor(options) {
-		return new Button({
-			...options,
-			pin: 9,
-			invert: true,
-		});
-	}
-}
-
-globalThis.Host = Object.freeze(
-	{
-		LED: {
-			Default: NeoPixelLED,
-			RGB: NeoPixelLED,
-			Blue: BlueLED,
-		},
-		Button: {
-			Default: buttonA,
-			a: buttonA,
-		},
-	},
-	true
-);
 
 export default function (done) {
-	// Enable RGB LED Power
-	const power = new Digital({
-		pin: config.led.rgb.power_pin,
-		mode: Digital.Output,
-	});
-	power.write(1);
+	if (config.led?.rgb?.rainbow || config.led?.rainbow) {
+		const led = new device.peripheral.led.Default({});
+		led.rainbow(3);
+	}
+
 	done?.();
 }
